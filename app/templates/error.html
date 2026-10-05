@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Erreur {{ code }}{% endblock %}
+{% block content %}
+<div class="empty">
+  <span class="empty-icon">{{ icon('alert', 34) }}</span>
+  <h1>Oups…</h1>
+  <p>{{ message }}</p>
+  <a class="btn primary" href="{{ url_for('main.dashboard') }}">{{ icon('home', 18) }} Retour à l'accueil</a>
+</div>
+{% endblock %}
+{% block auth_content %}
+<h2>Oups…</h2>
+<p>{{ message }}</p>
+<a class="btn primary block" href="{{ url_for('auth.login') }}">Retour à la connexion</a>
+{% endblock %}

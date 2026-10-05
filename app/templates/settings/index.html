@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf, password_field with context %}
+{% block title %}Paramètres{% endblock %}
+{% block content %}
+{{ page_head('Paramètres', "Identité de la société, apparence, e-mail et sécurité.", 'settings') }}
+<nav class="tabs" aria-label="Sections">
+  <a class="tab {% if tab == 'societe' %}active{% endif %}" href="{{ url_for('settings.index', onglet='societe') }}">{{ icon('building', 18) }} Société</a>
+  <a class="tab {% if tab == 'apparence' %}active{% endif %}" href="{{ url_for('settings.index', onglet='apparence') }}">{{ icon('palette', 18) }} Apparence</a>
+  <a class="tab {% if tab == 'email' %}active{% endif %}" href="{{ url_for('settings.index', onglet='email') }}">{{ icon('mail', 18) }} E-mail</a>
+  <a class="tab {% if tab == 'securite' %}active{% endif %}" href="{{ url_for('settings.index', onglet='securite') }}">{{ icon('lock', 18) }} Sécurité</a>
+</nav>
+
+{% if tab == 'societe' %}
+<form method="post" enctype="multipart/form-data" class="card stack" data-autosave="parametres-societe">
+  {{ csrf() }}<input type="hidden" name="section" value="societe">
+  <div class="logo-row">
+    <div class="logo-preview">
+      {% if conf.logo_file %}<img src="{{ url_for('settings.logo') }}" alt="Logo actuel">{% else %}{{ icon('egg', 34) }}{% endif %}
+    </div>
+    <div class="field grow">
+      <label for="logo">Logo (PNG, JPG, WEBP – 2 Mo maximum)</label>
+      <input class="input" type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp,image/gif">
+      {% if conf.logo_file %}<label class="check"><input type="checkbox" name="remove_logo" value="1"> Retirer le logo</label>{% endif %}
+    </div>
+  </div>
+  <div class="grid two">
+    <div class="field"><label for="company_name">Nom de la société *</label><input class="input" id="company_name" name="company_name" value="{{ conf.company_name }}" required maxlength="60"></div>
+    <div class="field"><label for="company_slogan">Slogan / activité</label><input class="input" id="company_slogan" name="company_slogan" value="{{ conf.company_slogan }}" maxlength="80"></div>
+    <div class="field"><label for="company_phone">Téléphone</label><input class="input" id="company_phone" name="company_phone" value="{{ conf.company_phone }}"></div>
+    <div class="field"><label for="company_email">E-mail</label><input class="input" type="email" id="company_email" name="company_email" value="{{ conf.company_email }}"></div>
+    <div class="field"><label for="company_nif">NIF</label><input class="input" id="company_nif" name="company_nif" value="{{ conf.company_nif }}"></div>
+    <div class="field"><label for="company_stat">STAT</label><input class="input" id="company_stat" name="company_stat" value="{{ conf.company_stat }}"></div>
+  </div>
+  <div class="field"><label for="company_address">Adresse</label><textarea class="input" id="company_address" name="company_address" rows="2">{{ conf.company_address }}</textarea></div>
+  <p class="hint">Ces informations apparaissent sur l'écran de connexion, les factures et les rapports.</p>
+  <div><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+
+{% elif tab == 'apparence' %}
+<form method="post" class="card stack">
+  {{ csrf() }}<input type="hidden" name="section" value="apparence">
+  <div class="grid two">
+    <div class="field">
+      <label for="primary_color">Couleur principale (boutons, liens)</label>
+      <div class="color-row">
+        <input type="color" id="primary_color" name="primary_color" value="{{ primary_color }}" data-live-var="--primary">
+        <div class="swatches">{% for c in color_presets %}<button type="button" class="swatch" style="background: {{ c }}" data-swatch="primary_color" data-color="{{ c }}" aria-label="{{ c }}"></button>{% endfor %}</div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="menu_color">Couleur du menu</label>
+      <div class="color-row">
+        <input type="color" id="menu_color" name="menu_color" value="{{ menu_color }}" data-live-var="--menu-bg">
+        <div class="swatches">{% for c in menu_presets %}<button type="button" class="swatch" style="background: {{ c }}" data-swatch="menu_color" data-color="{{ c }}" aria-label="{{ c }}"></button>{% endfor %}</div>
+      </div>
+      <p class="hint">La couleur du texte du menu s'adapte toute seule pour rester lisible.</p>
+    </div>
+    <div class="field">
+      <label for="default_theme">Thème par défaut</label>
+      <select class="input" id="default_theme" name="default_theme">
+        <option value="auto" {% if conf.default_theme == 'auto' %}selected{% endif %}>Automatique (suit le téléphone ou l'ordinateur)</option>
+        <option value="light" {% if conf.default_theme == 'light' %}selected{% endif %}>Clair</option>
+        <option value="dark" {% if conf.default_theme == 'dark' %}selected{% endif %}>Sombre</option>
+      </select>
+      <p class="hint">Chaque utilisateur peut aussi changer son thème avec le bouton en haut à droite.</p>
+    </div>
+    <div class="field">
+      <label for="currency">Monnaie</label>
+      <input class="input" id="currency" name="currency" value="{{ conf.currency }}" maxlength="6">
+    </div>
+  </div>
+  <div><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer l'apparence</button></div>
+</form>
+
+{% elif tab == 'email' %}
+<form method="post" class="card stack" autocomplete="off">
+  {{ csrf() }}<input type="hidden" name="section" value="email">
+  <div class="alert alert-info static">{{ icon('info', 18) }}
+    <span>Pour envoyer les codes de réinitialisation avec Gmail : activez la validation en deux étapes sur votre compte Google, puis créez un <strong>mot de passe d'application</strong> (Compte Google › Sécurité › Mots de passe des applications) et collez-le ci-dessous.</span>
+  </div>
+  <div class="grid two">
+    <div class="field"><label for="smtp_user">Adresse Gmail d'envoi</label><input class="input" type="email" id="smtp_user" name="smtp_user" value="{{ conf.smtp_user }}" placeholder="votre.ferme@gmail.com"></div>
+    {{ password_field('smtp_password', "Mot de passe d'application", required=False,
+                      hint=('Déjà enregistré. Laissez vide pour le garder.' if conf.smtp_password else '16 lettres fournies par Google.')) }}
+    <div class="field"><label for="smtp_host">Serveur</label><input class="input" id="smtp_host" name="smtp_host" value="{{ conf.smtp_host }}"></div>
+    <div class="field"><label for="smtp_port">Port</label><input class="input" id="smtp_port" name="smtp_port" value="{{ conf.smtp_port }}" inputmode="numeric"></div>
+    <div class="field"><label for="smtp_from">Adresse affichée (facultatif)</label><input class="input" type="email" id="smtp_from" name="smtp_from" value="{{ conf.smtp_from }}"></div>
+  </div>
+  <label class="check"><input type="checkbox" name="send_test" value="1" checked> M'envoyer un e-mail de test après l'enregistrement</label>
+  {% if conf.smtp_password %}<label class="check"><input type="checkbox" name="clear_password" value="1"> Effacer le mot de passe d'application enregistré</label>{% endif %}
+  <div><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+
+{% elif tab == 'securite' %}
+<form method="post" class="card stack">
+  {{ csrf() }}<input type="hidden" name="section" value="securite">
+  <div class="field">
+    <label for="session_timeout">Déconnexion automatique après inactivité (minutes)</label>
+    <input class="input" type="number" min="0" max="480" id="session_timeout" name="session_timeout" value="{{ conf.session_timeout }}">
+    <p class="hint">0 = jamais. Conseillé : 30 minutes, pour qu'un téléphone oublié ne reste pas connecté.</p>
+  </div>
+  <div><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+{% endif %}
+{% endblock %}

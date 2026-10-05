@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Utilisateurs{% endblock %}
+{% block content %}
+{% call page_head('Utilisateurs', 'Créez les comptes et donnez à chacun les accès de son métier.', 'user-cog') %}
+  <a class="btn primary" href="{{ url_for('users.create') }}">{{ icon('plus', 18) }} Nouvel utilisateur</a>
+{% endcall %}
+<nav class="tabs" aria-label="Filtre">
+  <a class="tab {% if show == 'actifs' %}active{% endif %}" href="{{ url_for('users.index') }}">Actifs</a>
+  <a class="tab {% if show == 'inactifs' %}active{% endif %}" href="{{ url_for('users.index', voir='inactifs') }}">Désactivés</a>
+  <a class="tab {% if show == 'tous' %}active{% endif %}" href="{{ url_for('users.index', voir='tous') }}">Tous</a>
+</nav>
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Utilisateur</th><th>Rôle</th><th>Contact</th><th>Dernière connexion</th><th>État</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td data-label="Utilisateur">
+          <div class="who">
+            <span class="avatar">{{ (u.full_name or u.username)[:1]|upper }}</span>
+            <span><strong>{{ u.full_name or u.username }}</strong><small class="muted">@{{ u.username }}</small></span>
+          </div>
+        </td>
+        <td data-label="Rôle"><span class="badge {{ 'badge-strong' if u.role in ('super_admin', 'admin') }}">{{ role_label(u.role) }}</span></td>
+        <td data-label="Contact">{{ u.email or u.phone or '—' }}</td>
+        <td data-label="Dernière connexion">{{ (u.last_login|localdt) or 'Jamais' }}</td>
+        <td data-label="État">
+          {% if not u.active %}<span class="badge badge-muted">Désactivé</span>
+          {% elif u.must_change_password or not u.setup_done %}<span class="badge badge-warn">1re connexion à faire</span>
+          {% else %}<span class="badge badge-ok">Actif</span>{% endif %}
+        </td>
+        <td data-label="Actions" class="right">
+          <div class="row-actions">
+            {% if can_edit(u) %}<a class="btn ghost sm" href="{{ url_for('users.edit', user_id=u.id) }}">{{ icon('edit', 16) }} Modifier</a>{% endif %}
+            {% if can_delete(u) %}<a class="btn danger-ghost sm" href="{{ url_for('users.edit', user_id=u.id) }}#supprimer">{{ icon('trash', 16) }} Supprimer</a>{% endif %}
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="center muted">Aucun utilisateur dans cette liste.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

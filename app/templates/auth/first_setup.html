@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, password_field, question_select with context %}
+{% block title %}Première connexion{% endblock %}
+{% block auth_class %}wide{% endblock %}
+{% block auth_content %}
+<h2>Bienvenue, {{ current_user.full_name or current_user.username }} !</h2>
+<p class="muted">Avant de commencer, sécurisez votre compte. Cela ne prend qu'une minute.</p>
+<form method="post" class="stack" autocomplete="off">
+  {{ csrf() }}
+  {% if must_change %}
+  <fieldset>
+    <legend><span class="step">1</span> Votre mot de passe personnel</legend>
+    <p class="hint">Le mot de passe actuel est provisoire. Choisissez-en un que vous seul connaissez : au moins 8 caractères, avec des lettres et des chiffres.</p>
+    {{ password_field('password', 'Nouveau mot de passe') }}
+    {{ password_field('confirm', 'Retapez le nouveau mot de passe') }}
+  </fieldset>
+  {% endif %}
+  <fieldset>
+    <legend><span class="step">{{ 2 if must_change else 1 }}</span> Votre adresse e-mail</legend>
+    <div class="field">
+      <label for="email">E-mail de récupération</label>
+      <input class="input" type="email" id="email" name="email" value="{{ form.email }}" placeholder="exemple@gmail.com">
+      <p class="hint">Pour recevoir un code si vous oubliez votre mot de passe.</p>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend><span class="step">{{ 3 if must_change else 2 }}</span> Votre question secrète</legend>
+    <p class="hint">Suggestion choisie pour vous : <strong>{{ suggested }}</strong> Vous pouvez en choisir une autre dans la liste.</p>
+    {{ question_select(questions, form.question, form.custom_question) }}
+    <div class="field">
+      <label for="answer">Réponse</label>
+      <input class="input" id="answer" name="answer" required autocomplete="off">
+      <p class="hint">Les majuscules et les accents ne comptent pas.</p>
+    </div>
+  </fieldset>
+  <button class="btn primary block" type="submit">{{ icon('check', 18) }} Enregistrer et commencer</button>
+</form>
+<form method="post" action="{{ url_for('auth.logout') }}" class="center">
+  {{ csrf() }}<button class="link-btn" type="submit">Se déconnecter</button>
+</form>
+{% endblock %}

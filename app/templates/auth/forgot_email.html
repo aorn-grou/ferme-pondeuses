@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, password_field with context %}
+{% block title %}Code par e-mail{% endblock %}
+{% block auth_content %}
+<h2>Code par e-mail</h2>
+<p class="muted">Le code sera envoyé à <strong>{{ masked }}</strong>.</p>
+<form method="post">
+  {{ csrf() }}
+  <input type="hidden" name="action" value="send">
+  <button class="btn {{ 'ghost' if code_sent else 'primary' }} block" type="submit">{{ icon('mail', 18) }} {{ 'Renvoyer un code' if code_sent else 'Envoyer le code' }}</button>
+</form>
+{% if code_sent %}
+<form method="post" class="stack top-gap" autocomplete="off">
+  {{ csrf() }}
+  <div class="field">
+    <label for="code">Code reçu (6 chiffres)</label>
+    <input class="input code-input" id="code" name="code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required autofocus>
+  </div>
+  {{ password_field('password', 'Nouveau mot de passe', hint='Au moins 8 caractères, avec des lettres et des chiffres.') }}
+  {{ password_field('confirm', 'Retapez le nouveau mot de passe') }}
+  <button class="btn primary block" type="submit">Changer mon mot de passe</button>
+</form>
+{% endif %}
+<p class="center"><a href="{{ url_for('auth.forgot_choice') }}">Autre méthode</a></p>
+{% endblock %}

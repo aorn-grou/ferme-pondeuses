@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf with context %}
+{% block title %}Mot de passe oublié{% endblock %}
+{% block auth_content %}
+<h2>Mot de passe oublié</h2>
+<p class="muted">Entrez votre nom d'utilisateur pour choisir comment récupérer votre compte.</p>
+<form method="post" class="stack">
+  {{ csrf() }}
+  <div class="field">
+    <label for="username">Nom d'utilisateur</label>
+    <input class="input" id="username" name="username" autocapitalize="none" autofocus required>
+  </div>
+  <button class="btn primary block" type="submit">Continuer</button>
+</form>
+<p class="center"><a href="{{ url_for('auth.login') }}">Retour à la connexion</a></p>
+{% endblock %}

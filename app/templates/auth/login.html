@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, password_field with context %}
+{% block title %}Connexion{% endblock %}
+{% block auth_content %}
+<h2>Connexion</h2>
+<p class="muted">Entrez votre nom d'utilisateur et votre mot de passe.</p>
+<form method="post" class="stack">
+  {{ csrf() }}
+  <div class="field">
+    <label for="username">Nom d'utilisateur</label>
+    <input class="input" id="username" name="username" autocomplete="username" autocapitalize="none" autofocus required value="{{ request.form.username or '' }}">
+  </div>
+  {{ password_field('password', 'Mot de passe', autocomplete='current-password') }}
+  <button class="btn primary block" type="submit">{{ icon('lock', 18) }} Se connecter</button>
+</form>
+<p class="center"><a href="{{ url_for('auth.forgot') }}">Mot de passe oublié ?</a></p>
+{% endblock %}

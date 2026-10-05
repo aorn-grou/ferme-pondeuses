@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Journal d'activité{% endblock %}
+{% block content %}
+{{ page_head("Journal d'activité", total ~ " action(s) enregistrée(s)", 'list') }}
+<form class="card filters" method="get">
+  <div class="field">
+    <label for="utilisateur">Utilisateur</label>
+    <select class="input" id="utilisateur" name="utilisateur">
+      <option value="">Tous</option>
+      {% for n in names %}<option value="{{ n }}" {% if n == who %}selected{% endif %}>{{ n }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field"><label for="du">Du</label><input class="input" type="date" id="du" name="du" value="{{ start }}"></div>
+  <div class="field"><label for="au">Au</label><input class="input" type="date" id="au" name="au" value="{{ end }}"></div>
+  <div class="field filter-actions">
+    <button class="btn primary" type="submit">Filtrer</button>
+    <a class="btn ghost" href="{{ url_for('main.journal') }}">Effacer</a>
+  </div>
+</form>
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Détails</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td data-label="Date" class="nowrap">{{ r.created_at|localdt }}</td>
+        <td data-label="Utilisateur">{{ r.username or 'système' }}</td>
+        <td data-label="Action"><strong>{{ r.action }}</strong></td>
+        <td data-label="Détails">{{ r.details or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="center muted">Aucune action pour ces critères.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a class="btn ghost sm" href="{{ url_for('main.journal', page=page-1, utilisateur=who, du=start, au=end) }}">← Précédent</a>{% endif %}
+  <span>Page {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a class="btn ghost sm" href="{{ url_for('main.journal', page=page+1, utilisateur=who, du=start, au=end) }}">Suivant →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

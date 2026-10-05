@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ 'Modifier ' ~ user.username if user else 'Nouvel utilisateur' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier « ' ~ user.username ~ ' »') if user else 'Nouvel utilisateur',
+                  role_label(user.role) if user else "Le compte sera utilisable après la première connexion.", 'user-cog') %}
+  <a class="btn ghost" href="{{ url_for('users.index') }}">← Retour à la liste</a>
+{% endcall %}
+
+<form method="post" class="stack" id="user-form" {% if not user %}data-autosave="nouvel-utilisateur"{% endif %}>
+  {{ csrf() }}
+  <div class="grid two">
+    <section class="card">
+      <h2>Identité et rôle</h2>
+      <div class="field">
+        <label for="username">Nom d'utilisateur (pour se connecter)</label>
+        {% if user %}
+          <input class="input" id="username" value="{{ user.username }}" disabled>
+        {% else %}
+          <input class="input" id="username" name="username" value="{{ form.username }}" required minlength="3" autocapitalize="none" pattern="\S+" placeholder="ex. rakoto">
+          <p class="hint">Sans espace. Il ne pourra plus être changé.</p>
+        {% endif %}
+      </div>
+      <div class="field"><label for="full_name">Nom complet</label><input class="input" id="full_name" name="full_name" value="{{ form.full_name }}" placeholder="ex. Rakoto Jean"></div>
+      <div class="field"><label for="email">E-mail</label><input class="input" type="email" id="email" name="email" value="{{ form.email }}"></div>
+      <div class="field"><label for="phone">Téléphone</label><input class="input" type="tel" id="phone" name="phone" value="{{ form.phone }}"></div>
+      <div class="field">
+        <label for="role">Rôle</label>
+        <select class="input" id="role" name="role" data-role-select {% if user and user.role == 'super_admin' %}disabled{% endif %}>
+          {% for key, label in roles.items() %}<option value="{{ key }}" {% if key == form.role %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        {% if user and user.role == 'super_admin' %}<input type="hidden" name="role" value="super_admin">{% endif %}
+        <p class="hint">Le rôle donne des accès par défaut, que vous pouvez ajuster à droite.</p>
+      </div>
+      {% if not user %}
+      <div class="field">
+        <label for="password">Mot de passe provisoire</label>
+        <div class="input-group">
+          <input class="input mono" id="password" name="password" value="{{ suggested }}" required>
+          <button type="button" class="input-addon" data-copy="password" aria-label="Copier">Copier</button>
+        </div>
+        <p class="hint">Proposé automatiquement. La personne devra le changer à sa première connexion, puis choisir son e-mail et sa question secrète.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="card" data-perms {% if form.role in ('admin', 'super_admin') %}hidden{% endif %}>
+      <h2>Droits d'accès par module</h2>
+      <label class="check">
+        <input type="checkbox" name="use_defaults" value="1" data-use-defaults {% if not perm_rows.custom %}checked{% endif %}>
+        Utiliser les droits par défaut du rôle
+      </label>
+      <script type="application/json" id="role-defaults">{{ role_defaults|safe }}</script>
+      <div class="perm-list">
+        {% for row in perm_rows.rows %}
+        <div class="perm-row">
+          <span>{{ row.label }}<small class="muted">{{ row.group }}</small></span>
+          <select class="input sm" name="perm_{{ row.key }}" data-perm="{{ row.key }}">
+            {% for lvl, lbl in level_labels.items() %}<option value="{{ lvl }}" {% if lvl == row.level %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+          </select>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="card" data-admin-note {% if form.role not in ('admin', 'super_admin') %}hidden{% endif %}>
+      <h2>Droits d'accès</h2>
+      <p class="muted">{{ icon('info', 18) }} Les administrateurs ont accès à tout le logiciel : tous les modules, les utilisateurs, les paramètres et les sauvegardes.</p>
+    </section>
+  </div>
+  <div class="form-actions">
+    <button class="btn primary" type="submit">{{ icon('check', 18) }} {{ 'Enregistrer les modifications' if user else 'Créer le compte' }}</button>
+  </div>
+</form>
+
+{% if user %}
+<div class="grid two top-gap">
+  <section class="card">
+    <h2>Mot de passe</h2>
+    <p class="muted">Si la personne a oublié son mot de passe, donnez-lui un mot de passe provisoire. Elle devra le changer à sa prochaine connexion.</p>
+    <form method="post" action="{{ url_for('users.reset_password', user_id=user.id) }}" class="stack">
+      {{ csrf() }}
+      <div class="input-group">
+        <input class="input mono" id="new_password" name="password" value="{{ suggested }}" required>
+        <button type="button" class="input-addon" data-copy="new_password">Copier</button>
+      </div>
+      <button class="btn ghost" type="submit">{{ icon('key', 18) }} Donner ce mot de passe provisoire</button>
+    </form>
+  </section>
+  {% if user.id != current_user.id and user.role != 'super_admin' %}
+  <section class="card">
+    <h2>{{ 'Désactiver' if user.active else 'Réactiver' }} le compte</h2>
+    <p class="muted">{{ "Un compte désactivé ne peut plus se connecter, mais rien n'est effacé." if user.active else "La personne pourra de nouveau se connecter." }}</p>
+    <form method="post" action="{{ url_for('users.toggle_active', user_id=user.id) }}">
+      {{ csrf() }}
+      <button class="btn ghost" type="submit">{{ icon('lock' if user.active else 'check', 18) }} {{ 'Désactiver' if user.active else 'Réactiver' }}</button>
+    </form>
+  </section>
+  {% endif %}
+  {% if can_delete %}
+  <section class="card danger-zone" id="supprimer">
+    <h2>Supprimer le compte</h2>
+    <p class="muted">Le compte disparaît de la liste. Ses saisies passées restent dans l'historique. Pour confirmer, tapez <strong class="mono">{{ user.username }}</strong>.</p>
+    <form method="post" action="{{ url_for('users.delete', user_id=user.id) }}" class="stack" data-confirm="Supprimer définitivement le compte {{ user.username }} ?">
+      {{ csrf() }}
+      <input class="input" name="confirm_name" placeholder="{{ user.username }}" autocomplete="off" required>
+      <button class="btn danger" type="submit">{{ icon('trash', 18) }} Supprimer ce compte</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

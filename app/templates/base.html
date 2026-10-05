@@ -1,0 +1,125 @@
+{% from "_macros.html" import icon, csrf with context %}
+<!doctype html>
+<html lang="fr" data-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="{{ menu_color }}">
+  <title>{% block title %}{% endblock %}{% if self.title() %} · {% endif %}{{ conf.company_name }}</title>
+  {% if conf.logo_file %}<link rel="icon" href="{{ url_for('settings.logo') }}">{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+  <style>
+    :root {
+      --primary: {{ primary_color }};
+      --primary-text: {{ primary_text }};
+      --menu-bg: {{ menu_color }};
+      --menu-fg: {{ menu_text }};
+    }
+  </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% set shell = current_user and not (current_user.must_change_password or not current_user.setup_done) %}
+{% if shell %}
+<div class="app" data-app>
+  <aside class="sidebar" id="sidebar" aria-label="Menu principal">
+    <div class="brand">
+      {% if conf.logo_file %}
+        <img class="brand-logo" src="{{ url_for('settings.logo') }}" alt="" onerror="this.remove()">
+      {% else %}
+        <span class="brand-mark">{{ icon('egg', 22) }}</span>
+      {% endif %}
+      <div class="brand-text">
+        <strong>{{ conf.company_name }}</strong>
+        {% if conf.company_slogan %}<small>{{ conf.company_slogan }}</small>{% endif %}
+      </div>
+      <button class="icon-btn sidebar-close" type="button" data-menu-close aria-label="Fermer le menu">{{ icon('x') }}</button>
+    </div>
+    <nav class="nav">
+      {% for group, items in menu_groups %}
+        <div class="nav-group">
+          <p class="nav-title">{{ group }}</p>
+          {% for item in items %}
+            {% set href = url_for('main.dashboard') if item.key == 'dashboard'
+                else url_for('users.index') if item.key == 'utilisateurs'
+                else url_for('settings.index') if item.key == 'parametres'
+                else url_for('backups.index') if item.key == 'sauvegardes'
+                else url_for('main.journal') if item.key == 'journal'
+                else url_for('main.module', key=item.key) %}
+            <a class="nav-link {% if request.path == href or (href != '/' and request.path.startswith(href)) %}active{% endif %}" href="{{ href }}">
+              {{ icon(item.icon) }}<span>{{ item.label }}</span>
+              {% if not item.built %}<em class="soon">bientôt</em>{% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot">Version {{ app_version }}</div>
+  </aside>
+  <div class="overlay" data-menu-close></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" type="button" data-menu-open aria-label="Ouvrir le menu" aria-controls="sidebar">{{ icon('menu', 22) }}</button>
+      <div class="topbar-title">{% block topbar_title %}{{ self.title() }}{% endblock %}</div>
+      <div class="topbar-actions">
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Changer le thème" title="Thème : automatique / clair / sombre">
+          <span class="theme-ico theme-auto">{{ icon('monitor') }}</span>
+          <span class="theme-ico theme-light">{{ icon('sun') }}</span>
+          <span class="theme-ico theme-dark">{{ icon('moon') }}</span>
+        </button>
+        <button class="icon-btn" type="button" aria-label="Alertes" title="Les alertes arriveront avec les modules d'élevage et de stock" data-alerts>
+          {{ icon('bell') }}
+        </button>
+        <details class="user-menu">
+          <summary aria-label="Mon compte">
+            <span class="avatar">{{ (current_user.full_name or current_user.username)[:1]|upper }}</span>
+            <span class="user-name">{{ current_user.full_name or current_user.username }}</span>
+          </summary>
+          <div class="user-menu-panel">
+            <div class="user-menu-head">
+              <strong>{{ current_user.full_name or current_user.username }}</strong>
+              <small>{{ role_label(current_user.role) }}</small>
+            </div>
+            <a href="{{ url_for('auth.profile') }}">{{ icon('user', 18) }} Mon profil</a>
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              {{ csrf() }}
+              <button type="submit">{{ icon('logout', 18) }} Se déconnecter</button>
+            </form>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <main class="content" id="contenu">
+      {% include "_flashes.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+<div class="auth-page">
+  <div class="auth-brand">
+    {% if conf.logo_file %}
+      <img class="auth-logo" src="{{ url_for('settings.logo') }}" alt="" onerror="this.remove()">
+    {% else %}
+      <span class="brand-mark big">{{ icon('egg', 30) }}</span>
+    {% endif %}
+    <h1>{{ conf.company_name }}</h1>
+    {% if conf.company_slogan %}<p>{{ conf.company_slogan }}</p>{% endif %}
+  </div>
+  <div class="auth-card {% block auth_class %}{% endblock %}">
+    {% include "_flashes.html" %}
+    {% block auth_content %}{% endblock %}
+  </div>
+  <button class="icon-btn auth-theme" type="button" data-theme-toggle aria-label="Changer le thème">
+    <span class="theme-ico theme-auto">{{ icon('monitor') }}</span>
+    <span class="theme-ico theme-light">{{ icon('sun') }}</span>
+    <span class="theme-ico theme-dark">{{ icon('moon') }}</span>
+  </button>
+</div>
+{% endif %}
+<script>window.CSRF_TOKEN = "{{ csrf_token() }}"; window.THEME_URL = {{ (url_for('main.set_theme') if current_user else '')|tojson }};</script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

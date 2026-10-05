@@ -1,0 +1,14 @@
+{% from "_macros.html" import icon %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flashes" role="status">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category if category in ('success', 'error', 'warning') else 'info' }}">
+          {{ icon('check' if category == 'success' else 'alert' if category in ('error', 'warning') else 'info', 18) }}
+          <span>{{ message }}</span>
+          <button type="button" class="alert-close" data-dismiss aria-label="Fermer">{{ icon('x', 16) }}</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}

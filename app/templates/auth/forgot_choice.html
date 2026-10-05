@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Mot de passe oublié{% endblock %}
+{% block auth_content %}
+<h2>Comment voulez-vous récupérer votre compte ?</h2>
+<p class="muted">Compte : <strong>{{ user.username }}</strong></p>
+<div class="choice-list">
+  {% if has_question %}
+  <a class="choice" href="{{ url_for('auth.forgot_question') }}">
+    {{ icon('key', 22) }}<span><strong>Répondre à ma question secrète</strong><small>La plus rapide.</small></span>{{ icon('chevron', 18) }}
+  </a>
+  {% endif %}
+  {% if can_email %}
+  <a class="choice" href="{{ url_for('auth.forgot_email') }}">
+    {{ icon('mail', 22) }}<span><strong>Recevoir un code par e-mail</strong><small>Un code à 6 chiffres valable 15 minutes.</small></span>{{ icon('chevron', 18) }}
+  </a>
+  {% endif %}
+  <div class="choice static">
+    {{ icon('user-cog', 22) }}<span><strong>Demander à l'administrateur</strong><small>Il peut vous donner un mot de passe provisoire depuis le menu Utilisateurs.</small></span>
+  </div>
+</div>
+<p class="center"><a href="{{ url_for('auth.login') }}">Retour à la connexion</a></p>
+{% endblock %}

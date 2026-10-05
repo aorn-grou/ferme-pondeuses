@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ info.label }}{% endblock %}
+{% block content %}
+<div class="empty">
+  <span class="empty-icon">{{ icon(info.icon, 34) }}</span>
+  <h1>{{ info.label }}</h1>
+  <p>{{ info.desc }}</p>
+  <p class="muted">Ce module est en cours de fabrication. Il apparaîtra ici dès qu'il sera prêt.</p>
+  <a class="btn primary" href="{{ url_for('main.dashboard') }}">{{ icon('home', 18) }} Retour au tableau de bord</a>
+</div>
+{% endblock %}

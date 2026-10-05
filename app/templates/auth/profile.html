@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, password_field, question_select, page_head with context %}
+{% block title %}Mon profil{% endblock %}
+{% block content %}
+{{ page_head('Mon profil', role_label(user.role) ~ ' · dernière connexion ' ~ (user.last_login|localdt), 'user') }}
+<div class="grid two">
+  <section class="card">
+    <h2>Mes informations</h2>
+    <form method="post" class="stack" data-autosave="profil-infos">
+      {{ csrf() }}<input type="hidden" name="action" value="infos">
+      <div class="field"><label>Nom d'utilisateur</label><input class="input" value="{{ user.username }}" disabled></div>
+      <div class="field"><label for="full_name">Nom complet</label><input class="input" id="full_name" name="full_name" value="{{ user.full_name }}"></div>
+      <div class="field"><label for="email">E-mail de récupération</label><input class="input" type="email" id="email" name="email" value="{{ user.email }}"></div>
+      <div class="field"><label for="phone">Téléphone</label><input class="input" type="tel" id="phone" name="phone" value="{{ user.phone }}"></div>
+      <button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Changer mon mot de passe</h2>
+    <form method="post" class="stack" autocomplete="off">
+      {{ csrf() }}<input type="hidden" name="action" value="password">
+      {{ password_field('current', 'Mot de passe actuel', autocomplete='current-password') }}
+      {{ password_field('password', 'Nouveau mot de passe', hint='Au moins 8 caractères, avec des lettres et des chiffres.') }}
+      {{ password_field('confirm', 'Retapez le nouveau mot de passe') }}
+      <button class="btn primary" type="submit">{{ icon('key', 18) }} Changer le mot de passe</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Ma question secrète</h2>
+    <p class="muted">Question actuelle : <strong>{{ user.security_question or 'aucune' }}</strong></p>
+    <form method="post" class="stack" autocomplete="off">
+      {{ csrf() }}<input type="hidden" name="action" value="question">
+      {{ question_select(questions, user.security_question) }}
+      <div class="field"><label for="answer">Nouvelle réponse</label><input class="input" id="answer" name="answer" required></div>
+      {{ password_field('current_q', 'Mot de passe actuel (pour confirmer)', autocomplete='current-password') }}
+      <button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la question</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

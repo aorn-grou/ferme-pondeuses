@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, password_field with context %}
+{% block title %}Question secrète{% endblock %}
+{% block auth_content %}
+<h2>Question secrète</h2>
+<p class="question-box">{{ user.security_question }}</p>
+<form method="post" class="stack" autocomplete="off">
+  {{ csrf() }}
+  <div class="field">
+    <label for="answer">Votre réponse</label>
+    <input class="input" id="answer" name="answer" required autofocus>
+  </div>
+  {{ password_field('password', 'Nouveau mot de passe', hint='Au moins 8 caractères, avec des lettres et des chiffres.') }}
+  {{ password_field('confirm', 'Retapez le nouveau mot de passe') }}
+  <button class="btn primary block" type="submit">Changer mon mot de passe</button>
+</form>
+<p class="center"><a href="{{ url_for('auth.forgot_choice') }}">Autre méthode</a></p>
+{% endblock %}

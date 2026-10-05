@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<section class="hero card">
+  <div>
+    <p class="eyebrow">{{ role }}</p>
+    <h1>{{ greeting }}, {{ current_user.full_name or current_user.username }} !</h1>
+    <p class="muted">Les modules de la ferme arrivent un par un. Ceux marqués « bientôt » sont en préparation.</p>
+  </div>
+  <span class="hero-icon">{{ icon('egg', 44) }}</span>
+</section>
+
+{% if stats %}
+<div class="stats">
+  <a class="stat" href="{{ url_for('users.index') }}">
+    <span class="stat-icon">{{ icon('users') }}</span>
+    <span class="stat-label">Utilisateurs actifs</span>
+    <strong class="stat-value">{{ stats.users }}</strong>
+    {% if stats.inactive %}<small class="muted">{{ stats.inactive }} désactivé(s)</small>{% endif %}
+  </a>
+  <a class="stat" href="{{ url_for('backups.index') }}">
+    <span class="stat-icon">{{ icon('database') }}</span>
+    <span class="stat-label">Dernière sauvegarde</span>
+    <strong class="stat-value small">{{ stats.last_backup.date if stats.last_backup else 'Aucune' }}</strong>
+    {% if stats.last_backup %}<small class="muted">{{ stats.last_backup.kind }}</small>{% endif %}
+  </a>
+  <a class="stat" href="{{ url_for('settings.index') }}">
+    <span class="stat-icon">{{ icon('palette') }}</span>
+    <span class="stat-label">Société</span>
+    <strong class="stat-value small">{{ conf.company_name }}</strong>
+    <small class="muted">Nom, logo et couleurs</small>
+  </a>
+</div>
+{% endif %}
+
+<h2 class="section-title">Mes modules</h2>
+<div class="module-grid">
+  {% for m in modules %}
+    {% set href = url_for('users.index') if m.key == 'utilisateurs'
+        else url_for('settings.index') if m.key == 'parametres'
+        else url_for('backups.index') if m.key == 'sauvegardes'
+        else url_for('main.journal') if m.key == 'journal'
+        else url_for('main.module', key=m.key) %}
+    <a class="module-card" href="{{ href }}">
+      <span class="module-icon">{{ icon(m.icon, 22) }}</span>
+      <span class="module-text">
+        <strong>{{ m.label }}</strong>
+        <small>{{ m.desc }}</small>
+      </span>
+      {% if not m.built %}<em class="soon">bientôt</em>{% endif %}
+    </a>
+  {% else %}
+    <p class="muted">Aucun module ne vous est encore attribué. Demandez l'accès à l'administrateur.</p>
+  {% endfor %}
+</div>
+
+{% if stats and stats.activity %}
+<section class="card top-gap">
+  <div class="card-head">
+    <h2>Activité récente</h2>
+    <a class="btn ghost sm" href="{{ url_for('main.journal') }}">Tout voir</a>
+  </div>
+  <ul class="timeline">
+    {% for a in stats.activity %}
+      <li><span class="tl-dot"></span><div><strong>{{ a.action }}</strong>{% if a.details %} — {{ a.details }}{% endif %}<small class="muted">{{ a.username or 'système' }} · {{ a.created_at|localdt }}</small></div></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}
