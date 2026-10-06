@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Fabrications{% endblock %}
+{% block content %}
+{% call page_head('Fabrications de provende', '', 'factory') %}
+  {% if can('provenderie', 2) %}<a class="btn primary" href="{{ url_for('provenderie.production_new') }}">{{ icon('factory', 18) }} Fabriquer</a>{% endif %}
+{% endcall %}
+{% with active='fabrications' %}{% include "provenderie/_tabs.html" %}{% endwith %}
+<form class="card filters" method="get">
+  <div class="field"><label for="du">Du</label><input class="input" type="date" id="du" name="du" value="{{ start }}"></div>
+  <div class="field"><label for="au">Au</label><input class="input" type="date" id="au" name="au" value="{{ end }}"></div>
+  <div class="field"><label for="formule">Formule</label><select class="input" id="formule" name="formule"><option value="">Toutes</option>
+    {% for f in formulas %}<option value="{{ f.id }}" {% if formula_id == f.id|string %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
+  <div class="field filter-actions"><button class="btn primary" type="submit">Filtrer</button><a class="btn ghost" href="{{ url_for('provenderie.productions') }}">Effacer</a></div>
+</form>
+<div class="stats compact">
+  <div class="stat"><span class="stat-label">Quantité fabriquée</span><strong class="stat-value small">{{ totals.qty|qty('kg') }}</strong></div>
+  <div class="stat"><span class="stat-label">Coût total</span><strong class="stat-value small">{{ totals.cost|money }}</strong></div>
+  <div class="stat"><span class="stat-label">Coût moyen / kg</span><strong class="stat-value small">{{ (totals.cost / totals.qty if totals.qty else 0)|money }}</strong></div>
+</div>
+<div class="card flush top-gap">
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Provende</th><th class="right">Quantité</th><th class="right">Coût total</th><th class="right">Coût / kg</th><th>Par</th></tr></thead>
+    <tbody>
+    {% for p in rows %}
+      <tr><td data-label="Date" class="nowrap">{{ p.date|date_fr }}</td><td data-label="Provende"><a href="{{ url_for('provenderie.production', production_id=p.id) }}"><strong>{{ p.formula }}</strong></a></td>
+      <td data-label="Quantité" class="right">{{ p.quantity|qty('kg') }}</td><td data-label="Coût total" class="right">{{ p.cost_total|money }}</td>
+      <td data-label="Coût / kg" class="right">{{ p.cost_per_kg|money }}</td><td data-label="Par">{{ p.username or '—' }}</td></tr>
+    {% else %}<tr><td colspan="6" class="center muted">Aucune fabrication.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

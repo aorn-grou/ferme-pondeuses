@@ -1,0 +1,10 @@
+{% from "_macros.html" import icon %}
+<nav class="tabs" aria-label="Sections">
+  <a class="tab {% if active == 'stock' %}active{% endif %}" href="{{ url_for('matieres.index') }}">{{ icon('box', 18) }} Stock</a>
+  <a class="tab {% if active == 'achats' %}active{% endif %}" href="{{ url_for('matieres.purchases') }}">{{ icon('cart', 18) }} Achats</a>
+  <a class="tab {% if active == 'fournisseurs' %}active{% endif %}" href="{{ url_for('matieres.suppliers') }}">{{ icon('users', 18) }} Fournisseurs</a>
+  {% if can('matieres', 2) %}
+  <a class="tab {% if active == 'inventaire' %}active{% endif %}" href="{{ url_for('matieres.inventory') }}">{{ icon('list', 18) }} Inventaire</a>
+  <a class="tab {% if active == 'categories' %}active{% endif %}" href="{{ url_for('matieres.categories') }}">{{ icon('tag', 18) }} Catégories</a>
+  {% endif %}
+</nav>

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Fabriquer de la provende{% endblock %}
+{% block content %}
+{% call page_head('Fabriquer de la provende', "Les matières sont retirées du stock selon la formule, la provende est ajoutée au stock.", 'factory') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.index') }}">← Provenderie</a>
+{% endcall %}
+{% if not formulas %}<div class="alert alert-warning static">{{ icon('alert', 18) }}<span>Aucune formule. <a href="{{ url_for('provenderie.formula_new') }}">Créez d'abord une formule</a>.</span></div>{% endif %}
+<form method="post" class="stack" data-production-form>
+  {{ csrf() }}
+  <script type="application/json" id="formula-data">{{ formula_data|safe }}</script>
+  <section class="card">
+    <div class="grid three">
+      <div class="field"><label for="formula_id">Formule</label>
+        <select class="input" id="formula_id" name="formula_id" required data-formula-select><option value="">— Choisir —</option>
+          {% for f in formulas %}<option value="{{ f.id }}" {% if form.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}{% if f.phase %} ({{ f.phase }}){% endif %}</option>{% endfor %}</select></div>
+      <div class="field"><label for="quantity">Quantité à fabriquer (kg)</label><input class="input" id="quantity" name="quantity" inputmode="decimal" value="{{ form.quantity }}" required data-prod-qty placeholder="ex. 500"></div>
+      <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ form.date }}" required></div>
+    </div>
+    <div class="field"><label for="notes">Remarque</label><input class="input" id="notes" name="notes" value="{{ form.notes }}" maxlength="150"></div>
+  </section>
+  <section class="card flush" data-needs hidden>
+    <div class="card-head padded"><h2>Matières nécessaires</h2><span data-needs-status></span></div>
+    <table class="table responsive">
+      <thead><tr><th>Matière</th><th class="right">Il faut</th><th class="right">En stock</th><th class="right">Coût</th></tr></thead>
+      <tbody data-needs-body></tbody>
+    </table>
+    <div class="totals padded"><div><span>Coût total</span><strong data-needs-total>0 Ar</strong></div><div class="grand"><span>Coût par kg</span><strong data-needs-kg>0 Ar</strong></div></div>
+  </section>
+  <div class="form-actions"><button class="btn primary" type="submit" data-prod-submit>{{ icon('factory', 18) }} Fabriquer</button></div>
+</form>
+{% endblock %}

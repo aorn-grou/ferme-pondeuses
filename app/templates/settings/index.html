@@ -6,6 +6,7 @@
 <nav class="tabs" aria-label="Sections">
   <a class="tab {% if tab == 'societe' %}active{% endif %}" href="{{ url_for('settings.index', onglet='societe') }}">{{ icon('building', 18) }} Société</a>
   <a class="tab {% if tab == 'apparence' %}active{% endif %}" href="{{ url_for('settings.index', onglet='apparence') }}">{{ icon('palette', 18) }} Apparence</a>
+ <a class="tab {% if tab == 'comptes' %}active{% endif %}" href="{{ url_for('settings.index', onglet='comptes') }}">{{ icon('wallet', 18) }} Caisses & propriétaires</a>
   <a class="tab {% if tab == 'email' %}active{% endif %}" href="{{ url_for('settings.index', onglet='email') }}">{{ icon('mail', 18) }} E-mail</a>
   <a class="tab {% if tab == 'securite' %}active{% endif %}" href="{{ url_for('settings.index', onglet='securite') }}">{{ icon('lock', 18) }} Sécurité</a>
 </nav>
@@ -90,6 +91,34 @@
   {% if conf.smtp_password %}<label class="check"><input type="checkbox" name="clear_password" value="1"> Effacer le mot de passe d'application enregistré</label>{% endif %}
   <div><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
 </form>
+
+{% elif tab == 'comptes' %}
+<div class="alert alert-info static">{{ icon('info', 18) }}<span>Ce sont les « sources d'argent » proposées lors des achats et paiements : caisses de la ferme, mobile money, banque, et chaque propriétaire qui paie de sa poche. Renommez « Propriétaire 1 » et « Propriétaire 2 » avec les vrais noms.</span></div>
+<form method="post" class="card inline-form">
+  {{ csrf() }}<input type="hidden" name="section" value="comptes"><input type="hidden" name="action" value="add">
+  <div class="field grow"><label for="acc-name">Nouveau compte</label><input class="input" id="acc-name" name="name" required maxlength="50" placeholder="ex. Banque BOA"></div>
+  <div class="field"><label for="acc-kind">Type</label><select class="input" id="acc-kind" name="kind"><option value="caisse">Caisse / banque / mobile money</option><option value="proprietaire">Propriétaire</option></select></div>
+  <button class="btn primary" type="submit">{{ icon('plus', 18) }} Ajouter</button>
+</form>
+<div class="card flush top-gap">
+  <table class="table responsive">
+    <thead><tr><th>Nom et type</th><th>État</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for a in account_rows %}
+      <tr>
+        <td data-label="Nom et type">
+          <form method="post" class="inline-edit">{{ csrf() }}<input type="hidden" name="section" value="comptes"><input type="hidden" name="action" value="rename"><input type="hidden" name="id" value="{{ a.id }}">
+            <input class="input sm" name="name" value="{{ a.name }}" required maxlength="50" aria-label="Nom">
+            <select class="input sm" name="kind" aria-label="Type"><option value="caisse" {% if a.kind == 'caisse' %}selected{% endif %}>Caisse</option><option value="proprietaire" {% if a.kind == 'proprietaire' %}selected{% endif %}>Propriétaire</option></select>
+            <button class="btn ghost sm" type="submit">Enregistrer</button></form>
+        </td>
+        <td data-label="État">{% if a.active %}<span class="badge badge-ok">Actif</span>{% else %}<span class="badge badge-muted">Désactivé</span>{% endif %}</td>
+        <td data-label="Actions" class="right"><form method="post">{{ csrf() }}<input type="hidden" name="section" value="comptes"><input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="{{ a.id }}"><button class="btn ghost sm" type="submit">{{ 'Désactiver' if a.active else 'Réactiver' }}</button></form></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 {% elif tab == 'securite' %}
 <form method="post" class="card stack">

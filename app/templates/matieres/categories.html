@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Catégories{% endblock %}
+{% block content %}
+{{ page_head('Catégories de matières', "Vous êtes libre de créer, renommer ou supprimer les catégories.", 'tag') }}
+{% with active='categories' %}{% include "matieres/_tabs.html" %}{% endwith %}
+<form method="post" class="card inline-form">
+  {{ csrf() }}<input type="hidden" name="action" value="add">
+  <div class="field grow"><label for="new-name">Nouvelle catégorie</label><input class="input" id="new-name" name="name" required maxlength="50" placeholder="ex. Céréales"></div>
+  <button class="btn primary" type="submit">{{ icon('plus', 18) }} Ajouter</button>
+</form>
+<div class="card flush top-gap">
+  <table class="table responsive">
+    <thead><tr><th>Nom</th><th>Matières</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for c in rows %}
+      <tr>
+        <td data-label="Nom">
+          <form method="post" class="inline-edit">{{ csrf() }}<input type="hidden" name="action" value="rename"><input type="hidden" name="id" value="{{ c.id }}">
+            <input class="input sm" name="name" value="{{ c.name }}" required maxlength="50" aria-label="Nom de la catégorie"><button class="btn ghost sm" type="submit">Renommer</button></form>
+        </td>
+        <td data-label="Matières">{{ c.used }}</td>
+        <td data-label="Actions" class="right">
+          <form method="post" data-confirm="Supprimer la catégorie {{ c.name }} ?">{{ csrf() }}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ c.id }}">
+            <button class="btn danger-ghost sm" type="submit" {% if c.used %}disabled title="Utilisée par des matières"{% endif %}>{{ icon('trash', 16) }} Supprimer</button></form>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="3" class="center muted">Aucune catégorie.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

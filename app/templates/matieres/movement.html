@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Mouvement de stock{% endblock %}
+{% block content %}
+{% call page_head('Perte ou entrée de stock', "Pour une perte (rats, humidité, casse) ou une entrée sans achat (stock de départ, don).", 'box') %}
+  <a class="btn ghost" href="{{ url_for('matieres.index') }}">← Stock</a>
+{% endcall %}
+<form method="post" class="card stack narrow" data-autosave="mouvement-matiere">
+  {{ csrf() }}
+  <div class="field">
+    <label>Type</label>
+    <div class="segmented">
+      <label><input type="radio" name="kind" value="perte" {% if form.kind != 'stock_initial' %}checked{% endif %} data-show-when="perte"> Perte (sortie)</label>
+      <label><input type="radio" name="kind" value="stock_initial" {% if form.kind == 'stock_initial' %}checked{% endif %}> Entrée sans achat</label>
+    </div>
+  </div>
+  <div class="field">
+    <label for="material_id">Matière</label>
+    <select class="input" id="material_id" name="material_id" required>
+      <option value="">— Choisir —</option>
+      {% for m in materials %}<option value="{{ m.id }}" {% if form.material_id == m.id|string %}selected{% endif %}>{{ m.name }} ({{ m.unit }})</option>{% endfor %}
+    </select>
+  </div>
+  <div class="grid two">
+    <div class="field"><label for="quantity">Quantité</label><input class="input" id="quantity" name="quantity" inputmode="decimal" value="{{ form.quantity }}" required></div>
+    <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ form.date }}" required></div>
+  </div>
+  <div class="field" data-entry-only><label for="unit_cost">Prix par unité (Ar) — pour une entrée</label><input class="input" id="unit_cost" name="unit_cost" inputmode="decimal" value="{{ form.unit_cost }}" placeholder="0"></div>
+  <div class="field"><label for="notes">Motif / remarque</label><input class="input" id="notes" name="notes" value="{{ form.notes }}" maxlength="150" placeholder="ex. sacs mouillés"></div>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+{% endblock %}

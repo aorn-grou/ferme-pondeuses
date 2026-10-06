@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Provenderie{% endblock %}
+{% block content %}
+{% call page_head('Provenderie', "Fabrication de la provende à partir des matières premières, selon vos formules.", 'factory') %}
+  {% if can('provenderie', 2) %}
+  <a class="btn ghost" href="{{ url_for('provenderie.movement') }}">{{ icon('list', 18) }} Perte / inventaire</a>
+  <a class="btn primary" href="{{ url_for('provenderie.production_new') }}">{{ icon('factory', 18) }} Fabriquer</a>
+  {% endif %}
+{% endcall %}
+{% with active='stock' %}{% include "provenderie/_tabs.html" %}{% endwith %}
+
+{% if not formulas %}
+<div class="steps card">
+  <h2>Pour commencer</h2>
+  <ol>
+    <li><a href="{{ url_for('matieres.material_new') }}">Créez vos matières premières</a> et indiquez le stock présent.</li>
+    <li><a href="{{ url_for('provenderie.formula_new') }}">Créez vos formules de provende</a> (ingrédients et quantités).</li>
+    <li><a href="{{ url_for('provenderie.program_new') }}">Créez un programme</a> : quelle formule pour quelle semaine d'âge.</li>
+    <li>Fabriquez la provende : le stock des matières baisse et le stock de provende monte.</li>
+  </ol>
+</div>
+{% else %}
+<div class="stats">
+  <div class="stat"><span class="stat-icon">{{ icon('box') }}</span><span class="stat-label">Provende en stock</span><strong class="stat-value small">{{ summary.stock|qty('kg') }}</strong><small class="muted">valeur {{ summary.value|money }}</small></div>
+  <div class="stat"><span class="stat-icon">{{ icon('factory') }}</span><span class="stat-label">Fabriqué ce mois</span><strong class="stat-value small">{{ summary.month_qty|qty('kg') }}</strong><small class="muted">coût {{ summary.month_cost|money }}</small></div>
+  <div class="stat {{ 'stat-warn' if summary.alerts }}"><span class="stat-icon">{{ icon('alert') }}</span><span class="stat-label">Alertes</span><strong class="stat-value">{{ summary.alerts }}</strong></div>
+  <a class="stat" href="{{ url_for('provenderie.programs') }}"><span class="stat-icon">{{ icon('clock') }}</span><span class="stat-label">Programmes actifs</span><strong class="stat-value">{{ programs }}</strong></a>
+</div>
+
+<div class="card flush top-gap">
+  <table class="table responsive">
+    <thead><tr><th>Provende</th><th>Phase</th><th class="right">Stock</th><th class="right">Coût / kg</th><th class="right">Valeur</th><th>Autonomie</th><th>État</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for f in formulas %}
+      <tr>
+        <td data-label="Provende"><a href="{{ url_for('provenderie.formula', formula_id=f.id) }}"><strong>{{ f.name }}</strong></a></td>
+        <td data-label="Phase">{{ f.phase or '—' }}</td>
+        <td data-label="Stock" class="right"><strong>{{ f.stock|qty('kg') }}</strong></td>
+        <td data-label="Coût / kg" class="right">{{ f.avg_cost|money }}</td>
+        <td data-label="Valeur" class="right">{{ f.value|money }}</td>
+        <td data-label="Autonomie">{% if f.autonomy_days is not none %}≈ {{ f.autonomy_days|round(0)|int }} jour(s){% else %}<span class="muted">—</span>{% endif %}</td>
+        <td data-label="État">
+          {% if f.status == 'empty' %}<span class="badge badge-danger">Vide</span>
+          {% elif f.status == 'low' %}<span class="badge badge-warn">Stock bas</span>
+          {% else %}<span class="badge badge-ok">OK</span>{% endif %}
+        </td>
+        <td data-label="Actions" class="right"><div class="row-actions">
+          <a class="btn ghost sm" href="{{ url_for('provenderie.feed_history', formula_id=f.id) }}">Historique</a>
+          {% if can('provenderie', 2) %}<a class="btn ghost sm" href="{{ url_for('provenderie.production_new', formule=f.id) }}">{{ icon('factory', 16) }} Fabriquer</a>{% endif %}
+        </div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="hint top-gap">L'autonomie se calculera quand les distributions aux lots seront enregistrées (module Alimentation).</p>
+
+{% if recent %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>Dernières fabrications</h2><a class="btn ghost sm" href="{{ url_for('provenderie.productions') }}">Tout voir</a></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Provende</th><th class="right">Quantité</th><th class="right">Coût / kg</th></tr></thead>
+    <tbody>{% for p in recent %}<tr><td data-label="Date">{{ p.date|date_fr }}</td><td data-label="Provende"><a href="{{ url_for('provenderie.production', production_id=p.id) }}">{{ p.formula }}</a></td><td data-label="Quantité" class="right">{{ p.quantity|qty('kg') }}</td><td data-label="Coût / kg" class="right">{{ p.cost_per_kg|money }}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Fabrication n°{{ item.id }}{% endblock %}
+{% block content %}
+{% call page_head('Fabrication n°' ~ item.id, item.date|date_fr ~ ' · ' ~ item.formula, 'factory') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.productions') }}">← Fabrications</a>
+{% endcall %}
+<div class="stats">
+  <div class="stat"><span class="stat-label">Quantité</span><strong class="stat-value small">{{ item.quantity|qty('kg') }}</strong></div>
+  <div class="stat"><span class="stat-label">Coût total</span><strong class="stat-value small">{{ item.cost_total|money }}</strong></div>
+  <div class="stat"><span class="stat-label">Coût par kg</span><strong class="stat-value small">{{ item.cost_per_kg|money }}</strong></div>
+</div>
+<div class="card flush top-gap">
+  <table class="table responsive">
+    <thead><tr><th>Matière utilisée</th><th class="right">Quantité</th><th class="right">Coût unitaire</th><th class="right">Coût</th></tr></thead>
+    <tbody>{% for l in lines %}<tr><td data-label="Matière utilisée"><a href="{{ url_for('matieres.material', material_id=l.material_id) }}">{{ l.name }}</a></td>
+      <td data-label="Quantité" class="right">{{ l.quantity|qty(l.unit) }}</td><td data-label="Coût unitaire" class="right">{{ l.unit_cost|money }}</td><td data-label="Coût" class="right">{{ (l.quantity * l.unit_cost)|money }}</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+<p class="hint top-gap">Saisi par {{ item.username or '—' }} le {{ item.created_at|localdt }}{% if item.notes %} · {{ item.notes }}{% endif %}</p>
+{% if can('provenderie', 3) %}
+<section class="card danger-zone top-gap">
+  <h2>Annuler cette fabrication</h2>
+  <p class="muted">Les matières reviennent en stock et la provende est retirée. Impossible si la provende a déjà été distribuée.</p>
+  <form method="post" action="{{ url_for('provenderie.production_delete', production_id=item.id) }}" data-confirm="Annuler la fabrication n°{{ item.id }} ?">{{ csrf() }}<button class="btn danger" type="submit">{{ icon('trash', 18) }} Annuler la fabrication</button></form>
+</section>
+{% endif %}
+{% endblock %}

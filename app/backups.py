@@ -9,7 +9,7 @@ from flask import (
 )
 from werkzeug.security import check_password_hash
 
-from .db import close_db, connect, ensure_super_admin, is_valid_database, migrate
+from .db import TRANSACTION_TABLES, close_db, connect, ensure_super_admin, is_valid_database, migrate, seed_defaults
 from .security import admin_required, super_admin_required
 from .utils import get_setting, local_now, log_activity, set_setting
 
@@ -106,6 +106,7 @@ def restore_from(path):
         source.backup(target)
         migrate(target)
         ensure_super_admin(target)
+        seed_defaults(target)
     finally:
         source.close()
         target.close()
@@ -228,6 +229,7 @@ def factory_reset():
             conn.execute(f'DROP TABLE IF EXISTS "{table}"')
         conn.commit()
         migrate(conn)
+        seed_defaults(conn)
         columns = [r["name"] for r in conn.execute('PRAGMA table_info("users")')]
         values = [me.get(c) for c in columns]
         conn.execute(f'INSERT INTO users ({", ".join(columns)}) VALUES ({", ".join("?" for _ in columns)})', values)
@@ -244,3 +246,37 @@ def factory_reset():
     flash(f"Le logiciel a été remis à l'état d'origine. Seul votre compte Super-admin est conservé. "
           f"Copie de sécurité : {safety}.", "success")
     return redirect(url_for("main.dashboard"))
+
+
+@bp.route("/effacer-donnees-test", methods=["POST"])
+@admin_required
+def clear_test_data():
+    """Efface les saisies (achats, stocks, fabrications, caisse…) mais garde
+    les utilisateurs, les paramètres et les listes préparées."""
+    if request.form.get("confirm_word", "").strip() != "EFFACER":
+        flash("Tapez le mot EFFACER en majuscules pour confirmer.", "error")
+        return redirect(url_for("backups.index"))
+    if not check_password_hash(g.user["password_hash"], request.form.get("password", "")):
+        flash("Mot de passe incorrect : rien n'a été effacé.", "error")
+        return redirect(url_for("backups.index"))
+    safety = create_backup("avant-reinitialisation")
+    from .db import get_db
+
+    conn = get_db()
+    with conn:
+        for table in TRANSACTION_TABLES:
+            conn.execute(f'DELETE FROM "{table}"')
+            conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (table,))
+        conn.execute("UPDATE materials SET avg_cost = 0")
+        conn.execute("UPDATE formulas SET avg_cost = 0")
+        if request.form.get("clear_journal"):
+            conn.execute("DELETE FROM activity_log")
+        if request.form.get("clear_lists"):
+            for table in ("formula_lines", "formulas", "feed_program_weeks", "feed_programs", "materials", "suppliers"):
+                conn.execute(f'DELETE FROM "{table}"')
+                conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (table,))
+    detail = "saisies" + (" + listes" if request.form.get("clear_lists") else "") + \
+        (" + journal" if request.form.get("clear_journal") else "")
+    log_activity("Données de test effacées", f"{detail} (copie de sécurité : {safety})")
+    flash(f"Données de test effacées ({detail}). Une sauvegarde a été faite juste avant ({safety}).", "success")
+    return redirect(url_for("backups.index"))

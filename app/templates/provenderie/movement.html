@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Perte ou inventaire de provende{% endblock %}
+{% block content %}
+{% call page_head('Perte, inventaire ou entrée de provende', '', 'box') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.index') }}">← Provenderie</a>
+{% endcall %}
+<form method="post" class="card stack narrow" data-autosave="mouvement-provende">
+  {{ csrf() }}
+  <div class="field"><label>Type</label>
+    <div class="segmented">
+      <label><input type="radio" name="kind" value="perte" {% if form.kind == 'perte' %}checked{% endif %}> Perte</label>
+      <label><input type="radio" name="kind" value="inventaire" {% if form.kind == 'inventaire' %}checked{% endif %}> Inventaire (j'ai compté)</label>
+      <label><input type="radio" name="kind" value="entree" {% if form.kind == 'entree' %}checked{% endif %}> Entrée</label>
+    </div>
+    <p class="hint">Perte : quantité perdue. Inventaire : quantité réellement comptée en magasin. Entrée : provende achetée toute faite ou stock de départ.</p></div>
+  <div class="field"><label for="formula_id">Provende</label>
+    <select class="input" id="formula_id" name="formula_id" required><option value="">— Choisir —</option>
+      {% for f in formulas %}<option value="{{ f.id }}" {% if form.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
+  <div class="grid two">
+    <div class="field"><label for="quantity">Quantité (kg)</label><input class="input" id="quantity" name="quantity" inputmode="decimal" value="{{ form.quantity }}" required></div>
+    <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ form.date }}" required></div>
+  </div>
+  <div class="field"><label for="unit_cost">Prix par kg (Ar) — pour une entrée</label><input class="input" id="unit_cost" name="unit_cost" inputmode="decimal" value="{{ form.unit_cost }}" placeholder="0"></div>
+  <div class="field"><label for="notes">Motif / remarque</label><input class="input" id="notes" name="notes" value="{{ form.notes }}" maxlength="150"></div>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+{% endblock %}

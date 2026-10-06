@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+{% call page_head(item.name, (item.phone or '') ~ (' · ' ~ item.address if item.address else ''), 'users') %}
+  <a class="btn ghost" href="{{ url_for('matieres.suppliers') }}">← Fournisseurs</a>
+  {% if can('matieres', 2) %}
+  <a class="btn ghost" href="{{ url_for('matieres.supplier_edit', supplier_id=item.id) }}">{{ icon('edit', 18) }} Modifier</a>
+  <a class="btn primary" href="{{ url_for('matieres.purchase_new', fournisseur=item.id) }}">{{ icon('cart', 18) }} Nouvel achat</a>
+  {% endif %}
+{% endcall %}
+<div class="stats">
+  <div class="stat"><span class="stat-label">Total acheté</span><strong class="stat-value small">{{ balance.bought|money }}</strong></div>
+  <div class="stat"><span class="stat-label">Total payé</span><strong class="stat-value small">{{ balance.paid|money }}</strong></div>
+  <div class="stat {{ 'stat-warn' if balance.due > 0.5 }}"><span class="stat-label">{{ 'Reste à payer' if balance.due >= -0.5 else 'Avance chez ce fournisseur' }}</span><strong class="stat-value small">{{ (balance.due|abs)|money }}</strong></div>
+</div>
+
+{% if balance.due > 0.5 and can('matieres', 2) %}
+<form method="post" action="{{ url_for('matieres.supplier_payment', supplier_id=item.id) }}" class="card stack top-gap">
+  {{ csrf() }}
+  <h2>{{ icon('wallet', 20) }} Payer une partie de la dette</h2>
+  <div class="grid three">
+    <div class="field"><label for="amount">Montant (Ar)</label><input class="input" id="amount" name="amount" inputmode="decimal" value="{{ balance.due|round(0)|int }}" required></div>
+    <div class="field"><label for="account_id">Argent payé par</label>
+      <select class="input" id="account_id" name="account_id" required>{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ today }}" required></div>
+  </div>
+  <div class="field"><label for="notes">Remarque</label><input class="input" id="notes" name="notes" maxlength="150"></div>
+  <div><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le paiement</button></div>
+</form>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>Achats</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>N°</th><th class="right">Total</th><th class="right">Payé à l'achat</th></tr></thead>
+    <tbody>
+    {% for p in purchases %}
+      <tr><td data-label="Date">{{ p.date|date_fr }}</td><td data-label="N°"><a href="{{ url_for('matieres.purchase', purchase_id=p.id) }}">Achat n°{{ p.id }}</a>{% if p.reference %} <small class="muted">({{ p.reference }})</small>{% endif %}</td>
+      <td data-label="Total" class="right">{{ p.total|money }}</td><td data-label="Payé à l'achat" class="right">{{ p.paid|money }}</td></tr>
+    {% else %}<tr><td colspan="4" class="center muted">Aucun achat.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if payments %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>Paiements de dette</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Payé par</th><th class="right">Montant</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for p in payments %}
+      <tr><td data-label="Date">{{ p.date|date_fr }}</td><td data-label="Payé par">{{ p.account or '—' }}{% if p.notes %} <small class="muted">— {{ p.notes }}</small>{% endif %}</td>
+      <td data-label="Montant" class="right">{{ p.amount|money }}</td>
+      <td data-label="Actions" class="right">{% if can('matieres', 3) %}<form method="post" action="{{ url_for('matieres.payment_delete', payment_id=p.id) }}" data-confirm="Annuler ce paiement ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }} Annuler</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if can('matieres', 3) %}
+<form method="post" action="{{ url_for('matieres.supplier_archive', supplier_id=item.id) }}" class="top-gap">{{ csrf() }}
+  <button class="btn ghost" type="submit">{{ icon('lock' if item.active else 'check', 18) }} {{ 'Archiver ce fournisseur' if item.active else 'Réactiver ce fournisseur' }}</button></form>
+{% endif %}
+{% endblock %}

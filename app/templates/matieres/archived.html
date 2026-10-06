@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Matières archivées{% endblock %}
+{% block content %}
+{% call page_head('Matières archivées', "Elles n'apparaissent plus dans les listes, mais leur historique est gardé.", 'box') %}
+  <a class="btn ghost" href="{{ url_for('matieres.index') }}">← Retour au stock</a>
+{% endcall %}
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Matière</th><th class="right">Stock</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for m in materials %}
+      <tr><td data-label="Matière"><strong>{{ m.name }}</strong></td><td data-label="Stock" class="right">{{ m.stock|qty(m.unit) }}</td>
+      <td data-label="Actions" class="right"><a class="btn ghost sm" href="{{ url_for('matieres.material', material_id=m.id) }}">Ouvrir</a></td></tr>
+    {% else %}<tr><td colspan="3" class="center muted">Aucune matière archivée.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

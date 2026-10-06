@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+{% call page_head(item.name, (item.phase or 'Formule') ~ (' · archivée' if not item.active else ''), 'list') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.formulas') }}">← Formules</a>
+  {% if can('provenderie', 2) %}
+  <a class="btn ghost" href="{{ url_for('provenderie.formula_new', copie=item.id) }}">Copier</a>
+  {% if item.active %}<a class="btn ghost" href="{{ url_for('provenderie.formula_edit', formula_id=item.id) }}">{{ icon('edit', 18) }} Modifier</a>
+  <a class="btn primary" href="{{ url_for('provenderie.production_new', formule=item.id) }}">{{ icon('factory', 18) }} Fabriquer</a>{% endif %}
+  {% endif %}
+{% endcall %}
+<div class="stats">
+  <div class="stat"><span class="stat-label">Mélange</span><strong class="stat-value small">{{ base|qty('kg') }}</strong><small class="muted">ingrédients : {{ total_qty|qty }}</small></div>
+  <div class="stat"><span class="stat-label">Coût estimé</span><strong class="stat-value small">{{ cost_per_kg|money }} / kg</strong><small class="muted">aux prix moyens actuels</small></div>
+  <a class="stat" href="{{ url_for('provenderie.feed_history', formula_id=item.id) }}"><span class="stat-label">En stock</span><strong class="stat-value small">{{ stock|qty('kg') }}</strong><small class="muted">voir l'historique</small></a>
+</div>
+<div class="card flush top-gap">
+  <table class="table responsive">
+    <thead><tr><th>Ingrédient</th><th class="right">Quantité</th><th class="right">Part</th><th class="right">Prix moyen</th><th class="right">En stock</th></tr></thead>
+    <tbody>
+    {% for l in lines %}
+      <tr><td data-label="Ingrédient"><a href="{{ url_for('matieres.material', material_id=l.material_id) }}"><strong>{{ l.name }}</strong></a></td>
+      <td data-label="Quantité" class="right">{{ l.quantity|qty(l.unit) }}</td>
+      <td data-label="Part" class="right">{{ (l.quantity / total_qty * 100)|round(1) if total_qty else 0 }} %</td>
+      <td data-label="Prix moyen" class="right">{{ l.avg_cost|money }}</td>
+      <td data-label="En stock" class="right">{{ l.stock|qty(l.unit) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if programs %}<p class="hint top-gap">Utilisée dans : {% for p in programs %}<a href="{{ url_for('provenderie.program', program_id=p.id) }}">{{ p.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+{% if item.notes %}<p class="muted top-gap">{{ item.notes }}</p>{% endif %}
+{% if productions %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>Fabrications récentes</h2></div>
+  <table class="table responsive"><thead><tr><th>Date</th><th class="right">Quantité</th><th class="right">Coût / kg</th></tr></thead>
+  <tbody>{% for p in productions %}<tr><td data-label="Date"><a href="{{ url_for('provenderie.production', production_id=p.id) }}">{{ p.date|date_fr }}</a></td><td data-label="Quantité" class="right">{{ p.quantity|qty('kg') }}</td><td data-label="Coût / kg" class="right">{{ p.cost_per_kg|money }}</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endif %}
+{% if can('provenderie', 3) %}
+<section class="card top-gap">
+  <h2>{{ 'Archiver' if item.active else 'Réactiver' }} cette formule</h2>
+  <div class="row-actions start">
+    <form method="post" action="{{ url_for('provenderie.formula_archive', formula_id=item.id) }}">{{ csrf() }}<button class="btn ghost" type="submit">{{ 'Archiver' if item.active else 'Réactiver' }}</button></form>
+    {% if not productions %}<form method="post" action="{{ url_for('provenderie.formula_archive', formula_id=item.id) }}" data-confirm="Supprimer définitivement cette formule ?">{{ csrf() }}<input type="hidden" name="action" value="delete"><button class="btn danger-ghost" type="submit">{{ icon('trash', 18) }} Supprimer</button></form>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

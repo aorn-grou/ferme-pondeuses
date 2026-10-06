@@ -7,14 +7,14 @@ from flask import Flask, flash, g, redirect, render_template, request, session, 
 
 from . import db
 from .security import (
-    LEVEL_LABELS, MENU_GROUPS, MODULE_INFO, MODULES, can, check_csrf, csrf_token,
+    LEVEL_LABELS, MENU_GROUPS, MODULE_ENDPOINTS, MODULE_INFO, MODULES, can, check_csrf, csrf_token,
     is_admin, is_super_admin, role_label,
 )
 from .utils import (
-    all_settings, fmt_money, fmt_number, local_datetime, readable_text_on, valid_hex,
+    all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 def _secret_key(instance_dir):
@@ -52,8 +52,10 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
-    from . import auth, backups, main, settings, users
+    from . import auth, backups, main, matieres, provenderie, settings, users
 
+    app.register_blueprint(matieres.bp)
+    app.register_blueprint(provenderie.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
     app.register_blueprint(users.bp)
@@ -111,7 +113,15 @@ def create_app(test_config=None):
             items = [MODULE_INFO[m[0]] for m in MODULES if m[3] == group and user and can(m[0])]
             if items:
                 menu_groups.append((group, items))
+        def module_url(key):
+            endpoint = MODULE_ENDPOINTS.get(key)
+            return url_for(endpoint) if endpoint else url_for("main.module", key=key)
+
+        from .alerts import current_alerts
+
         return {
+            "module_url": module_url,
+            "alerts": current_alerts() if user else [],
             "conf": conf,
             "app_version": VERSION,
             "theme": theme,
@@ -132,6 +142,8 @@ def create_app(test_config=None):
     app.jinja_env.filters["localdt"] = local_datetime
     app.jinja_env.filters["money"] = fmt_money
     app.jinja_env.filters["num"] = fmt_number
+    app.jinja_env.filters["qty"] = fmt_qty
+    app.jinja_env.filters["date_fr"] = date_fr
 
     @app.errorhandler(400)
     def bad_request(error):

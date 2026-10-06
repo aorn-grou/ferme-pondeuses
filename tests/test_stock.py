@@ -1,0 +1,279 @@
+"""Tests des modules Achats & matières premières et Provenderie."""
+import os
+import sys
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tests.test_base import Base  # noqa: E402
+
+
+class StockBase(Base):
+    def setUp(self):
+        super().setUp()
+        self.setup_super_admin()
+
+    def one(self, sql, params=()):
+        return self.db().execute(sql, params).fetchone()
+
+    def material(self, name, unit="kg", qty="", cost="", threshold=""):
+        self.post("/matieres/matiere/nouvelle", {"name": name, "unit": unit, "initial_qty": qty,
+                                                 "initial_cost": cost, "alert_threshold": threshold})
+        return self.one("SELECT id FROM materials WHERE name = ?", (name,))["id"]
+
+    def stock(self, material_id):
+        return self.one("SELECT COALESCE(SUM(quantity),0) FROM stock_moves WHERE material_id = ?", (material_id,))[0]
+
+    def feed(self, formula_id):
+        return self.one("SELECT COALESCE(SUM(quantity),0) FROM feed_moves WHERE formula_id = ?", (formula_id,))[0]
+
+    def account(self, name="Caisse de la ferme"):
+        return self.one("SELECT id FROM accounts WHERE name = ?", (name,))["id"]
+
+
+class TestMatieres(StockBase):
+    def test_defaults_seeded(self):
+        self.assertEqual(self.one("SELECT COUNT(*) FROM accounts")[0], 4)
+        self.assertGreater(self.one("SELECT COUNT(*) FROM categories")[0], 3)
+
+    def test_material_initial_stock(self):
+        mid = self.material("Maïs", qty="1 000", cost="1200")
+        self.assertAlmostEqual(self.stock(mid), 1000)
+        self.assertAlmostEqual(self.one("SELECT avg_cost FROM materials WHERE id=?", (mid,))[0], 1200)
+        res = self.post("/matieres/matiere/nouvelle", {"name": "maïs", "unit": "kg"}, follow_redirects=True)
+        self.assertIn("porte déjà ce nom", res.get_data(as_text=True))
+
+    def test_purchase_flow(self):
+        mais = self.material("Maïs", qty="100", cost="1000")
+        soja = self.material("Soja")
+        self.post("/matieres/fournisseurs/nouveau", {"name": "Rabe Grains", "phone": "034"})
+        sup = self.one("SELECT id FROM suppliers")["id"]
+        # crédit sans fournisseur refusé
+        res = self.post("/matieres/achats/nouveau", {
+            "date": "2026-10-01", "supplier_id": "", "material_id": [str(mais)], "quantity": ["100"],
+            "unit_price": ["1400"], "pay_mode": "credit"}, follow_redirects=True)
+        self.assertIn("doit avoir un fournisseur", res.get_data(as_text=True))
+        # achat 2 lignes + transport, payé en partie
+        res = self.post("/matieres/achats/nouveau", {
+            "date": "2026-10-02", "supplier_id": str(sup), "reference": "F12",
+            "material_id": [str(mais), str(soja), ""], "quantity": ["100", "50", ""],
+            "unit_price": ["1 400", "3000", ""], "transport_cost": "29000",
+            "pay_mode": "partiel", "paid": "200000", "account_id": str(self.account())})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:2000])
+        purchase = self.one("SELECT * FROM purchases")
+        self.assertAlmostEqual(purchase["total"], 140000 + 150000 + 29000)
+        self.assertAlmostEqual(self.stock(mais), 200)
+        # transport réparti : maïs 140000/290000*29000 = 14000 -> 1540/kg ; moyenne (100*1000+100*1540)/200 = 1270
+        self.assertAlmostEqual(self.one("SELECT avg_cost FROM materials WHERE id=?", (mais,))[0], 1270)
+        self.assertAlmostEqual(self.one("SELECT avg_cost FROM materials WHERE id=?", (soja,))[0], 3300)
+        cash = self.one("SELECT SUM(amount) FROM cash_movements")[0]
+        self.assertAlmostEqual(cash, -200000)
+        page = self.client.get(f"/matieres/fournisseurs/{sup}").get_data(as_text=True)
+        self.assertIn("119", page)  # reste 119 000
+        # paiement trop grand refusé, puis paiement correct
+        res = self.post(f"/matieres/fournisseurs/{sup}/reglement", {"amount": "500000", "account_id": str(self.account()),
+                                                                     "date": "2026-10-03"}, follow_redirects=True)
+        self.assertIn("dépasse la dette", res.get_data(as_text=True))
+        self.post(f"/matieres/fournisseurs/{sup}/reglement", {"amount": "119000", "account_id": str(self.account("Propriétaire 1")),
+                                                               "date": "2026-10-03"})
+        self.assertAlmostEqual(self.one("SELECT SUM(amount) FROM cash_movements")[0], -319000)
+        self.assertIn("À jour", self.client.get("/matieres/fournisseurs").get_data(as_text=True))
+        # pages
+        for url in ["/matieres/", "/matieres/achats", f"/matieres/achats/{purchase['id']}", f"/matieres/matiere/{mais}",
+                    "/matieres/fournisseurs", f"/matieres/fournisseurs/{sup}", "/matieres/categories",
+                    "/matieres/inventaire", "/matieres/mouvement", "/matieres/achats/nouveau", "/matieres/archives",
+                    f"/matieres/matiere/{mais}/modifier", f"/matieres/fournisseurs/{sup}/modifier",
+                    "/matieres/achats?du=2026-10-01&au=2026-10-31"]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+
+    def test_purchase_validation(self):
+        mais = self.material("Maïs")
+        res = self.post("/matieres/achats/nouveau", {"date": "2026-10-02", "material_id": [str(mais)], "quantity": ["0"],
+                                                      "unit_price": ["10"], "pay_mode": "tout",
+                                                      "account_id": str(self.account())}, follow_redirects=True)
+        self.assertIn("supérieure à 0", res.get_data(as_text=True))
+        res = self.post("/matieres/achats/nouveau", {"date": "2026-10-02", "material_id": [str(mais)], "quantity": ["5"],
+                                                      "unit_price": ["10"], "pay_mode": "tout"}, follow_redirects=True)
+        self.assertIn("où vient l&#39;argent", res.get_data(as_text=True))
+        self.assertEqual(self.one("SELECT COUNT(*) FROM purchases")[0], 0)
+
+    def test_loss_inventory_and_cancel(self):
+        mais = self.material("Maïs", qty="100", cost="1000")
+        res = self.post("/matieres/mouvement", {"material_id": str(mais), "kind": "perte", "quantity": "500",
+                                                "date": "2026-10-02"}, follow_redirects=True)
+        self.assertIn("Stock insuffisant", res.get_data(as_text=True))
+        self.post("/matieres/mouvement", {"material_id": str(mais), "kind": "perte", "quantity": "10", "date": "2026-10-02"})
+        self.assertAlmostEqual(self.stock(mais), 90)
+        self.post("/matieres/inventaire", {"date": "2026-10-03", f"count_{mais}": "85,5"})
+        self.assertAlmostEqual(self.stock(mais), 85.5)
+        move = self.one("SELECT id FROM stock_moves WHERE kind='inventaire'")["id"]
+        self.post(f"/matieres/mouvement/{move}/supprimer")
+        self.assertAlmostEqual(self.stock(mais), 90)
+        self.assertAlmostEqual(self.one("SELECT avg_cost FROM materials WHERE id=?", (mais,))[0], 1000)
+
+    def test_categories_and_archive(self):
+        self.post("/matieres/categories", {"action": "add", "name": "Coquillages"})
+        cat = self.one("SELECT id FROM categories WHERE name='Coquillages'")["id"]
+        self.post("/matieres/matiere/nouvelle", {"name": "Coquillage", "category_id": str(cat), "unit": "kg"})
+        res = self.post("/matieres/categories", {"action": "delete", "id": str(cat)}, follow_redirects=True)
+        self.assertIn("Impossible", res.get_data(as_text=True))
+        mid = self.one("SELECT id FROM materials WHERE name='Coquillage'")["id"]
+        self.post(f"/matieres/matiere/{mid}/archiver", {"action": "delete"})
+        self.assertIsNone(self.one("SELECT id FROM materials WHERE id=?", (mid,)))
+        self.post("/matieres/categories", {"action": "delete", "id": str(cat)})
+        self.assertIsNone(self.one("SELECT id FROM categories WHERE id=?", (cat,)))
+
+    def test_alert_low_stock(self):
+        self.material("Prémix", qty="5", cost="9000", threshold="10")
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Prémix : stock bas", page)
+        self.assertIn("bell-count", page)
+
+
+class TestProvenderie(StockBase):
+    def setup_formula(self):
+        self.mais = self.material("Maïs", qty="1000", cost="1000")
+        self.son = self.material("Son", qty="300", cost="500")
+        self.soja = self.material("Soja", qty="50", cost="3000")
+        res = self.post("/provenderie/formules/nouvelle", {
+            "name": "Ponte 1", "phase": "Ponte", "base_qty": "", "alert_threshold": "100",
+            "material_id": [str(self.mais), str(self.son), str(self.soja)], "quantity": ["60", "25", "15"]})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:2000])
+        self.formula = self.one("SELECT * FROM formulas")
+        return self.formula["id"]
+
+    def test_formula_and_production(self):
+        fid = self.setup_formula()
+        self.assertAlmostEqual(self.formula["base_qty"], 100)
+        # 500 kg demande 75 kg de soja : il n'y en a que 50
+        res = self.post("/provenderie/fabrication/nouvelle", {"formula_id": str(fid), "quantity": "500", "date": "2026-10-04"},
+                        follow_redirects=True)
+        self.assertIn("Stock insuffisant de « Soja »", res.get_data(as_text=True))
+        self.assertEqual(self.one("SELECT COUNT(*) FROM productions")[0], 0)
+        self.assertAlmostEqual(self.stock(self.mais), 1000)
+        # 200 kg : maïs 120, son 50, soja 30
+        res = self.post("/provenderie/fabrication/nouvelle", {"formula_id": str(fid), "quantity": "200", "date": "2026-10-04"})
+        self.assertEqual(res.status_code, 302)
+        self.assertAlmostEqual(self.stock(self.mais), 880)
+        self.assertAlmostEqual(self.stock(self.soja), 20)
+        self.assertAlmostEqual(self.feed(fid), 200)
+        prod = self.one("SELECT * FROM productions")
+        expected = 120 * 1000 + 50 * 500 + 30 * 3000
+        self.assertAlmostEqual(prod["cost_total"], expected)
+        self.assertAlmostEqual(prod["cost_per_kg"], expected / 200)
+        self.assertAlmostEqual(self.one("SELECT avg_cost FROM formulas WHERE id=?", (fid,))[0], expected / 200)
+        # achat annulé impossible : on ne peut pas retirer le stock initial utilisé ? (stock initial = mouvement)
+        move = self.one("SELECT id FROM stock_moves WHERE material_id=? AND kind='stock_initial'", (self.soja,))["id"]
+        res = self.post(f"/matieres/mouvement/{move}/supprimer", follow_redirects=True)
+        self.assertIn("déjà été utilisée", res.get_data(as_text=True))
+        # pages
+        for url in ["/provenderie/", "/provenderie/formules", f"/provenderie/formules/{fid}", f"/provenderie/formules/{fid}/modifier",
+                    "/provenderie/formules/nouvelle", f"/provenderie/formules/nouvelle?copie={fid}", "/provenderie/fabrications",
+                    f"/provenderie/fabrications/{prod['id']}", "/provenderie/fabrication/nouvelle", f"/provenderie/stock/{fid}",
+                    "/provenderie/mouvement", "/provenderie/programmes", "/provenderie/programmes/nouveau",
+                    f"/matieres/matiere/{self.mais}"]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        # annulation de la fabrication
+        self.post(f"/provenderie/fabrications/{prod['id']}/supprimer")
+        self.assertAlmostEqual(self.stock(self.soja), 50)
+        self.assertAlmostEqual(self.feed(fid), 0)
+
+    def test_production_cancel_blocked_after_loss(self):
+        fid = self.setup_formula()
+        self.post("/provenderie/fabrication/nouvelle", {"formula_id": str(fid), "quantity": "100", "date": "2026-10-04"})
+        self.post("/provenderie/mouvement", {"formula_id": str(fid), "kind": "perte", "quantity": "10", "date": "2026-10-05"})
+        self.assertAlmostEqual(self.feed(fid), 90)
+        prod = self.one("SELECT id FROM productions")["id"]
+        res = self.post(f"/provenderie/fabrications/{prod}/supprimer", follow_redirects=True)
+        self.assertIn("déjà été distribuée", res.get_data(as_text=True))
+        self.post("/provenderie/mouvement", {"formula_id": str(fid), "kind": "inventaire", "quantity": "88", "date": "2026-10-06"})
+        self.assertAlmostEqual(self.feed(fid), 88)
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Ponte 1", page)  # alerte : 88 kg < seuil 100 kg
+
+    def test_formula_validation(self):
+        mais = self.material("Maïs")
+        res = self.post("/provenderie/formules/nouvelle", {"name": "X", "material_id": [str(mais), str(mais)],
+                                                           "quantity": ["10", "5"]}, follow_redirects=True)
+        page = res.get_data(as_text=True)
+        self.assertIn("apparaît deux fois", page)
+        self.assertIn("Donnez un nom", page)
+
+    def test_programs(self):
+        fid = self.setup_formula()
+        res = self.post("/provenderie/programmes/nouveau", {"name": "Standard", "week_from": ["1", "4"],
+                                                            "week_to": ["5", "8"], "formula_id": [str(fid), str(fid)],
+                                                            "grams_per_bird": ["", ""]}, follow_redirects=True)
+        self.assertIn("se chevauchent", res.get_data(as_text=True))
+        res = self.post("/provenderie/programmes/nouveau", {"name": "Standard", "week_from": ["1", "2", "3"],
+                                                            "week_to": ["1", "2", "20"], "formula_id": [str(fid)] * 3,
+                                                            "grams_per_bird": ["10", "15", "110"]})
+        self.assertEqual(res.status_code, 302)
+        pid = self.one("SELECT id FROM feed_programs")["id"]
+        self.assertEqual(self.one("SELECT COUNT(*) FROM feed_program_weeks WHERE program_id=?", (pid,))[0], 3)
+        for url in [f"/provenderie/programmes/{pid}", f"/provenderie/programmes/{pid}/modifier",
+                    f"/provenderie/programmes/nouveau?copie={pid}", "/provenderie/programmes"]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        # une formule utilisée dans un programme actif ne peut pas être archivée
+        res = self.post(f"/provenderie/formules/{fid}/archiver", follow_redirects=True)
+        self.assertIn("programme actif", res.get_data(as_text=True))
+
+
+class TestPermissionsAndReset(StockBase):
+    def make_user(self, username, role):
+        self.post("/utilisateurs/nouveau", {"username": username, "role": role, "password": "Ferme-1234", "use_defaults": "1"})
+        client = self.app.test_client()
+        self.login(username, "Ferme-1234", client=client)
+        self.post("/premiere-connexion", {"password": "Akoho-2026", "confirm": "Akoho-2026",
+                                          "question": "Question numéro un ?", "answer": "oui"}, client=client)
+        return client
+
+    def test_role_access(self):
+        eleveur = self.make_user("rakoto", "elevage")
+        self.assertEqual(eleveur.get("/provenderie/").status_code, 200)            # voir
+        self.assertEqual(eleveur.get("/provenderie/fabrication/nouvelle").status_code, 403)  # pas fabriquer
+        self.assertEqual(eleveur.get("/matieres/").status_code, 403)
+        acheteur = self.make_user("vola", "achats")
+        self.assertEqual(acheteur.get("/matieres/achats/nouveau").status_code, 200)
+        self.assertEqual(acheteur.get("/provenderie/formules/nouvelle").status_code, 403)
+        fab = self.make_user("koto", "provenderie")
+        self.assertEqual(fab.get("/provenderie/fabrication/nouvelle").status_code, 200)
+        self.assertEqual(fab.get("/matieres/achats/nouveau").status_code, 403)
+
+    def test_clear_test_data(self):
+        mais = self.material("Maïs", qty="100", cost="1000")
+        self.post("/matieres/achats/nouveau", {"date": "2026-10-02", "material_id": [str(mais)], "quantity": ["10"],
+                                               "unit_price": ["1000"], "pay_mode": "tout", "account_id": str(self.account())})
+        res = self.post("/sauvegardes/effacer-donnees-test", {"confirm_word": "EFFACER", "password": "faux"},
+                        follow_redirects=True)
+        self.assertIn("incorrect", res.get_data(as_text=True))
+        self.post("/sauvegardes/effacer-donnees-test", {"confirm_word": "EFFACER", "password": "Poule2026!"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM purchases")[0], 0)
+        self.assertEqual(self.one("SELECT COUNT(*) FROM stock_moves")[0], 0)
+        self.assertEqual(self.one("SELECT COUNT(*) FROM cash_movements")[0], 0)
+        self.assertEqual(self.one("SELECT COUNT(*) FROM materials")[0], 1)          # liste gardée
+        self.assertEqual(self.one("SELECT COUNT(*) FROM users")[0], 1)
+        self.post("/sauvegardes/effacer-donnees-test", {"confirm_word": "EFFACER", "password": "Poule2026!", "clear_lists": "1"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM materials")[0], 0)
+        self.assertEqual(self.one("SELECT COUNT(*) FROM accounts")[0], 4)          # caisses gardées
+
+    def test_accounts_settings(self):
+        self.post("/parametres/", {"section": "comptes", "action": "add", "name": "Banque BOA", "kind": "caisse"})
+        acc = self.one("SELECT id FROM accounts WHERE name='Banque BOA'")["id"]
+        p1 = self.account("Propriétaire 1")
+        self.post("/parametres/", {"section": "comptes", "action": "rename", "id": str(p1), "name": "Rakoto (associé)",
+                                   "kind": "proprietaire"})
+        self.assertIsNotNone(self.one("SELECT id FROM accounts WHERE name='Rakoto (associé)'"))
+        self.post("/parametres/", {"section": "comptes", "action": "toggle", "id": str(acc)})
+        self.assertEqual(self.one("SELECT active FROM accounts WHERE id=?", (acc,))[0], 0)
+        self.assertEqual(self.client.get("/parametres/?onglet=comptes").status_code, 200)
+
+    def test_factory_reset_reseeds(self):
+        self.material("Maïs")
+        self.post("/sauvegardes/reinitialiser", {"confirm_word": "EFFACER", "password": "Poule2026!"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM materials")[0], 0)
+        self.assertEqual(self.one("SELECT COUNT(*) FROM accounts")[0], 4)
+
+
+if __name__ == "__main__":
+    unittest.main()

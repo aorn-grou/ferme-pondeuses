@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Formules de provende{% endblock %}
+{% block content %}
+{% call page_head('Formules de provende', "Les recettes : quels ingrédients, en quelle quantité. Vous êtes libre de les créer et modifier.", 'list') %}
+  {% if can('provenderie', 2) %}<a class="btn primary" href="{{ url_for('provenderie.formula_new') }}">{{ icon('plus', 18) }} Nouvelle formule</a>{% endif %}
+{% endcall %}
+{% with active='formules' %}{% include "provenderie/_tabs.html" %}{% endwith %}
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Formule</th><th>Phase</th><th class="right">Ingrédients</th><th class="right">Mélange</th><th class="right">Coût estimé / kg</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for f in rows %}
+      <tr>
+        <td data-label="Formule"><a href="{{ url_for('provenderie.formula', formula_id=f.id) }}"><strong>{{ f.name }}</strong></a>{% if not f.active %} <span class="badge badge-muted">archivée</span>{% endif %}</td>
+        <td data-label="Phase">{{ f.phase or '—' }}</td>
+        <td data-label="Ingrédients" class="right">{{ f.nb_lines }}</td>
+        <td data-label="Mélange" class="right">{{ f.base_qty|qty('kg') }}</td>
+        <td data-label="Coût estimé / kg" class="right">{{ f.cost_per_kg|money }}</td>
+        <td data-label="Actions" class="right"><div class="row-actions">
+          <a class="btn ghost sm" href="{{ url_for('provenderie.formula', formula_id=f.id) }}">Ouvrir</a>
+          {% if can('provenderie', 2) %}<a class="btn ghost sm" href="{{ url_for('provenderie.formula_new', copie=f.id) }}">Copier</a>{% endif %}
+        </div></td>
+      </tr>
+    {% else %}<tr><td colspan="6" class="center muted">Aucune formule. {% if can('provenderie', 2) %}<a href="{{ url_for('provenderie.formula_new') }}">Créez la première</a>.{% endif %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="hint top-gap">Le coût estimé utilise le prix moyen actuel de chaque matière.</p>
+{% endblock %}

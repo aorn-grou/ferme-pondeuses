@@ -13,8 +13,8 @@ LEVEL_LABELS = {NONE: "Aucun accès", VIEW: "Voir", EDIT: "Voir et saisir", MANA
 # `built` passe à True à mesure que les modules sont développés.
 MODULES = [
     ("dashboard", "Tableau de bord", "home", "Pilotage", "Résumé, courbes et alertes de votre activité.", True),
-    ("matieres", "Achats & matières premières", "box", "Production", "Fournisseurs, achats de matières et de poussins, stock des matières.", False),
-    ("provenderie", "Provenderie", "factory", "Production", "Formules de provende par semaine, fabrication, stock de provende.", False),
+    ("matieres", "Achats & matières premières", "box", "Production", "Fournisseurs, achats de matières, stock des matières.", True),
+    ("provenderie", "Provenderie", "factory", "Production", "Formules de provende, programmes par semaine, fabrication, stock de provende.", True),
     ("lots", "Lots de poules", "layers", "Élevage", "Entrée des poussins, âge, effectif, ponte, poids, réformes.", False),
     ("alimentation", "Alimentation", "wheat", "Élevage", "Distribution quotidienne de provende, consommation par poule et par lot.", False),
     ("sanitaire", "Suivi sanitaire", "shield", "Élevage", "Vaccinations avec alertes, soins, mortalité.", False),
@@ -33,6 +33,16 @@ MODULES = [
     ("journal", "Journal d'activité", "list", "Administration", "Qui a fait quoi et quand.", True),
 ]
 MODULE_KEYS = [m[0] for m in MODULES]
+# Page d'accueil de chaque module développé (les autres affichent « bientôt »)
+MODULE_ENDPOINTS = {
+    "dashboard": "main.dashboard",
+    "matieres": "matieres.index",
+    "provenderie": "provenderie.index",
+    "utilisateurs": "users.index",
+    "parametres": "settings.index",
+    "sauvegardes": "backups.index",
+    "journal": "main.journal",
+}
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
 MENU_GROUPS = ["Pilotage", "Production", "Élevage", "Ventes", "Finances", "Administration"]
 

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Stock {{ item.name }}{% endblock %}
+{% block content %}
+{% call page_head('Stock de « ' ~ item.name ~ ' »', 'En stock : ' ~ (stock|qty('kg')) ~ ' · coût moyen ' ~ (item.avg_cost|money) ~ ' / kg', 'box') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.index') }}">← Provenderie</a>
+  {% if can('provenderie', 2) %}<a class="btn ghost" href="{{ url_for('provenderie.movement', formule=item.id) }}">Perte / inventaire</a>{% endif %}
+{% endcall %}
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Type</th><th class="right">Quantité</th><th>Par</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for mv in moves %}
+      <tr><td data-label="Date" class="nowrap">{{ mv.date|date_fr }}</td>
+      <td data-label="Type">{% if mv.ref_type == 'production' %}<a href="{{ url_for('provenderie.production', production_id=mv.ref_id) }}">{{ kinds.get(mv.kind, mv.kind) }} n°{{ mv.ref_id }}</a>{% else %}{{ kinds.get(mv.kind, mv.kind) }}{% endif %}{% if mv.notes %}<small class="muted block">{{ mv.notes }}</small>{% endif %}</td>
+      <td data-label="Quantité" class="right"><strong class="{{ 'pos' if mv.quantity > 0 else 'neg' }}">{{ '+' if mv.quantity > 0 }}{{ mv.quantity|qty('kg') }}</strong></td>
+      <td data-label="Par">{{ mv.username or '—' }}</td>
+      <td data-label="Actions" class="right">{% if can('provenderie', 3) and mv.kind in ('perte', 'inventaire', 'entree') %}<form method="post" action="{{ url_for('provenderie.feed_move_delete', move_id=mv.id) }}" data-confirm="Annuler ce mouvement ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }} Annuler</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="5" class="center muted">Aucun mouvement.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

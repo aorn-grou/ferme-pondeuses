@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Nouvel achat{% endblock %}
+{% block content %}
+{% call page_head('Nouvel achat de matières', "Ajoutez une ligne par matière achetée. Le stock et la caisse seront mis à jour.", 'cart') %}
+  <a class="btn ghost" href="{{ url_for('matieres.purchases') }}">← Achats</a>
+{% endcall %}
+{% if not materials %}
+<div class="alert alert-warning static">{{ icon('alert', 18) }}<span>Aucune matière n'existe encore. <a href="{{ url_for('matieres.material_new', next=url_for('matieres.purchase_new')) }}">Créez d'abord une matière première</a>.</span></div>
+{% endif %}
+<form method="post" class="stack" data-autosave="nouvel-achat" data-purchase-form>
+  {{ csrf() }}
+  <section class="card">
+    <div class="grid three">
+      <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ form.date }}" required></div>
+      <div class="field"><label for="supplier_id">Fournisseur</label>
+        <select class="input" id="supplier_id" name="supplier_id">
+          <option value="">— Marché / sans fournisseur —</option>
+          {% for s in suppliers %}<option value="{{ s.id }}" {% if form.supplier_id == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+        </select>
+        <p class="hint"><a href="{{ url_for('matieres.supplier_new', next=url_for('matieres.purchase_new')) }}">+ Nouveau fournisseur</a></p></div>
+      <div class="field"><label for="reference">N° de facture / bon (facultatif)</label><input class="input" id="reference" name="reference" value="{{ form.reference }}" maxlength="50"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Matières achetées</h2><a class="btn ghost sm" href="{{ url_for('matieres.material_new', next=url_for('matieres.purchase_new')) }}">{{ icon('plus', 16) }} Nouvelle matière</a></div>
+    <div class="line-head" aria-hidden="true"><span>Matière</span><span>Quantité</span><span>Prix unitaire (Ar)</span><span>Total</span><span></span></div>
+    <div class="lines" data-lines>
+      {% for line in lines %}
+      <div class="line-row" data-line>
+        <div class="field"><label class="line-label">Matière</label>
+          <select class="input" name="material_id" data-unit-select>
+            <option value="">— Choisir —</option>
+            {% for m in materials %}<option value="{{ m.id }}" data-unit="{{ m.unit }}" data-avg="{{ m.avg_cost|round(2) }}" {% if line.material_id == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+          </select></div>
+        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><span class="input-addon static" data-unit-label>—</span></div></div>
+        <div class="field"><label class="line-label">Prix unitaire (Ar)</label><input class="input" name="unit_price" inputmode="decimal" value="{{ line.unit_price }}" data-price></div>
+        <div class="line-total"><span class="line-label">Total</span><strong data-line-total>0 Ar</strong></div>
+        <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer la ligne">{{ icon('trash', 18) }}</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn ghost" data-add-line>{{ icon('plus', 18) }} Ajouter une matière</button>
+  </section>
+
+  <section class="card">
+    <h2>Paiement</h2>
+    <div class="grid two">
+      <div class="field"><label for="transport_cost">Frais de transport / déchargement (Ar)</label><input class="input" id="transport_cost" name="transport_cost" inputmode="decimal" value="{{ form.transport_cost }}" placeholder="0" data-extra>
+        <p class="hint">Répartis sur le prix des matières pour calculer le vrai coût.</p></div>
+      <div class="totals">
+        <div><span>Matières</span><strong data-goods-total>0 Ar</strong></div>
+        <div><span>Transport</span><strong data-extra-total>0 Ar</strong></div>
+        <div class="grand"><span>Total de l'achat</span><strong data-grand-total>0 Ar</strong></div>
+      </div>
+    </div>
+    <div class="field top-gap">
+      <label>Comment est-ce payé ?</label>
+      <div class="segmented">
+        <label><input type="radio" name="pay_mode" value="tout" {% if form.pay_mode == 'tout' %}checked{% endif %} data-pay-mode> Tout payé</label>
+        <label><input type="radio" name="pay_mode" value="partiel" {% if form.pay_mode == 'partiel' %}checked{% endif %} data-pay-mode> Une partie</label>
+        <label><input type="radio" name="pay_mode" value="credit" {% if form.pay_mode == 'credit' %}checked{% endif %} data-pay-mode> À crédit</label>
+      </div>
+    </div>
+    <div class="grid two">
+      <div class="field" data-paid-field><label for="paid">Montant payé maintenant (Ar)</label><input class="input" id="paid" name="paid" inputmode="decimal" value="{{ form.paid }}"></div>
+      <div class="field" data-account-field><label for="account_id">L'argent vient de</label>
+        <select class="input" id="account_id" name="account_id">
+          <option value="">— Choisir —</option>
+          {% for a in accounts %}<option value="{{ a.id }}" {% if form.account_id == a.id|string %}selected{% endif %}>{{ a.name }}</option>{% endfor %}
+        </select>
+        <p class="hint">Caisse de la ferme, mobile money, ou un propriétaire qui paie de sa poche.</p></div>
+    </div>
+    <div class="field"><label for="notes">Remarque</label><input class="input" id="notes" name="notes" value="{{ form.notes }}" maxlength="200"></div>
+  </section>
+  <div class="form-actions sticky-actions">
+    <div class="sticky-total"><span>Total</span><strong data-grand-total>0 Ar</strong></div>
+    <button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer l'achat</button>
+  </div>
+</form>
+{% endblock %}

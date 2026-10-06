@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ 'Modifier ' ~ formula.name if formula else 'Nouvelle formule' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier « ' ~ formula.name ~ ' »') if formula else 'Nouvelle formule de provende', "Indiquez les ingrédients d'un mélange (par exemple pour 100 kg).", 'list') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.formula', formula_id=formula.id) if formula else url_for('provenderie.formulas') }}">← Retour</a>
+{% endcall %}
+{% if not materials %}<div class="alert alert-warning static">{{ icon('alert', 18) }}<span>Aucune matière première. <a href="{{ url_for('matieres.material_new', next=request.path) }}">Créez d'abord vos matières</a>.</span></div>{% endif %}
+<form method="post" class="stack" data-autosave="formule-{{ formula.id if formula else 'nouvelle' }}" data-formula-form>
+  {{ csrf() }}
+  <section class="card">
+    <div class="grid three">
+      <div class="field"><label for="name">Nom *</label><input class="input" id="name" name="name" value="{{ values.name }}" required maxlength="60" placeholder="ex. Ponte 1"></div>
+      <div class="field"><label for="phase">Phase</label><input class="input" id="phase" name="phase" value="{{ values.phase }}" list="phases" maxlength="30"><datalist id="phases">{% for p in phases %}<option value="{{ p }}">{% endfor %}</datalist></div>
+      <div class="field"><label for="alert_threshold">Alerte stock provende (kg)</label><input class="input" id="alert_threshold" name="alert_threshold" inputmode="decimal" value="{{ values.alert_threshold|qty if values.alert_threshold else '' }}" placeholder="ex. 300"></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Ingrédients</h2></div>
+    <div class="line-head two-cols" aria-hidden="true"><span>Matière</span><span>Quantité</span><span>Part</span><span></span></div>
+    <div class="lines" data-lines>
+      {% for line in lines %}
+      <div class="line-row two-cols" data-line>
+        <div class="field"><label class="line-label">Matière</label>
+          <select class="input" name="material_id" data-unit-select>
+            <option value="">— Choisir —</option>
+            {% for m in materials %}<option value="{{ m.id }}" data-unit="{{ m.unit }}" data-cost="{{ m.avg_cost }}" {% if line.material_id == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+          </select></div>
+        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><span class="input-addon static" data-unit-label>—</span></div></div>
+        <div class="line-total"><span class="line-label">Part</span><strong data-share>—</strong></div>
+        <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer">{{ icon('trash', 18) }}</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn ghost" data-add-line>{{ icon('plus', 18) }} Ajouter un ingrédient</button>
+    <div class="grid two top-gap">
+      <div class="field"><label for="base_qty">Ce mélange donne (kg de provende)</label><input class="input" id="base_qty" name="base_qty" inputmode="decimal" value="{{ values.base_qty|qty if values.base_qty else '' }}" data-base-qty>
+        <p class="hint">Rempli automatiquement avec le total des ingrédients. Modifiez-le seulement s'il y a une perte au mélange.</p></div>
+      <div class="totals">
+        <div><span>Total des ingrédients</span><strong data-sum>0</strong></div>
+        <div class="grand"><span>Coût estimé par kg</span><strong data-cost-kg>0 Ar</strong></div>
+      </div>
+    </div>
+  </section>
+  <section class="card"><div class="field"><label for="notes">Remarques</label><textarea class="input" id="notes" name="notes" rows="2">{{ values.notes }}</textarea></div></section>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la formule</button></div>
+</form>
+{% endblock %}

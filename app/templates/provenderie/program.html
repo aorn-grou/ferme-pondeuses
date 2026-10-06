@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+{% call page_head(item.name, "Programme d'alimentation" ~ (' · archivé' if not item.active else ''), 'clock') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.programs') }}">← Programmes</a>
+  {% if can('provenderie', 2) %}<a class="btn ghost" href="{{ url_for('provenderie.program_new', copie=item.id) }}">Copier</a>
+  <a class="btn primary" href="{{ url_for('provenderie.program_edit', program_id=item.id) }}">{{ icon('edit', 18) }} Modifier</a>{% endif %}
+{% endcall %}
+<div class="week-timeline card">
+  {% for w in weeks %}
+  <div class="week-block">
+    <span class="week-range">Sem. {{ w.week_from }}{% if w.week_to != w.week_from %} → {{ w.week_to }}{% endif %}</span>
+    <a href="{{ url_for('provenderie.formula', formula_id=w.formula_id) }}"><strong>{{ w.formula }}</strong></a>
+    <small class="muted">{{ w.phase or '' }}{% if w.grams_per_bird %}{{ ' · ' if w.phase }}{{ w.grams_per_bird|qty }} g / poule / jour{% endif %}</small>
+  </div>
+  {% else %}<p class="muted">Aucune période.</p>{% endfor %}
+</div>
+{% if item.notes %}<p class="muted top-gap">{{ item.notes }}</p>{% endif %}
+{% if can('provenderie', 3) %}
+<section class="card top-gap">
+  <h2>{{ 'Archiver' if item.active else 'Réactiver' }} ce programme</h2>
+  <div class="row-actions start">
+    <form method="post" action="{{ url_for('provenderie.program_archive', program_id=item.id) }}">{{ csrf() }}<button class="btn ghost" type="submit">{{ 'Archiver' if item.active else 'Réactiver' }}</button></form>
+    <form method="post" action="{{ url_for('provenderie.program_archive', program_id=item.id) }}" data-confirm="Supprimer ce programme ?">{{ csrf() }}<input type="hidden" name="action" value="delete"><button class="btn danger-ghost" type="submit">{{ icon('trash', 18) }} Supprimer</button></form>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

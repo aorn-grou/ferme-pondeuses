@@ -4,7 +4,7 @@ Logiciel web de gestion d'une ferme de poules pondeuses : matières premières, 
 lots de poules, alimentation, suivi sanitaire, œufs, poules de réforme, ventes, dépenses,
 caisse des propriétaires, personnel et tableaux de bord.
 
-## Ce qui est prêt (version 0.1)
+## Ce qui est prêt (version 0.2)
 
 - Connexion par nom d'utilisateur et mot de passe, verrouillage après 5 erreurs.
 - Compte **Super-admin** créé automatiquement (`super-adm`). Son mot de passe de départ
@@ -24,6 +24,14 @@ caisse des propriétaires, personnel et tableaux de bord.
   restauration, transfert par fichier, remise à l'état d'origine.
 - Brouillon automatique des formulaires toutes les 15 secondes.
 - Journal d'activité : qui a fait quoi et quand.
+
+- **Achats & matières premières** : matières (catégories libres, seuils d'alerte, stock initial),
+  fournisseurs et dettes, achats multi-lignes avec frais de transport répartis, paiement total,
+  partiel ou à crédit depuis une caisse ou un propriétaire, pertes, inventaire physique, prix moyen pondéré.
+- **Provenderie** : formules libres, programmes d'alimentation par semaine d'âge, fabrication avec
+  contrôle du stock et coût de revient au kg, stock de provende, pertes et inventaire.
+- Cloche d'alertes (stock bas ou épuisé), caisses et propriétaires paramétrables.
+- Bouton « Effacer les données de test » (garde utilisateurs, paramètres et listes).
 
 Les autres modules sont visibles dans le menu avec la mention « bientôt ».
 

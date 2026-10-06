@@ -11,8 +11,17 @@
   <span class="hero-icon">{{ icon('egg', 44) }}</span>
 </section>
 
+{% if alerts %}
+<section class="card top-gap-sm alert-card">
+  <div class="card-head"><h2>{{ icon('bell', 20) }} Alertes ({{ alerts|length }})</h2></div>
+  <ul class="alert-list">
+    {% for a in alerts[:6] %}<li class="{{ a.level }}"><a href="{{ a.url }}"><strong>{{ a.title }}</strong></a> <span class="muted">{{ a.text }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {% if stats %}
-<div class="stats">
+<div class="stats top-gap">
   <a class="stat" href="{{ url_for('users.index') }}">
     <span class="stat-icon">{{ icon('users') }}</span>
     <span class="stat-label">Utilisateurs actifs</span>
@@ -37,11 +46,7 @@
 <h2 class="section-title">Mes modules</h2>
 <div class="module-grid">
   {% for m in modules %}
-    {% set href = url_for('users.index') if m.key == 'utilisateurs'
-        else url_for('settings.index') if m.key == 'parametres'
-        else url_for('backups.index') if m.key == 'sauvegardes'
-        else url_for('main.journal') if m.key == 'journal'
-        else url_for('main.module', key=m.key) %}
+    {% set href = module_url(m.key) %}
     <a class="module-card" href="{{ href }}">
       <span class="module-icon">{{ icon(m.icon, 22) }}</span>
       <span class="module-text">

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Inventaire{% endblock %}
+{% block content %}
+{{ page_head('Inventaire physique', "Comptez ce qu'il y a vraiment en magasin. Le logiciel corrige les écarts automatiquement.", 'list') }}
+{% with active='inventaire' %}{% include "matieres/_tabs.html" %}{% endwith %}
+<form method="post" class="stack" data-autosave="inventaire-matieres">
+  {{ csrf() }}
+  <div class="card inline-form">
+    <div class="field"><label for="date">Date de l'inventaire</label><input class="input" type="date" id="date" name="date" value="{{ today }}" required></div>
+    <p class="hint grow">Laissez vide les matières que vous n'avez pas comptées.</p>
+  </div>
+  <div class="card flush">
+    <table class="table responsive">
+      <thead><tr><th>Matière</th><th class="right">Stock du logiciel</th><th>Quantité comptée</th><th class="right">Écart</th></tr></thead>
+      <tbody>
+      {% for m in materials %}
+        <tr data-inventory-row data-stock="{{ m.stock }}">
+          <td data-label="Matière"><strong>{{ m.name }}</strong></td>
+          <td data-label="Stock du logiciel" class="right">{{ m.stock|qty(m.unit) }}</td>
+          <td data-label="Quantité comptée"><div class="input-group"><input class="input sm" name="count_{{ m.id }}" inputmode="decimal" data-count aria-label="Quantité comptée pour {{ m.name }}"><span class="input-addon static">{{ m.unit }}</span></div></td>
+          <td data-label="Écart" class="right" data-diff>—</td>
+        </tr>
+      {% else %}<tr><td colspan="4" class="center muted">Aucune matière.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if materials %}<div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer l'inventaire</button></div>{% endif %}
+</form>
+{% endblock %}

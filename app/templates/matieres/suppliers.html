@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Fournisseurs{% endblock %}
+{% block content %}
+{% call page_head('Fournisseurs', "Coordonnées, historique des achats et dettes.", 'users') %}
+  {% if can('matieres', 2) %}<a class="btn primary" href="{{ url_for('matieres.supplier_new') }}">{{ icon('plus', 18) }} Nouveau fournisseur</a>{% endif %}
+{% endcall %}
+{% with active='fournisseurs' %}{% include "matieres/_tabs.html" %}{% endwith %}
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Fournisseur</th><th>Téléphone</th><th class="right">Total acheté</th><th class="right">Reste à payer</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for s in rows %}
+      <tr>
+        <td data-label="Fournisseur"><a href="{{ url_for('matieres.supplier', supplier_id=s.id) }}"><strong>{{ s.name }}</strong></a>{% if not s.active %} <span class="badge badge-muted">archivé</span>{% endif %}</td>
+        <td data-label="Téléphone">{% if s.phone %}<a href="tel:{{ s.phone }}">{{ s.phone }}</a>{% else %}—{% endif %}</td>
+        <td data-label="Total acheté" class="right">{{ s.bought|money }}</td>
+        <td data-label="Reste à payer" class="right">{% if s.due > 0.5 %}<strong class="neg">{{ s.due|money }}</strong>{% else %}<span class="badge badge-ok">À jour</span>{% endif %}</td>
+        <td data-label="Actions" class="right"><a class="btn ghost sm" href="{{ url_for('matieres.supplier', supplier_id=s.id) }}">Ouvrir</a></td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="center muted">Aucun fournisseur pour l'instant.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

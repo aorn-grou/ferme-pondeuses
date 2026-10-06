@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ 'Modifier ' ~ material.name if material else 'Nouvelle matière' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier « ' ~ material.name ~ ' »') if material else 'Nouvelle matière première', "Maïs, son, tourteau de soja, coquillage, prémix, médicament…", 'box') %}
+  <a class="btn ghost" href="{{ url_for('matieres.material', material_id=material.id) if material else url_for('matieres.index') }}">← Retour</a>
+{% endcall %}
+<form method="post" class="card stack narrow" data-autosave="matiere-{{ material.id if material else 'nouvelle' }}">
+  {{ csrf() }}
+  <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+  <div class="grid two">
+    <div class="field"><label for="name">Nom *</label><input class="input" id="name" name="name" value="{{ values.name }}" required maxlength="80" placeholder="ex. Maïs grain"></div>
+    <div class="field">
+      <label for="category_id">Catégorie</label>
+      <select class="input" id="category_id" name="category_id">
+        <option value="">— Aucune —</option>
+        {% for c in categories %}<option value="{{ c.id }}" {% if values.category_id|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+      <p class="hint"><a href="{{ url_for('matieres.categories') }}">Gérer les catégories</a></p>
+    </div>
+    <div class="field">
+      <label for="unit">Unité de stock</label>
+      <input class="input" id="unit" name="unit" value="{{ values.unit }}" list="units" maxlength="15">
+      <datalist id="units">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
+      <p class="hint">Pour les formules de provende, utilisez de préférence le <strong>kg</strong>.</p>
+    </div>
+    <div class="field">
+      <label for="alert_threshold">Seuil d'alerte</label>
+      <input class="input" id="alert_threshold" name="alert_threshold" inputmode="decimal" value="{{ values.alert_threshold|qty if values.alert_threshold else '' }}" placeholder="ex. 200">
+      <p class="hint">Une alerte s'affiche quand le stock descend à ce niveau.</p>
+    </div>
+  </div>
+  {% if not material %}
+  <fieldset>
+    <legend>Stock déjà présent à la ferme (facultatif)</legend>
+    <div class="grid two">
+      <div class="field"><label for="initial_qty">Quantité en stock aujourd'hui</label><input class="input" id="initial_qty" name="initial_qty" inputmode="decimal" placeholder="0"></div>
+      <div class="field"><label for="initial_cost">Prix d'achat par unité (Ar)</label><input class="input" id="initial_cost" name="initial_cost" inputmode="decimal" placeholder="0"></div>
+    </div>
+  </fieldset>
+  {% endif %}
+  <div class="field"><label for="notes">Remarques</label><textarea class="input" id="notes" name="notes" rows="2">{{ values.notes }}</textarea></div>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+{% endblock %}

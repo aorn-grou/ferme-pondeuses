@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ 'Modifier ' ~ program.name if program else 'Nouveau programme' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier « ' ~ program.name ~ ' »') if program else "Nouveau programme d'alimentation", "Une ligne par période. Pour changer chaque semaine, mettez la même semaine en début et en fin.", 'clock') %}
+  <a class="btn ghost" href="{{ url_for('provenderie.program', program_id=program.id) if program else url_for('provenderie.programs') }}">← Retour</a>
+{% endcall %}
+{% if not formulas %}<div class="alert alert-warning static">{{ icon('alert', 18) }}<span>Aucune formule active. <a href="{{ url_for('provenderie.formula_new') }}">Créez d'abord vos formules</a>.</span></div>{% endif %}
+<form method="post" class="stack" data-autosave="programme-{{ program.id if program else 'nouveau' }}">
+  {{ csrf() }}
+  <section class="card">
+    <div class="field"><label for="name">Nom du programme *</label><input class="input" id="name" name="name" value="{{ values.name }}" required maxlength="60" placeholder="ex. Pondeuses standard"></div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Périodes</h2>
+      <div class="inline-tools"><label for="fill-weeks" class="hint">Créer une ligne par semaine de 1 à</label><input class="input sm w-80" id="fill-weeks" inputmode="numeric" placeholder="ex. 20"><button type="button" class="btn ghost sm" data-fill-weeks>Créer</button></div>
+    </div>
+    <div class="line-head weeks" aria-hidden="true"><span>De la semaine</span><span>À la semaine</span><span>Formule</span><span>g / poule / jour</span><span></span></div>
+    <div class="lines" data-lines>
+      {% for r in rows %}
+      <div class="line-row weeks" data-line>
+        <div class="field"><label class="line-label">De la semaine</label><input class="input" name="week_from" inputmode="numeric" value="{{ r.week_from }}" data-week-from></div>
+        <div class="field"><label class="line-label">À la semaine</label><input class="input" name="week_to" inputmode="numeric" value="{{ r.week_to }}" data-week-to></div>
+        <div class="field"><label class="line-label">Formule</label>
+          <select class="input" name="formula_id"><option value="">— Choisir —</option>
+            {% for f in formulas %}<option value="{{ f.id }}" {% if r.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}{% if f.phase %} ({{ f.phase }}){% endif %}</option>{% endfor %}</select></div>
+        <div class="field"><label class="line-label">g / poule / jour (objectif)</label><input class="input" name="grams_per_bird" inputmode="decimal" value="{{ r.grams_per_bird }}" placeholder="facultatif"></div>
+        <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer">{{ icon('trash', 18) }}</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn ghost" data-add-line data-next-week>{{ icon('plus', 18) }} Ajouter une période</button>
+  </section>
+  <section class="card"><div class="field"><label for="notes">Remarques</label><textarea class="input" id="notes" name="notes" rows="2">{{ values.notes }}</textarea></div></section>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le programme</button></div>
+</form>
+{% endblock %}

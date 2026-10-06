@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Matières premières{% endblock %}
+{% block content %}
+{% call page_head('Achats & matières premières', "Stock calculé automatiquement à partir des achats, fabrications, pertes et inventaires.", 'box') %}
+  {% if can('matieres', 2) %}
+  <a class="btn ghost" href="{{ url_for('matieres.material_new') }}">{{ icon('plus', 18) }} Nouvelle matière</a>
+  <a class="btn primary" href="{{ url_for('matieres.purchase_new') }}">{{ icon('cart', 18) }} Nouvel achat</a>
+  {% endif %}
+{% endcall %}
+{% with active='stock' %}{% include "matieres/_tabs.html" %}{% endwith %}
+
+<div class="stats">
+  <div class="stat"><span class="stat-icon">{{ icon('box') }}</span><span class="stat-label">Valeur du stock</span><strong class="stat-value small">{{ summary.value|money }}</strong><small class="muted">{{ summary.count }} matière(s)</small></div>
+  <div class="stat {{ 'stat-warn' if summary.alerts }}"><span class="stat-icon">{{ icon('alert') }}</span><span class="stat-label">Alertes de stock</span><strong class="stat-value">{{ summary.alerts }}</strong><small class="muted">stock bas ou épuisé</small></div>
+  <div class="stat"><span class="stat-icon">{{ icon('cart') }}</span><span class="stat-label">Achats ce mois</span><strong class="stat-value small">{{ summary.month_purchases|money }}</strong></div>
+  <a class="stat" href="{{ url_for('matieres.suppliers') }}"><span class="stat-icon">{{ icon('wallet') }}</span><span class="stat-label">Dettes fournisseurs</span><strong class="stat-value small">{{ summary.due|money }}</strong></a>
+</div>
+
+{% if categories %}
+<div class="chips top-gap">
+  <a class="chip {% if not category %}active{% endif %}" href="{{ url_for('matieres.index') }}">Toutes</a>
+  {% for c in categories %}<a class="chip {% if category == c.id|string %}active{% endif %}" href="{{ url_for('matieres.index', categorie=c.id) }}">{{ c.name }}</a>{% endfor %}
+</div>
+{% endif %}
+
+<div class="card flush top-gap">
+  <table class="table responsive">
+    <thead><tr><th>Matière</th><th>Catégorie</th><th class="right">Stock</th><th class="right">Prix moyen</th><th class="right">Valeur</th><th>Autonomie</th><th>État</th></tr></thead>
+    <tbody>
+    {% for m in materials %}
+      <tr class="clickable" data-href="{{ url_for('matieres.material', material_id=m.id) }}">
+        <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=m.id) }}"><strong>{{ m.name }}</strong></a></td>
+        <td data-label="Catégorie">{{ m.category or '—' }}</td>
+        <td data-label="Stock" class="right"><strong>{{ m.stock|qty(m.unit) }}</strong></td>
+        <td data-label="Prix moyen" class="right">{{ m.avg_cost|money }} / {{ m.unit }}</td>
+        <td data-label="Valeur" class="right">{{ m.value|money }}</td>
+        <td data-label="Autonomie">{% if m.autonomy_days is not none %}≈ {{ m.autonomy_days|round(0)|int }} jour(s){% else %}<span class="muted">—</span>{% endif %}</td>
+        <td data-label="État">
+          {% if m.status == 'empty' %}<span class="badge badge-danger">Épuisé</span>
+          {% elif m.status == 'low' %}<span class="badge badge-warn">Stock bas</span>
+          {% else %}<span class="badge badge-ok">OK</span>{% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="center muted">
+        Aucune matière pour l'instant.
+        {% if can('matieres', 2) %}<br><a href="{{ url_for('matieres.material_new') }}">Ajoutez votre première matière première</a> (maïs, son, soja…).{% endif %}
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="hint top-gap">L'autonomie est calculée à partir de la consommation des 30 derniers jours pour la fabrication de provende.
+  {% if archived %} · <a href="{{ url_for('matieres.archived') }}">{{ archived }} matière(s) archivée(s)</a>{% endif %}</p>
+{% endblock %}

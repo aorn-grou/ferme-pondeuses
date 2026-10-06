@@ -110,6 +110,27 @@ def fmt_number(value, decimals=0):
     return text
 
 
+def fmt_qty(value, unit=""):
+    """Quantité : jusqu'à 2 décimales, sans zéros inutiles (12,5 kg ; 3 sacs)."""
+    try:
+        number = float(value or 0)
+    except (TypeError, ValueError):
+        return str(value)
+    text = fmt_number(number, 2)
+    if "," in text:
+        text = text.rstrip("0").rstrip(",")
+    if text in ("-0", ""):
+        text = "0"
+    return f"{text} {unit}".strip()
+
+
+def date_fr(text):
+    """« 2026-10-06 » devient « 06/10/2026 »."""
+    if not text or len(text) < 10:
+        return text or ""
+    return f"{text[8:10]}/{text[5:7]}/{text[0:4]}"
+
+
 def fmt_money(value):
     return f"{fmt_number(value)} {get_setting('currency')}"
 

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Achat n°{{ item.id }}{% endblock %}
+{% block content %}
+{% call page_head('Achat n°' ~ item.id, item.date|date_fr ~ ' · ' ~ (item.supplier or 'Marché / sans fournisseur'), 'cart') %}
+  <a class="btn ghost" href="{{ url_for('matieres.purchases') }}">← Achats</a>
+  <button class="btn ghost" type="button" onclick="window.print()">Imprimer</button>
+{% endcall %}
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Matière</th><th class="right">Quantité</th><th class="right">Prix unitaire</th><th class="right">Total</th><th class="right">Coût réel / unité</th></tr></thead>
+    <tbody>
+    {% for l in lines %}
+      <tr><td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=l.material_id) }}"><strong>{{ l.name }}</strong></a></td>
+      <td data-label="Quantité" class="right">{{ l.quantity|qty(l.unit) }}</td><td data-label="Prix unitaire" class="right">{{ l.unit_price|money }}</td>
+      <td data-label="Total" class="right">{{ l.total|money }}</td><td data-label="Coût réel / unité" class="right">{{ l.unit_cost|money }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="grid two top-gap">
+  <section class="card">
+    <h2>Montants</h2>
+    <dl class="kv">
+      <dt>Transport / déchargement</dt><dd>{{ item.transport_cost|money }}</dd>
+      <dt>Total de l'achat</dt><dd><strong>{{ item.total|money }}</strong></dd>
+      <dt>Payé à l'achat</dt><dd>{{ item.paid|money }}{% if item.account %} <small class="muted">({{ item.account }})</small>{% endif %}</dd>
+      <dt>Reste à crédit</dt><dd>{{ (item.total - item.paid)|money }}</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Informations</h2>
+    <dl class="kv">
+      <dt>N° facture / bon</dt><dd>{{ item.reference or '—' }}</dd>
+      <dt>Saisi par</dt><dd>{{ item.username or '—' }} · {{ item.created_at|localdt }}</dd>
+      <dt>Remarque</dt><dd>{{ item.notes or '—' }}</dd>
+    </dl>
+  </section>
+</div>
+{% if can('matieres', 3) %}
+<section class="card danger-zone top-gap">
+  <h2>Annuler cet achat</h2>
+  <p class="muted">Les quantités sont retirées du stock et l'argent revient dans la caisse. Impossible si les matières ont déjà été utilisées.</p>
+  <form method="post" action="{{ url_for('matieres.purchase_delete', purchase_id=item.id) }}" data-confirm="Annuler l'achat n°{{ item.id }} ?">{{ csrf() }}<button class="btn danger" type="submit">{{ icon('trash', 18) }} Annuler l'achat</button></form>
+</section>
+{% endif %}
+{% endblock %}

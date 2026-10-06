@@ -1,0 +1,7 @@
+{% from "_macros.html" import icon %}
+<nav class="tabs" aria-label="Sections">
+  <a class="tab {% if active == 'stock' %}active{% endif %}" href="{{ url_for('provenderie.index') }}">{{ icon('box', 18) }} Stock de provende</a>
+  <a class="tab {% if active == 'fabrications' %}active{% endif %}" href="{{ url_for('provenderie.productions') }}">{{ icon('factory', 18) }} Fabrications</a>
+  <a class="tab {% if active == 'formules' %}active{% endif %}" href="{{ url_for('provenderie.formulas') }}">{{ icon('list', 18) }} Formules</a>
+  <a class="tab {% if active == 'programmes' %}active{% endif %}" href="{{ url_for('provenderie.programs') }}">{{ icon('clock', 18) }} Programmes par semaine</a>
+</nav>

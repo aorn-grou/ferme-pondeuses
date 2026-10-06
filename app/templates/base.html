@@ -39,12 +39,7 @@
         <div class="nav-group">
           <p class="nav-title">{{ group }}</p>
           {% for item in items %}
-            {% set href = url_for('main.dashboard') if item.key == 'dashboard'
-                else url_for('users.index') if item.key == 'utilisateurs'
-                else url_for('settings.index') if item.key == 'parametres'
-                else url_for('backups.index') if item.key == 'sauvegardes'
-                else url_for('main.journal') if item.key == 'journal'
-                else url_for('main.module', key=item.key) %}
+            {% set href = module_url(item.key) %}
             <a class="nav-link {% if request.path == href or (href != '/' and request.path.startswith(href)) %}active{% endif %}" href="{{ href }}">
               {{ icon(item.icon) }}<span>{{ item.label }}</span>
               {% if not item.built %}<em class="soon">bientôt</em>{% endif %}
@@ -67,9 +62,19 @@
           <span class="theme-ico theme-light">{{ icon('sun') }}</span>
           <span class="theme-ico theme-dark">{{ icon('moon') }}</span>
         </button>
-        <button class="icon-btn" type="button" aria-label="Alertes" title="Les alertes arriveront avec les modules d'élevage et de stock" data-alerts>
-          {{ icon('bell') }}
-        </button>
+        <details class="alerts-menu">
+          <summary class="icon-btn" aria-label="Alertes ({{ alerts|length }})" title="Alertes">
+            {{ icon('bell') }}{% if alerts %}<span class="bell-count {{ 'critical' if alerts[0].level == 'critical' }}">{{ alerts|length }}</span>{% endif %}
+          </summary>
+          <div class="alerts-panel">
+            <div class="user-menu-head"><strong>Alertes</strong><small>{{ alerts|length }} à traiter</small></div>
+            {% for a in alerts[:12] %}
+              <a class="alert-item {{ a.level }}" href="{{ a.url }}">{{ icon('alert', 18) }}<span><strong>{{ a.title }}</strong><small>{{ a.text }}</small></span></a>
+            {% else %}
+              <p class="muted alert-empty">{{ icon('check', 18) }} Tout va bien, aucune alerte.</p>
+            {% endfor %}
+          </div>
+        </details>
         <details class="user-menu">
           <summary aria-label="Mon compte">
             <span class="avatar">{{ (current_user.full_name or current_user.username)[:1]|upper }}</span>

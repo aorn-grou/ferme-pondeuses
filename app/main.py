@@ -1,8 +1,8 @@
 """Tableau de bord, pages des modules à venir, thème et journal d'activité."""
-from flask import Blueprint, abort, g, jsonify, render_template, request
+from flask import Blueprint, abort, g, jsonify, redirect, render_template, request, url_for
 
 from .db import execute, query
-from .security import MODULE_INFO, MODULES, admin_required, can, is_admin, login_required, role_label
+from .security import MODULE_ENDPOINTS, MODULE_INFO, MODULES, admin_required, can, is_admin, login_required, role_label
 from .utils import local_now
 
 bp = Blueprint("main", __name__)
@@ -35,6 +35,8 @@ def module(key):
     info = MODULE_INFO.get(key)
     if info is None:
         abort(404)
+    if key in MODULE_ENDPOINTS:
+        return redirect(url_for(MODULE_ENDPOINTS[key]))
     if not can(key):
         abort(403)
     return render_template("main/coming_soon.html", info=info)

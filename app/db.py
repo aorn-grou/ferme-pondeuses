@@ -51,11 +51,190 @@ SCHEMA = {
         ("key", "TEXT PRIMARY KEY"),
         ("value", "TEXT DEFAULT ''"),
     ],
+    # ----- Listes libres (catégories) -----
+    "categories": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("kind", "TEXT NOT NULL DEFAULT 'matiere'"),
+        ("name", "TEXT NOT NULL"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+    ],
+    # ----- Comptes d'argent : caisses et propriétaires -----
+    "accounts": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("kind", "TEXT NOT NULL DEFAULT 'caisse'"),
+        ("sort", "INTEGER NOT NULL DEFAULT 0"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+    ],
+    "cash_movements": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("account_id", "INTEGER"),
+        ("amount", "REAL NOT NULL DEFAULT 0"),
+        ("kind", "TEXT NOT NULL"),
+        ("label", "TEXT DEFAULT ''"),
+        ("ref_type", "TEXT DEFAULT ''"),
+        ("ref_id", "INTEGER"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    # ----- Matières premières, fournisseurs, achats -----
+    "materials": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("category_id", "INTEGER"),
+        ("unit", "TEXT NOT NULL DEFAULT 'kg'"),
+        ("alert_threshold", "REAL NOT NULL DEFAULT 0"),
+        ("avg_cost", "REAL NOT NULL DEFAULT 0"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "suppliers": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("phone", "TEXT DEFAULT ''"),
+        ("address", "TEXT DEFAULT ''"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "purchases": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("supplier_id", "INTEGER"),
+        ("reference", "TEXT DEFAULT ''"),
+        ("transport_cost", "REAL NOT NULL DEFAULT 0"),
+        ("total", "REAL NOT NULL DEFAULT 0"),
+        ("paid", "REAL NOT NULL DEFAULT 0"),
+        ("account_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "purchase_lines": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("purchase_id", "INTEGER NOT NULL"),
+        ("material_id", "INTEGER NOT NULL"),
+        ("quantity", "REAL NOT NULL"),
+        ("unit_price", "REAL NOT NULL DEFAULT 0"),
+        ("total", "REAL NOT NULL DEFAULT 0"),
+    ],
+    "supplier_payments": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("supplier_id", "INTEGER NOT NULL"),
+        ("date", "TEXT NOT NULL"),
+        ("amount", "REAL NOT NULL"),
+        ("account_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "stock_moves": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("material_id", "INTEGER NOT NULL"),
+        ("quantity", "REAL NOT NULL"),
+        ("unit_cost", "REAL NOT NULL DEFAULT 0"),
+        ("kind", "TEXT NOT NULL"),
+        ("ref_type", "TEXT DEFAULT ''"),
+        ("ref_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    # ----- Provenderie -----
+    "formulas": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("phase", "TEXT DEFAULT ''"),
+        ("base_qty", "REAL NOT NULL DEFAULT 100"),
+        ("alert_threshold", "REAL NOT NULL DEFAULT 0"),
+        ("avg_cost", "REAL NOT NULL DEFAULT 0"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "formula_lines": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("formula_id", "INTEGER NOT NULL"),
+        ("material_id", "INTEGER NOT NULL"),
+        ("quantity", "REAL NOT NULL"),
+    ],
+    "feed_programs": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "feed_program_weeks": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("program_id", "INTEGER NOT NULL"),
+        ("week_from", "INTEGER NOT NULL"),
+        ("week_to", "INTEGER NOT NULL"),
+        ("formula_id", "INTEGER NOT NULL"),
+        ("grams_per_bird", "REAL NOT NULL DEFAULT 0"),
+    ],
+    "productions": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("formula_id", "INTEGER NOT NULL"),
+        ("quantity", "REAL NOT NULL"),
+        ("cost_total", "REAL NOT NULL DEFAULT 0"),
+        ("cost_per_kg", "REAL NOT NULL DEFAULT 0"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "production_lines": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("production_id", "INTEGER NOT NULL"),
+        ("material_id", "INTEGER NOT NULL"),
+        ("quantity", "REAL NOT NULL"),
+        ("unit_cost", "REAL NOT NULL DEFAULT 0"),
+    ],
+    "feed_moves": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("formula_id", "INTEGER NOT NULL"),
+        ("quantity", "REAL NOT NULL"),
+        ("unit_cost", "REAL NOT NULL DEFAULT 0"),
+        ("kind", "TEXT NOT NULL"),
+        ("ref_type", "TEXT DEFAULT ''"),
+        ("ref_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
 }
+
+# Données « de saisie » effacées par « Effacer les données de test ».
+# Les listes (matières, fournisseurs, formules, programmes, comptes,
+# catégories), les utilisateurs et les paramètres sont gardés.
+TRANSACTION_TABLES = [
+    "purchases", "purchase_lines", "supplier_payments", "stock_moves",
+    "productions", "production_lines", "feed_moves", "cash_movements",
+]
+
+DEFAULT_ACCOUNTS = [
+    ("Caisse de la ferme", "caisse", 1),
+    ("Mobile money", "caisse", 2),
+    ("Propriétaire 1", "proprietaire", 3),
+    ("Propriétaire 2", "proprietaire", 4),
+]
+DEFAULT_CATEGORIES = ["Céréales", "Protéines", "Minéraux", "Prémix & vitamines", "Médicaments", "Emballages", "Divers"]
 
 INDEXES = [
     "CREATE UNIQUE INDEX IF NOT EXISTS ux_users_username ON users(username)",
     "CREATE INDEX IF NOT EXISTS ix_log_created ON activity_log(created_at)",
+    "CREATE INDEX IF NOT EXISTS ix_stock_moves_mat ON stock_moves(material_id, date)",
+    "CREATE INDEX IF NOT EXISTS ix_stock_moves_ref ON stock_moves(ref_type, ref_id)",
+    "CREATE INDEX IF NOT EXISTS ix_feed_moves_formula ON feed_moves(formula_id, date)",
+    "CREATE INDEX IF NOT EXISTS ix_feed_moves_ref ON feed_moves(ref_type, ref_id)",
+    "CREATE INDEX IF NOT EXISTS ix_cash_ref ON cash_movements(ref_type, ref_id)",
+    "CREATE INDEX IF NOT EXISTS ix_purchase_lines ON purchase_lines(purchase_id)",
+    "CREATE INDEX IF NOT EXISTS ix_formula_lines ON formula_lines(formula_id)",
 ]
 
 DEFAULT_SUPER_ADMIN = {"username": "super-adm", "password": "Ampandrana"}
@@ -152,6 +331,36 @@ def ensure_super_admin(conn):
     conn.commit()
 
 
+def seed_defaults(conn):
+    """Listes de départ (une seule fois) : comptes d'argent et catégories.
+    Les propriétaires peuvent ensuite tout renommer, ajouter ou retirer."""
+    done = conn.execute("SELECT value FROM settings WHERE key = 'seeded_v1'").fetchone()
+    if done:
+        return
+    if not conn.execute("SELECT 1 FROM accounts LIMIT 1").fetchone():
+        conn.executemany("INSERT INTO accounts (name, kind, sort) VALUES (?, ?, ?)", DEFAULT_ACCOUNTS)
+    if not conn.execute("SELECT 1 FROM categories WHERE kind = 'matiere' LIMIT 1").fetchone():
+        conn.executemany("INSERT INTO categories (kind, name) VALUES ('matiere', ?)", [(c,) for c in DEFAULT_CATEGORIES])
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('seeded_v1', '1')")
+    conn.commit()
+
+
+class transaction:
+    """Plusieurs écritures d'un coup : tout est enregistré, ou rien du tout."""
+
+    def __enter__(self):
+        self.conn = get_db()
+        self.conn.execute("BEGIN IMMEDIATE")
+        return self.conn
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is None:
+            self.conn.commit()
+        else:
+            self.conn.rollback()
+        return False
+
+
 def init_app(app):
     os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
     with app.app_context():
@@ -159,6 +368,7 @@ def init_app(app):
         try:
             migrate(conn)
             ensure_super_admin(conn)
+            seed_defaults(conn)
         finally:
             conn.close()
     app.teardown_appcontext(close_db)

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ 'Modifier ' ~ supplier.name if supplier else 'Nouveau fournisseur' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier « ' ~ supplier.name ~ ' »') if supplier else 'Nouveau fournisseur', '', 'users') %}
+  <a class="btn ghost" href="{{ url_for('matieres.supplier', supplier_id=supplier.id) if supplier else url_for('matieres.suppliers') }}">← Retour</a>
+{% endcall %}
+<form method="post" class="card stack narrow">
+  {{ csrf() }}<input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+  <div class="field"><label for="name">Nom *</label><input class="input" id="name" name="name" value="{{ values.name }}" required maxlength="80"></div>
+  <div class="field"><label for="phone">Téléphone</label><input class="input" type="tel" id="phone" name="phone" value="{{ values.phone }}"></div>
+  <div class="field"><label for="address">Adresse</label><input class="input" id="address" name="address" value="{{ values.address }}"></div>
+  <div class="field"><label for="notes">Remarques</label><textarea class="input" id="notes" name="notes" rows="2">{{ values.notes }}</textarea></div>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+{% endblock %}

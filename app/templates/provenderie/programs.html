@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Programmes d'alimentation{% endblock %}
+{% block content %}
+{% call page_head("Programmes d'alimentation", "Quelle formule donner à chaque semaine d'âge. Chaque lot suivra un programme.", 'clock') %}
+  {% if can('provenderie', 2) %}<a class="btn primary" href="{{ url_for('provenderie.program_new') }}">{{ icon('plus', 18) }} Nouveau programme</a>{% endif %}
+{% endcall %}
+{% with active='programmes' %}{% include "provenderie/_tabs.html" %}{% endwith %}
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Programme</th><th class="right">Périodes</th><th class="right">Jusqu'à la semaine</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for p in rows %}
+      <tr><td data-label="Programme"><a href="{{ url_for('provenderie.program', program_id=p.id) }}"><strong>{{ p.name }}</strong></a>{% if not p.active %} <span class="badge badge-muted">archivé</span>{% endif %}</td>
+      <td data-label="Périodes" class="right">{{ p.nb }}</td><td data-label="Jusqu'à la semaine" class="right">{{ p.last_week or '—' }}</td>
+      <td data-label="Actions" class="right"><div class="row-actions"><a class="btn ghost sm" href="{{ url_for('provenderie.program', program_id=p.id) }}">Ouvrir</a>
+        {% if can('provenderie', 2) %}<a class="btn ghost sm" href="{{ url_for('provenderie.program_new', copie=p.id) }}">Copier</a>{% endif %}</div></td></tr>
+    {% else %}<tr><td colspan="4" class="center muted">Aucun programme. {% if can('provenderie', 2) %}<a href="{{ url_for('provenderie.program_new') }}">Créez le premier</a>.{% endif %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

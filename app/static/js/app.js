@@ -118,6 +118,215 @@
     roleSelect.form.addEventListener("submit", () => selects.forEach((s) => { s.disabled = false; }));
   }
 
+  /* ---------- Nombres ---------- */
+  const num = (v) => {
+    const n = parseFloat(String(v || "").replace(/[\s  ]/g, "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  };
+  const money = (n) => Math.round(n).toLocaleString("fr-FR").replace(/ | /g, " ") + " Ar";
+  const qty = (n) => (Math.round(n * 100) / 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 }).replace(/ | /g, " ");
+
+  /* ---------- Lignes répétées (achats, formules, programmes) ---------- */
+  function blankRow(row) {
+    const clone = row.cloneNode(true);
+    $$("input", clone).forEach((i) => { i.value = ""; });
+    $$("select", clone).forEach((s) => { s.selectedIndex = 0; });
+    $$("[data-line-total], [data-share]", clone).forEach((el) => { el.textContent = "—"; });
+    $$("[data-unit-label]", clone).forEach((el) => { el.textContent = "—"; });
+    return clone;
+  }
+  function addLine(container, values) {
+    const rows = $$("[data-line]", container);
+    const row = blankRow(rows[rows.length - 1]);
+    container.appendChild(row);
+    if (values) Object.entries(values).forEach(([name, value]) => { const el = $(`[name="${name}"]`, row); if (el) el.value = value; });
+    bindRow(row, container);
+    container.dispatchEvent(new Event("lines-changed"));
+    return row;
+  }
+  function bindRow(row, container) {
+    const remove = $("[data-remove-line]", row);
+    if (remove) remove.addEventListener("click", () => {
+      if ($$("[data-line]", container).length > 1) row.remove();
+      else $$("input, select", row).forEach((el) => { el.value = ""; });
+      container.dispatchEvent(new Event("lines-changed"));
+    });
+    const unitSelect = $("[data-unit-select]", row);
+    if (unitSelect) {
+      const sync = () => {
+        const opt = unitSelect.selectedOptions[0];
+        const unit = opt && opt.dataset.unit ? opt.dataset.unit : "—";
+        $$("[data-unit-label]", row).forEach((el) => { el.textContent = unit; });
+        const price = $("[data-price]", row);
+        if (price && opt && opt.dataset.avg && num(opt.dataset.avg) > 0) price.placeholder = "prix moyen : " + qty(num(opt.dataset.avg));
+      };
+      unitSelect.addEventListener("change", sync);
+      sync();
+    }
+    $$("input, select", row).forEach((el) => el.addEventListener("input", () => container.dispatchEvent(new Event("lines-changed"))));
+    $$("select", row).forEach((el) => el.addEventListener("change", () => container.dispatchEvent(new Event("lines-changed"))));
+  }
+  $$("[data-lines]").forEach((container) => {
+    $$("[data-line]", container).forEach((row) => bindRow(row, container));
+    const form = container.closest("form");
+    $$("[data-add-line]", form).forEach((btn) => btn.addEventListener("click", () => {
+      let values = null;
+      if (btn.hasAttribute("data-next-week")) {
+        const ends = $$("[data-week-to]", container).map((i, idx) => num(i.value) || num($$("[data-week-from]", container)[idx].value));
+        const next = Math.max(0, ...ends) + 1;
+        values = { week_from: String(next), week_to: String(next) };
+      }
+      const row = addLine(container, values);
+      const first = $("select, input", row);
+      if (first) first.focus();
+    }));
+  });
+
+  /* Programme : une ligne par semaine */
+  $$("[data-fill-weeks]").forEach((btn) => btn.addEventListener("click", () => {
+    const form = btn.closest("form");
+    const container = $("[data-lines]", form);
+    const n = Math.min(120, Math.floor(num($("#fill-weeks", form).value)));
+    if (!n || n < 1) return;
+    if (!window.confirm(`Remplacer les lignes par ${n} ligne(s), une par semaine ?`)) return;
+    const rows = $$("[data-line]", container);
+    rows.slice(1).forEach((r) => r.remove());
+    const first = rows[0];
+    $$("input", first).forEach((i) => { i.value = ""; });
+    $("[name=week_from]", first).value = "1";
+    $("[name=week_to]", first).value = "1";
+    for (let w = 2; w <= n; w++) addLine(container, { week_from: String(w), week_to: String(w) });
+  }));
+
+  /* ---------- Achat : totaux et paiement ---------- */
+  $$("form[data-purchase-form]").forEach((form) => {
+    const container = $("[data-lines]", form);
+    const extra = $("[data-extra]", form);
+    const paidField = $("[data-paid-field]", form);
+    const accountField = $("[data-account-field]", form);
+    const update = () => {
+      let goods = 0;
+      $$("[data-line]", container).forEach((row) => {
+        const total = num($("[data-qty]", row).value) * num($("[data-price]", row).value);
+        goods += total;
+        $("[data-line-total]", row).textContent = money(total);
+      });
+      const transport = num(extra.value);
+      $$("[data-goods-total]", form).forEach((el) => { el.textContent = money(goods); });
+      $$("[data-extra-total]", form).forEach((el) => { el.textContent = money(transport); });
+      $$("[data-grand-total]", form).forEach((el) => { el.textContent = money(goods + transport); });
+      const mode = ($("[data-pay-mode]:checked", form) || {}).value || "tout";
+      if (paidField) paidField.hidden = mode !== "partiel";
+      if (accountField) accountField.hidden = mode === "credit";
+    };
+    container.addEventListener("lines-changed", update);
+    extra.addEventListener("input", update);
+    $$("[data-pay-mode]", form).forEach((r) => r.addEventListener("change", update));
+    update();
+  });
+
+  /* ---------- Formule : total, parts et coût par kg ---------- */
+  $$("form[data-formula-form]").forEach((form) => {
+    const container = $("[data-lines]", form);
+    const base = $("[data-base-qty]", form);
+    let baseTouched = base.value !== "";
+    let lastAuto = null;
+    base.addEventListener("input", () => { baseTouched = base.value !== ""; });
+    const update = () => {
+      let sum = 0, cost = 0;
+      const rows = $$("[data-line]", container);
+      rows.forEach((row) => {
+        const q = num($("[data-qty]", row).value);
+        const opt = $("[data-unit-select]", row).selectedOptions[0];
+        sum += q;
+        cost += q * num(opt && opt.dataset.cost);
+      });
+      rows.forEach((row) => {
+        const q = num($("[data-qty]", row).value);
+        $("[data-share]", row).textContent = sum > 0 && q > 0 ? qty((q / sum) * 100) + " %" : "—";
+      });
+      if (!baseTouched || base.value === lastAuto) { base.value = sum > 0 ? qty(sum) : ""; lastAuto = base.value; baseTouched = false; }
+      const b = num(base.value) || sum;
+      $("[data-sum]", form).textContent = qty(sum);
+      $("[data-cost-kg]", form).textContent = b > 0 ? money(cost / b) : "0 Ar";
+    };
+    container.addEventListener("lines-changed", update);
+    base.addEventListener("input", update);
+    update();
+  });
+
+  /* ---------- Fabrication : aperçu des matières nécessaires ---------- */
+  $$("form[data-production-form]").forEach((form) => {
+    const data = JSON.parse(($("#formula-data", form) || {}).textContent || "{}");
+    const select = $("[data-formula-select]", form);
+    const qtyInput = $("[data-prod-qty]", form);
+    const panel = $("[data-needs]", form);
+    const body = $("[data-needs-body]", form);
+    const update = () => {
+      const f = data[select.value];
+      const q = num(qtyInput.value);
+      if (!f || q <= 0) { panel.hidden = true; return; }
+      panel.hidden = false;
+      body.innerHTML = "";
+      let total = 0, missing = 0;
+      f.lines.forEach((l) => {
+        const need = (l.qty * q) / (f.base || 100);
+        const short = need - l.stock > 1e-9;
+        if (short) missing++;
+        total += need * l.cost;
+        const tr = document.createElement("tr");
+        if (short) tr.className = "row-short";
+        const cells = [["Matière", l.name], ["Il faut", qty(need) + " " + l.unit],
+          ["En stock", qty(l.stock) + " " + l.unit + (short ? " — manque " + qty(need - l.stock) + " " + l.unit : "")], ["Coût", money(need * l.cost)]];
+        cells.forEach(([label, text], i) => {
+          const td = document.createElement("td");
+          td.dataset.label = label;
+          if (i > 0) td.className = "right";
+          td.textContent = text;
+          if (i === 2 && short) td.classList.add("neg");
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+      $("[data-needs-total]", form).textContent = money(total);
+      $("[data-needs-kg]", form).textContent = money(total / q);
+      const status = $("[data-needs-status]", form);
+      status.innerHTML = missing ? `<span class="badge badge-danger">${missing} matière(s) insuffisante(s)</span>` : '<span class="badge badge-ok">Stock suffisant</span>';
+    };
+    select.addEventListener("change", update);
+    qtyInput.addEventListener("input", update);
+    update();
+  });
+
+  /* ---------- Inventaire : écart en direct ---------- */
+  $$("[data-inventory-row]").forEach((row) => {
+    const input = $("[data-count]", row);
+    const out = $("[data-diff]", row);
+    const stock = num(row.dataset.stock);
+    const update = () => {
+      if (input.value.trim() === "") { out.textContent = "—"; out.className = "right"; return; }
+      const d = num(input.value) - stock;
+      out.textContent = (d > 0 ? "+" : "") + qty(d);
+      out.className = "right " + (Math.abs(d) < 1e-9 ? "" : d > 0 ? "pos" : "neg");
+    };
+    input.addEventListener("input", update);
+    update();
+  });
+
+  /* ---------- Champ visible seulement pour une entrée ---------- */
+  $$("[data-entry-only]").forEach((field) => {
+    const form = field.closest("form");
+    const sync = () => { const k = $("input[name=kind]:checked", form); field.hidden = !k || k.value !== "stock_initial"; };
+    $$("input[name=kind]", form).forEach((r) => r.addEventListener("change", sync));
+    sync();
+  });
+
+  /* ---------- Lignes de tableau cliquables ---------- */
+  $$("tr[data-href]").forEach((tr) => tr.addEventListener("click", (e) => {
+    if (e.target.closest("a, button, input, select, form")) return;
+    window.location.href = tr.dataset.href;
+  }));
+
   /* ---------- Brouillon automatique toutes les 15 secondes ----------
      Les formulaires marqués data-autosave gardent leur saisie sur l'appareil
      en cas de coupure (réseau, batterie, page fermée par erreur). */
@@ -126,38 +335,54 @@
     const fields = () => $$("input, select, textarea", form).filter((el) =>
       el.name && !["password", "file", "hidden"].includes(el.type) && el.name !== "_csrf" && !el.disabled);
     const snapshot = () => {
-      const data = {};
-      fields().forEach((el) => { data[el.name] = el.type === "checkbox" ? el.checked : el.value; });
-      return JSON.stringify(data);
+      const lines = $$("[data-lines]", form).map((c) => $$("[data-line]", c).length);
+      const values = fields().map((el) => [el.name, (el.type === "checkbox" || el.type === "radio") ? el.checked : el.value]);
+      return JSON.stringify({ lines, values });
     };
     const initial = snapshot();
     const saved = store.get(key);
+    let restored = false;
     if (saved && saved !== initial) {
-      const bar = document.createElement("div");
-      bar.className = "alert alert-warning static";
-      bar.innerHTML = '<span>Un brouillon non enregistré a été retrouvé pour ce formulaire.</span>';
-      const restore = document.createElement("button");
-      restore.type = "button"; restore.className = "btn sm"; restore.textContent = "Reprendre le brouillon";
-      const drop = document.createElement("button");
-      drop.type = "button"; drop.className = "btn ghost sm"; drop.textContent = "Ignorer";
-      bar.append(restore, drop);
-      form.prepend(bar);
-      restore.addEventListener("click", () => {
-        const data = JSON.parse(saved);
-        fields().forEach((el) => {
-          if (!(el.name in data)) return;
-          if (el.type === "checkbox") el.checked = !!data[el.name]; else el.value = data[el.name];
-          el.dispatchEvent(new Event("change"));
+      let data = null;
+      try { data = JSON.parse(saved); } catch (e) { store.remove(key); }
+      if (data && Array.isArray(data.values)) {
+        const bar = document.createElement("div");
+        bar.className = "alert alert-warning static";
+        bar.innerHTML = '<span>Un brouillon non enregistré a été retrouvé pour ce formulaire.</span>';
+        const restore = document.createElement("button");
+        restore.type = "button"; restore.className = "btn sm"; restore.textContent = "Reprendre le brouillon";
+        const drop = document.createElement("button");
+        drop.type = "button"; drop.className = "btn ghost sm"; drop.textContent = "Ignorer";
+        bar.append(restore, drop);
+        form.prepend(bar);
+        restore.addEventListener("click", () => {
+          $$("[data-lines]", form).forEach((c, i) => {
+            const want = (data.lines || [])[i] || 1;
+            while ($$("[data-line]", c).length < want) addLine(c);
+          });
+          const els = fields();
+          data.values.forEach(([name, value], i) => {
+            const el = els[i];
+            if (!el || el.name !== name) return;
+            if (el.type === "checkbox" || el.type === "radio") el.checked = !!value; else el.value = value;
+          });
+          els.forEach((el) => { el.dispatchEvent(new Event("change")); el.dispatchEvent(new Event("input")); });
+          bar.remove();
+          restored = true;
         });
-        bar.remove();
-      });
-      drop.addEventListener("click", () => { store.remove(key); bar.remove(); });
+        drop.addEventListener("click", () => { store.remove(key); bar.remove(); });
+      }
     }
     let last = initial;
-    setInterval(() => {
+    const save = () => {
       const now = snapshot();
       if (now !== last && now !== initial) { store.set(key, now); last = now; }
-    }, 15000);
-    form.addEventListener("submit", () => store.remove(key));
+    };
+    setInterval(save, 15000);
+    window.addEventListener("pagehide", save);
+    let submitting = false;
+    form.addEventListener("submit", () => { submitting = true; store.remove(key); });
+    window.addEventListener("pagehide", () => { if (submitting) store.remove(key); });
+    void restored;
   });
 })();
