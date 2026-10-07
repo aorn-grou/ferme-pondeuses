@@ -75,4 +75,5 @@
 <form method="post" action="{{ url_for('matieres.supplier_archive', supplier_id=item.id) }}" class="top-gap">{{ csrf() }}
   <button class="btn ghost" type="submit">{{ icon('lock' if item.active else 'check', 18) }} {{ 'Archiver ce fournisseur' if item.active else 'Réactiver ce fournisseur' }}</button></form>
 {% endif %}
+{% with ref_type='supplier', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
 {% endblock %}

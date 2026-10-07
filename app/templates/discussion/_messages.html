@@ -1,0 +1,18 @@
+{% from "_macros.html" import icon, csrf with context %}
+{% set ns = namespace(day='') %}
+{% for m in messages %}
+  {% set day = m.created_at|localdt('%d/%m/%Y') %}
+  {% if day != ns.day %}<div class="msg-day" data-day="{{ day }}"><span>{{ day }}</span></div>{% set ns.day = day %}{% endif %}
+  {% set mine = m.user_id == current_user.id %}
+  <article class="msg {{ 'mine' if mine }} {{ 'unread' if (not mine and m.id > previous_seen) }}" data-msg-id="{{ m.id }}">
+    {% if not mine %}<span class="avatar sm">{{ (m.full_name or m.username or '?')[:1]|upper }}</span>{% endif %}
+    <div class="msg-bubble">
+      <div class="msg-meta"><strong>{{ 'Moi' if mine else (m.full_name or m.username or 'Utilisateur supprimé') }}</strong> · {{ m.created_at|localdt('%H:%M') }}</div>
+      {% if m.ref %}<a class="msg-ref" href="{{ m.ref.url or '#' }}">{{ icon('chat', 14) }} Commentaire sur : {{ m.ref.label }}</a>{% endif %}
+      <p class="msg-body">{{ m.body }}</p>
+      {% if mine or is_admin() %}
+      <form method="post" action="{{ url_for('discussion.delete', message_id=m.id) }}" class="msg-delete" data-confirm="Supprimer ce message ?">{{ csrf() }}<input type="hidden" name="next" value="{{ url_for('discussion.index') }}"><button type="submit" aria-label="Supprimer le message">{{ icon('trash', 14) }}</button></form>
+      {% endif %}
+    </div>
+  </article>
+{% endfor %}

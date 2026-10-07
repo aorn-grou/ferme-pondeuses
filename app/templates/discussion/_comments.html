@@ -1,0 +1,25 @@
+{% from "_macros.html" import icon, csrf with context %}
+{% set items = comments_for(ref_type, ref_id) %}
+<section class="card top-gap comments" id="commentaires">
+  <h2>{{ icon('chat', 20) }} Commentaires {% if items %}<span class="badge">{{ items|length }}</span>{% endif %}</h2>
+  {% for m in items %}
+    {% set mine = m.user_id == current_user.id %}
+    <div class="comment">
+      <span class="avatar sm">{{ (m.full_name or m.username or '?')[:1]|upper }}</span>
+      <div class="grow">
+        <div class="msg-meta"><strong>{{ 'Moi' if mine else (m.full_name or m.username or 'Utilisateur supprimé') }}</strong> · {{ m.created_at|localdt }}</div>
+        <p class="msg-body">{{ m.body }}</p>
+      </div>
+      {% if mine or is_admin() %}
+      <form method="post" action="{{ url_for('discussion.delete', message_id=m.id) }}" class="msg-delete static" data-confirm="Supprimer ce commentaire ?">{{ csrf() }}<input type="hidden" name="next" value="{{ request.path }}"><button type="submit" aria-label="Supprimer">{{ icon('trash', 14) }}</button></form>
+      {% endif %}
+    </div>
+  {% else %}
+    <p class="muted">Aucun commentaire. Une question ou une remarque sur cette opération ? Écrivez-la ici, vos associés la verront.</p>
+  {% endfor %}
+  <form method="post" action="{{ url_for('discussion.comment') }}" class="chat-form top-gap-sm">
+    {{ csrf() }}<input type="hidden" name="ref_type" value="{{ ref_type }}"><input type="hidden" name="ref_id" value="{{ ref_id }}"><input type="hidden" name="next" value="{{ request.path }}">
+    <textarea class="input" name="body" rows="2" maxlength="2000" placeholder="Écrire un commentaire…" required></textarea>
+    <button class="btn primary" type="submit">{{ icon('send', 18) }} <span>Envoyer</span></button>
+  </form>
+</section>

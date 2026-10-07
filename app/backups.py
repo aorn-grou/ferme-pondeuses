@@ -269,14 +269,19 @@ def clear_test_data():
             conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (table,))
         conn.execute("UPDATE materials SET avg_cost = 0")
         conn.execute("UPDATE formulas SET avg_cost = 0")
+        conn.execute("DELETE FROM messages WHERE ref_type IN ('purchase', 'production')")
+        if request.form.get("clear_chat"):
+            conn.execute("DELETE FROM messages")
         if request.form.get("clear_journal"):
             conn.execute("DELETE FROM activity_log")
         if request.form.get("clear_lists"):
+            conn.execute("DELETE FROM messages WHERE ref_type IN ('material', 'supplier', 'formula')")
             for table in ("formula_lines", "formulas", "feed_program_weeks", "feed_programs", "materials", "suppliers"):
                 conn.execute(f'DELETE FROM "{table}"')
                 conn.execute("DELETE FROM sqlite_sequence WHERE name = ?", (table,))
     detail = "saisies" + (" + listes" if request.form.get("clear_lists") else "") + \
-        (" + journal" if request.form.get("clear_journal") else "")
+        (" + journal" if request.form.get("clear_journal") else "") + \
+        (" + discussion" if request.form.get("clear_chat") else "")
     log_activity("Données de test effacées", f"{detail} (copie de sécurité : {safety})")
     flash(f"Données de test effacées ({detail}). Une sauvegarde a été faite juste avant ({safety}).", "success")
     return redirect(url_for("backups.index"))

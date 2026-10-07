@@ -37,6 +37,17 @@ SCHEMA = {
         ("reset_code_expires", "TEXT DEFAULT ''"),
         ("created_at", "TEXT DEFAULT ''"),
         ("last_login", "TEXT DEFAULT ''"),
+        ("last_seen_message", "INTEGER NOT NULL DEFAULT 0"),
+    ],
+    # ----- Discussion entre associés et commentaires sur les saisies -----
+    "messages": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("user_id", "INTEGER"),
+        ("body", "TEXT NOT NULL"),
+        ("ref_type", "TEXT DEFAULT ''"),
+        ("ref_id", "INTEGER"),
+        ("deleted", "INTEGER NOT NULL DEFAULT 0"),
+        ("created_at", "TEXT NOT NULL"),
     ],
     "activity_log": [
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
@@ -235,6 +246,7 @@ INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_cash_ref ON cash_movements(ref_type, ref_id)",
     "CREATE INDEX IF NOT EXISTS ix_purchase_lines ON purchase_lines(purchase_id)",
     "CREATE INDEX IF NOT EXISTS ix_formula_lines ON formula_lines(formula_id)",
+    "CREATE INDEX IF NOT EXISTS ix_messages_ref ON messages(ref_type, ref_id)",
 ]
 
 DEFAULT_SUPER_ADMIN = {"username": "super-adm", "password": "Ampandrana"}

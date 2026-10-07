@@ -38,4 +38,5 @@
   <form method="post" action="{{ url_for('provenderie.production_delete', production_id=item.id) }}" data-confirm="Annuler la fabrication n°{{ item.id }} ?">{{ csrf() }}<button class="btn danger" type="submit">{{ icon('trash', 18) }} Annuler la fabrication</button></form>
 </section>
 {% endif %}
+{% with ref_type='production', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
 {% endblock %}

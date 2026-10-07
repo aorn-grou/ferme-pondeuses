@@ -13,6 +13,7 @@ LEVEL_LABELS = {NONE: "Aucun accès", VIEW: "Voir", EDIT: "Voir et saisir", MANA
 # `built` passe à True à mesure que les modules sont développés.
 MODULES = [
     ("dashboard", "Tableau de bord", "home", "Pilotage", "Résumé, courbes et alertes de votre activité.", True),
+    ("discussion", "Discussion", "chat", "Pilotage", "Messages entre associés et commentaires sur les saisies.", True),
     ("matieres", "Achats & matières premières", "box", "Production", "Fournisseurs, achats de matières, stock des matières.", True),
     ("provenderie", "Provenderie", "factory", "Production", "Formules de provende, programmes par semaine, fabrication, stock de provende.", True),
     ("lots", "Lots de poules", "layers", "Élevage", "Entrée des poussins, âge, effectif, ponte, poids, réformes.", False),
@@ -42,6 +43,7 @@ MODULE_ENDPOINTS = {
     "parametres": "settings.index",
     "sauvegardes": "backups.index",
     "journal": "main.journal",
+    "discussion": "discussion.index",
 }
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
 MENU_GROUPS = ["Pilotage", "Production", "Élevage", "Ventes", "Finances", "Administration"]

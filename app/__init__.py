@@ -14,7 +14,7 @@ from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 def _secret_key(instance_dir):
@@ -52,7 +52,9 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
-    from . import auth, backups, main, matieres, provenderie, settings, users
+    from . import auth, backups, discussion, main, matieres, provenderie, settings, users
+
+    app.register_blueprint(discussion.bp)
 
     app.register_blueprint(matieres.bp)
     app.register_blueprint(provenderie.bp)
@@ -83,7 +85,9 @@ def create_app(test_config=None):
                 session.clear()
                 flash("Vous avez été déconnecté après une période d'inactivité.", "info")
                 return redirect(url_for("auth.login"))
-            session["last_seen"] = now
+            # Les vérifications automatiques (nouveaux messages) ne comptent pas comme une activité
+            if request.endpoint not in ("discussion.counter", "discussion.newer"):
+                session["last_seen"] = now
             g.user = user
             # Première connexion : mot de passe, e-mail et question secrète obligatoires
             allowed = {"auth.first_setup", "auth.logout", "main.set_theme", "settings.logo"}
@@ -118,9 +122,12 @@ def create_app(test_config=None):
             return url_for(endpoint) if endpoint else url_for("main.module", key=key)
 
         from .alerts import current_alerts
+        from .discussion import comments_for, unread_count
 
         return {
             "module_url": module_url,
+            "unread_messages": unread_count() if user and not (user["must_change_password"] or not user["setup_done"]) else 0,
+            "comments_for": comments_for,
             "alerts": current_alerts() if user else [],
             "conf": conf,
             "app_version": VERSION,

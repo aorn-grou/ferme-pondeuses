@@ -47,4 +47,5 @@
   </div>
 </section>
 {% endif %}
+{% with ref_type='formula', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
 {% endblock %}

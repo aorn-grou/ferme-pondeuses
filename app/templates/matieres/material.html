@@ -90,4 +90,5 @@
   </div>
 </section>
 {% endif %}
+{% with ref_type='material', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
 {% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Discussion{% endblock %}
+{% block content %}
+{{ page_head('Discussion', "Messages entre associés et commentaires laissés sur les achats, fabrications, matières…", 'chat') }}
+<section class="card chat-card" data-chat data-newer-url="{{ url_for('discussion.newer') }}">
+  {% if has_more %}<div class="center"><a class="btn ghost sm" data-older href="{{ url_for('discussion.older', avant=messages[0].id) }}">Voir les messages plus anciens</a></div>{% endif %}
+  <div class="chat-list" data-chat-list>
+    {% if messages %}
+      {% include "discussion/_messages.html" %}
+    {% else %}
+      <p class="muted center chat-empty" data-chat-empty>Aucun message pour l'instant. Écrivez le premier !</p>
+    {% endif %}
+  </div>
+  <div id="bas"></div>
+  {% if can_write %}
+  <form method="post" action="{{ url_for('discussion.send') }}" class="chat-form" data-chat-form>
+    {{ csrf() }}
+    <textarea class="input" name="body" rows="2" maxlength="{{ max_length }}" placeholder="Écrire un message à vos associés…" required data-chat-input></textarea>
+    <button class="btn primary" type="submit" aria-label="Envoyer">{{ icon('send', 18) }} <span>Envoyer</span></button>
+  </form>
+  <p class="hint">Entrée pour envoyer, Maj + Entrée pour aller à la ligne. Les nouveaux messages s'affichent tout seuls.</p>
+  {% endif %}
+</section>
+{% endblock %}

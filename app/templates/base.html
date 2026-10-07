@@ -43,6 +43,7 @@
             <a class="nav-link {% if request.path == href or (href != '/' and request.path.startswith(href)) %}active{% endif %}" href="{{ href }}">
               {{ icon(item.icon) }}<span>{{ item.label }}</span>
               {% if not item.built %}<em class="soon">bientôt</em>{% endif %}
+              {% if item.key == 'discussion' %}<em class="nav-badge" data-unread-badge {% if not unread_messages %}hidden{% endif %}>{{ unread_messages }}</em>{% endif %}
             </a>
           {% endfor %}
         </div>
@@ -62,6 +63,7 @@
           <span class="theme-ico theme-light">{{ icon('sun') }}</span>
           <span class="theme-ico theme-dark">{{ icon('moon') }}</span>
         </button>
+        <a class="icon-btn chat-btn" href="{{ url_for('discussion.index') }}" aria-label="Discussion" title="Discussion entre associés">{{ icon('chat') }}<span class="bell-count chat" data-unread-badge {% if not unread_messages %}hidden{% endif %}>{{ unread_messages }}</span></a>
         <details class="alerts-menu">
           <summary class="icon-btn" aria-label="Alertes ({{ alerts|length }})" title="Alertes">
             {{ icon('bell') }}{% if alerts %}<span class="bell-count {{ 'critical' if alerts[0].level == 'critical' }}">{{ alerts|length }}</span>{% endif %}
@@ -123,7 +125,7 @@
   </button>
 </div>
 {% endif %}
-<script>window.CSRF_TOKEN = "{{ csrf_token() }}"; window.THEME_URL = {{ (url_for('main.set_theme') if current_user else '')|tojson }};</script>
+<script>window.CSRF_TOKEN = "{{ csrf_token() }}"; window.THEME_URL = {{ (url_for('main.set_theme') if current_user else '')|tojson }}; window.UNREAD_URL = {{ (url_for('discussion.counter') if shell else '')|tojson }};</script>
 <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
 {% block scripts %}{% endblock %}
 </body>

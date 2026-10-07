@@ -385,4 +385,73 @@
     window.addEventListener("pagehide", () => { if (submitting) store.remove(key); });
     void restored;
   });
+
+  /* ---------- Discussion ---------- */
+  const setUnread = (n) => {
+    $$("[data-unread-badge]").forEach((b) => { b.textContent = n; b.hidden = !n; });
+  };
+  const chat = $("[data-chat]");
+  if (chat) {
+    const list = $("[data-chat-list]", chat);
+    const scrollDown = () => { list.scrollTop = list.scrollHeight; };
+    scrollDown();
+    const lastId = () => { const items = $$("[data-msg-id]", list); return items.length ? items[items.length - 1].dataset.msgId : 0; };
+    const bindDeletes = (root) => $$("form[data-confirm]", root).forEach((f) => f.addEventListener("submit", (e) => { if (!window.confirm(f.dataset.confirm)) e.preventDefault(); }));
+    const append = (html) => {
+      if (!html) return;
+      const empty = $("[data-chat-empty]", list);
+      if (empty) empty.remove();
+      const box = document.createElement("div");
+      box.innerHTML = html;
+      const lastDay = $$(".msg-day", list).map((d) => d.dataset.day).pop();
+      $$(".msg-day", box).forEach((d) => { if (d.dataset.day === lastDay) d.remove(); });
+      const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+      bindDeletes(box);
+      while (box.firstChild) list.appendChild(box.firstChild);
+      if (nearBottom) scrollDown();
+    };
+    const poll = () => fetch(`${chat.dataset.newerUrl}?apres=${lastId()}&vu=1`, { headers: { "X-Requested-With": "fetch" } })
+      .then((r) => r.ok ? r.json() : null).then((d) => { if (d) { append(d.html); setUnread(d.unread); } }).catch(() => {});
+    setInterval(poll, 8000);
+    const form = $("[data-chat-form]", chat);
+    if (form) {
+      const input = $("[data-chat-input]", form);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
+      });
+      form.addEventListener("submit", (e) => {
+        if (!navigator.onLine) return;
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        const data = new FormData(form);
+        input.value = "";
+        fetch(form.action, { method: "POST", body: data, headers: { "X-Requested-With": "fetch" } })
+          .then((r) => { if (!r.ok) throw new Error(); return poll(); })
+          .then(scrollDown)
+          .catch(() => { input.value = text; window.alert("Message non envoyé. Vérifiez la connexion et réessayez."); });
+      });
+    }
+    $$("[data-older]", chat).forEach((a) => a.addEventListener("click", (e) => {
+      e.preventDefault();
+      fetch(a.href).then((r) => r.text()).then((html) => {
+        const box = document.createElement("div");
+        box.innerHTML = html;
+        bindDeletes(box);
+        const before = list.scrollHeight;
+        const firstDay = $(".msg-day", list);
+        const days = $$(".msg-day", box);
+        if (firstDay && days.length && days[days.length - 1].dataset.day === firstDay.dataset.day) firstDay.remove();
+        list.prepend(...box.childNodes);
+        list.scrollTop = list.scrollHeight - before;
+        const first = $("[data-msg-id]", list);
+        if (!html.trim() || !first) a.remove(); else a.href = a.href.replace(/avant=\d+/, "avant=" + first.dataset.msgId);
+      });
+    }));
+  } else if (window.UNREAD_URL) {
+    setInterval(() => {
+      if (document.hidden) return;
+      fetch(window.UNREAD_URL).then((r) => r.ok ? r.json() : null).then((d) => { if (d) setUnread(d.unread); }).catch(() => {});
+    }, 45000);
+  }
 })();
