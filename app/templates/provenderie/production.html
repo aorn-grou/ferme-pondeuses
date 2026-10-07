@@ -18,6 +18,19 @@
   </table>
 </div>
 <p class="hint top-gap">Saisi par {{ item.username or '—' }} le {{ item.created_at|localdt }}{% if item.notes %} · {{ item.notes }}{% endif %}</p>
+{% if can_correct('provenderie', item) %}
+<section class="card top-gap">
+  <h2>{{ icon('edit', 20) }} Corriger cette fabrication</h2>
+  <p class="muted">Changez la quantité ou la date. Les matières utilisées et le stock de provende seront recalculés.</p>
+  <form method="post" action="{{ url_for('provenderie.production_edit', production_id=item.id) }}" class="grid three">
+    {{ csrf() }}
+    <div class="field"><label for="c-qty">Quantité fabriquée (kg)</label><input class="input" id="c-qty" name="quantity" inputmode="decimal" value="{{ item.quantity|qty }}" required></div>
+    <div class="field"><label for="c-date">Date</label><input class="input" type="date" id="c-date" name="date" value="{{ item.date }}" required></div>
+    <div class="field"><label for="c-notes">Remarque</label><input class="input" id="c-notes" name="notes" value="{{ item.notes or '' }}" maxlength="150"></div>
+    <div><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la correction</button></div>
+  </form>
+</section>
+{% endif %}
 {% if can('provenderie', 3) %}
 <section class="card danger-zone top-gap">
   <h2>Annuler cette fabrication</h2>

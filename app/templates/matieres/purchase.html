@@ -5,6 +5,7 @@
 {% call page_head('Achat n°' ~ item.id, item.date|date_fr ~ ' · ' ~ (item.supplier or 'Marché / sans fournisseur'), 'cart') %}
   <a class="btn ghost" href="{{ url_for('matieres.purchases') }}">← Achats</a>
   <button class="btn ghost" type="button" onclick="window.print()">Imprimer</button>
+  {% if can_correct('matieres', item) %}<a class="btn primary" href="{{ url_for('matieres.purchase_edit', purchase_id=item.id) }}">{{ icon('edit', 18) }} Corriger cet achat</a>{% endif %}
 {% endcall %}
 <div class="card flush">
   <table class="table responsive">

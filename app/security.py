@@ -100,6 +100,23 @@ def can(module, level=VIEW, user=None):
     return user_levels(user).get(module, NONE) >= level
 
 
+def can_correct(module, row):
+    """Corriger une saisie : les responsables (droit « Tout ») corrigent tout ;
+    un employé (droit « Voir et saisir ») corrige seulement sa propre saisie du jour."""
+    if row is None:
+        return False
+    if can(module, MANAGE):
+        return True
+    if not can(module, EDIT):
+        return False
+    if "created_by" not in row.keys() or row["created_by"] != g.user["id"]:
+        return False
+    from .stock import today
+    from .utils import local_datetime
+
+    return local_datetime(row["created_at"], "%Y-%m-%d") == today()
+
+
 def is_admin(user=None):
     user = user if user is not None else g.get("user")
     return bool(user) and user["role"] in ADMIN_ROLES

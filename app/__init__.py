@@ -7,7 +7,7 @@ from flask import Flask, flash, g, redirect, render_template, request, session, 
 
 from . import db
 from .security import (
-    LEVEL_LABELS, MENU_GROUPS, MODULE_ENDPOINTS, MODULE_INFO, MODULES, can, check_csrf, csrf_token,
+    LEVEL_LABELS, MENU_GROUPS, MODULE_ENDPOINTS, MODULE_INFO, MODULES, can, can_correct, check_csrf, csrf_token,
     is_admin, is_super_admin, role_label,
 )
 from .utils import (
@@ -131,6 +131,7 @@ def create_app(test_config=None):
             "menu_text": readable_text_on(menu),
             "menu_groups": menu_groups,
             "can": can,
+            "can_correct": can_correct,
             "is_admin": is_admin,
             "is_super_admin": is_super_admin,
             "role_label": role_label,

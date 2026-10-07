@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, page_head, csrf with context %}
-{% block title %}Nouvel achat{% endblock %}
+{% block title %}{{ ('Corriger l\'achat n°' ~ editing.id) if editing else 'Nouvel achat' }}{% endblock %}
 {% block content %}
-{% call page_head('Nouvel achat de matières', "Ajoutez une ligne par matière achetée. Le stock et la caisse seront mis à jour.", 'cart') %}
-  <a class="btn ghost" href="{{ url_for('matieres.purchases') }}">← Achats</a>
+{% call page_head(('Corriger l\'achat n°' ~ editing.id) if editing else 'Nouvel achat de matières', "Changez seulement ce qui est faux. Stock, prix moyen, caisse et dette seront recalculés." if editing else "Ajoutez une ligne par matière achetée. Le stock et la caisse seront mis à jour.", 'edit' if editing else 'cart') %}
+  <a class="btn ghost" href="{{ url_for('matieres.purchase', purchase_id=editing.id) if editing else url_for('matieres.purchases') }}">← {{ 'Annuler la correction' if editing else 'Achats' }}</a>
 {% endcall %}
 {% if not materials %}
 <div class="alert alert-warning static">{{ icon('alert', 18) }}<span>Aucune matière n'existe encore. <a href="{{ url_for('matieres.material_new', next=url_for('matieres.purchase_new')) }}">Créez d'abord une matière première</a>.</span></div>
 {% endif %}
-<form method="post" class="stack" data-autosave="nouvel-achat" data-purchase-form>
+<form method="post" class="stack" data-autosave="{{ ('achat-' ~ editing.id) if editing else 'nouvel-achat' }}" data-purchase-form>
   {{ csrf() }}
   <section class="card">
     <div class="grid three">
@@ -76,7 +76,7 @@
   </section>
   <div class="form-actions sticky-actions">
     <div class="sticky-total"><span>Total</span><strong data-grand-total>0 Ar</strong></div>
-    <button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer l'achat</button>
+    <button class="btn primary" type="submit">{{ icon('check', 18) }} {{ 'Enregistrer la correction' if editing else "Enregistrer l'achat" }}</button>
   </div>
 </form>
 {% endblock %}

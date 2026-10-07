@@ -52,7 +52,19 @@
     {% for p in payments %}
       <tr><td data-label="Date">{{ p.date|date_fr }}</td><td data-label="Payé par">{{ p.account or '—' }}{% if p.notes %} <small class="muted">— {{ p.notes }}</small>{% endif %}</td>
       <td data-label="Montant" class="right">{{ p.amount|money }}</td>
-      <td data-label="Actions" class="right">{% if can('matieres', 3) %}<form method="post" action="{{ url_for('matieres.payment_delete', payment_id=p.id) }}" data-confirm="Annuler ce paiement ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }} Annuler</button></form>{% endif %}</td></tr>
+      <td data-label="Actions" class="right"><div class="row-actions">
+        {% if can_correct('matieres', p) %}
+        <details class="inline-confirm"><summary class="btn ghost sm">{{ icon('edit', 16) }} Corriger</summary>
+          <form method="post" action="{{ url_for('matieres.payment_edit', payment_id=p.id) }}" class="stack confirm-box">{{ csrf() }}
+            <div class="field"><label>Montant (Ar)</label><input class="input" name="amount" inputmode="decimal" value="{{ p.amount|qty }}" required></div>
+            <div class="field"><label>Payé par</label><select class="input" name="account_id">{% for a in accounts %}<option value="{{ a.id }}" {% if a.id == p.account_id %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Date</label><input class="input" type="date" name="date" value="{{ p.date }}" required></div>
+            <div class="field"><label>Remarque</label><input class="input" name="notes" value="{{ p.notes or '' }}" maxlength="150"></div>
+            <button class="btn primary sm" type="submit">{{ icon('check', 16) }} Enregistrer la correction</button>
+          </form></details>
+        {% endif %}
+        {% if can('matieres', 3) %}<form method="post" action="{{ url_for('matieres.payment_delete', payment_id=p.id) }}" data-confirm="Annuler ce paiement ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }} Annuler</button></form>{% endif %}
+      </div></td></tr>
     {% endfor %}
     </tbody>
   </table>

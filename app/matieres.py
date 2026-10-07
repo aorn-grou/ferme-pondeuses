@@ -2,12 +2,12 @@
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
 from .db import execute, now_utc, query, transaction
-from .security import EDIT, MANAGE, VIEW, can, require
+from .security import EDIT, MANAGE, VIEW, can, can_correct, require
 from .stock import (
     EPS, accounts, material_stock, materials_overview, parse_num, recompute_material, supplier_balance,
     today, valid_date,
 )
-from .utils import fmt_money, fmt_qty, log_activity
+from .utils import date_fr, fmt_money, fmt_qty, log_activity
 
 bp = Blueprint("matieres", __name__, url_prefix="/matieres")
 
@@ -317,6 +317,52 @@ def movement_delete(move_id):
     return redirect(url_for("matieres.material", material_id=move["material_id"]))
 
 
+@bp.route("/mouvement/<int:move_id>/corriger", methods=["POST"])
+@require("matieres", EDIT)
+def movement_edit(move_id):
+    move = query("SELECT * FROM stock_moves WHERE id = ?", (move_id,), one=True)
+    if move is None:
+        abort(404)
+    if not can_correct("matieres", move):
+        abort(403)
+    item = _material(move["material_id"])
+    back = redirect(url_for("matieres.material", material_id=item["id"]))
+    if move["kind"] not in ("perte", "stock_initial", "inventaire"):
+        flash("Ce mouvement vient d'un achat ou d'une fabrication : corrigez l'achat ou la fabrication.", "error")
+        return back
+    qty = parse_num(request.form.get("quantity"))
+    cost = parse_num(request.form.get("unit_cost"), move["unit_cost"])
+    date = request.form.get("date", move["date"])
+    notes = request.form.get("notes", move["notes"] or "").strip()
+    if qty is None or (move["kind"] != "inventaire" and qty <= 0) or (move["kind"] == "inventaire" and abs(qty) < EPS):
+        flash("Quantité invalide.", "error")
+        return back
+    if cost is None or cost < 0 or not valid_date(date):
+        flash("Prix ou date invalide.", "error")
+        return back
+    signed = -qty if move["kind"] == "perte" else qty
+    unit_cost = cost if move["kind"] == "stock_initial" else move["unit_cost"]
+    after = material_stock(item["id"]) - move["quantity"] + signed
+    if after < -EPS:
+        flash(f"Impossible : le stock deviendrait {fmt_qty(after, item['unit'])}.", "error")
+        return back
+    changes = []
+    if abs(signed - move["quantity"]) > EPS:
+        changes.append(f"quantité {fmt_qty(move['quantity'], item['unit'])} → {fmt_qty(signed, item['unit'])}")
+    if abs(unit_cost - move["unit_cost"]) > EPS:
+        changes.append(f"prix {fmt_money(move['unit_cost'])} → {fmt_money(unit_cost)}")
+    if date != move["date"]:
+        changes.append(f"date {date_fr(move['date'])} → {date_fr(date)}")
+    with transaction() as conn:
+        conn.execute("UPDATE stock_moves SET quantity = ?, unit_cost = ?, date = ?, notes = ? WHERE id = ?",
+                     (signed, unit_cost, date, notes, move_id))
+        recompute_material(conn, item["id"])
+    log_activity("Mouvement de stock corrigé", f"{item['name']} ({MOVE_KINDS.get(move['kind'], move['kind'])}) : "
+                 + ("; ".join(changes) or "remarque modifiée"))
+    flash("Correction enregistrée : " + ("; ".join(changes) or "remarque modifiée") + ".", "success")
+    return back
+
+
 # ---------------------------------------------------------------------------
 # Inventaire physique
 # ---------------------------------------------------------------------------
@@ -482,6 +528,41 @@ def supplier_payment(supplier_id):
     return redirect(url_for("matieres.supplier", supplier_id=supplier_id))
 
 
+@bp.route("/reglements/<int:payment_id>/corriger", methods=["POST"])
+@require("matieres", EDIT)
+def payment_edit(payment_id):
+    payment = query("SELECT * FROM supplier_payments WHERE id = ?", (payment_id,), one=True)
+    if payment is None:
+        abort(404)
+    if not can_correct("matieres", payment):
+        abort(403)
+    back = redirect(url_for("matieres.supplier", supplier_id=payment["supplier_id"]))
+    amount = parse_num(request.form.get("amount"))
+    date = request.form.get("date", payment["date"])
+    account = query("SELECT * FROM accounts WHERE id = ?", (request.form.get("account_id", type=int) or 0,), one=True)
+    max_amount = supplier_balance(payment["supplier_id"])["due"] + payment["amount"]
+    if amount is None or amount <= 0:
+        flash("Indiquez un montant supérieur à 0.", "error")
+    elif amount > max_amount + 0.5:
+        flash(f"Le montant dépasse la dette ({fmt_money(max_amount)}).", "error")
+    elif account is None or not valid_date(date):
+        flash("Compte ou date invalide.", "error")
+    else:
+        supplier = _supplier(payment["supplier_id"])
+        with transaction() as conn:
+            conn.execute("UPDATE supplier_payments SET amount = ?, date = ?, account_id = ?, notes = ? WHERE id = ?",
+                         (amount, date, account["id"], request.form.get("notes", "").strip(), payment_id))
+            conn.execute("DELETE FROM cash_movements WHERE ref_type = 'supplier_payment' AND ref_id = ?", (payment_id,))
+            conn.execute(
+                """INSERT INTO cash_movements (date, account_id, amount, kind, label, ref_type, ref_id, created_by, created_at)
+                   VALUES (?, ?, ?, 'reglement_fournisseur', ?, 'supplier_payment', ?, ?, ?)""",
+                (date, account["id"], -amount, f"Règlement {supplier['name']}", payment_id, g.user["id"], now_utc()),
+            )
+        log_activity("Règlement fournisseur corrigé", f"{supplier['name']} : {fmt_money(payment['amount'])} → {fmt_money(amount)}")
+        flash("Règlement corrigé.", "success")
+    return back
+
+
 @bp.route("/reglements/<int:payment_id>/supprimer", methods=["POST"])
 @require("matieres", MANAGE)
 def payment_delete(payment_id):
@@ -529,6 +610,77 @@ def purchases():
                            supplier_id=supplier_id, suppliers=_suppliers(active_only=False))
 
 
+def _purchase_form_from_request(materials):
+    """Lit et vérifie le formulaire d'achat. Retourne (form, lignes, achat, erreurs)."""
+    keys = ("date", "supplier_id", "reference", "transport_cost", "paid", "account_id", "notes", "pay_mode")
+    form = {k: request.form.get(k, "").strip() for k in keys}
+    lines, parsed, errors = [], [], []
+    material_map = {str(m["id"]): m for m in materials}
+    for index, (mid, q, p) in enumerate(zip(request.form.getlist("material_id"), request.form.getlist("quantity"),
+                                            request.form.getlist("unit_price")), start=1):
+        lines.append({"material_id": mid, "quantity": q, "unit_price": p})
+        if not mid and not q and not p:
+            continue
+        qty, price = parse_num(q), parse_num(p, 0)
+        if mid not in material_map:
+            errors.append(f"Ligne {index} : choisissez une matière.")
+        elif qty is None or qty <= 0:
+            errors.append(f"Ligne {index} : la quantité doit être supérieure à 0.")
+        elif price is None or price < 0:
+            errors.append(f"Ligne {index} : prix invalide.")
+        else:
+            parsed.append((material_map[mid], qty, price))
+    if not parsed and not errors:
+        errors.append("Ajoutez au moins une matière achetée.")
+    if not valid_date(form["date"]):
+        errors.append("Date invalide.")
+    transport = parse_num(form["transport_cost"], 0) or 0
+    if transport < 0:
+        errors.append("Les frais de transport ne peuvent pas être négatifs.")
+    goods = sum(q * p for _, q, p in parsed)
+    total = goods + transport
+    if form["pay_mode"] == "credit":
+        paid = 0
+    elif form["pay_mode"] == "partiel":
+        paid = parse_num(form["paid"], 0) or 0
+    else:
+        paid = total
+    if paid < 0 or paid > total + 0.5:
+        errors.append("Le montant payé doit être entre 0 et le total de l'achat.")
+    account = query("SELECT * FROM accounts WHERE id = ?", (form["account_id"] or 0,), one=True)
+    if paid > 0 and account is None:
+        errors.append("Choisissez d'où vient l'argent (caisse ou propriétaire).")
+    supplier = query("SELECT * FROM suppliers WHERE id = ?", (form["supplier_id"],), one=True) if form["supplier_id"] else None
+    if paid < total - 0.5 and supplier is None:
+        errors.append("Un achat à crédit doit avoir un fournisseur (pour suivre la dette).")
+    data = {"parsed": parsed, "transport": transport, "goods": goods, "total": total, "paid": paid,
+            "account": account, "supplier": supplier}
+    return form, lines or [{"material_id": "", "quantity": "", "unit_price": ""}], data, errors
+
+
+def _write_purchase(conn, purchase_id, form, data):
+    """Écrit les lignes, mouvements de stock et de caisse d'un achat."""
+    parsed, transport, goods = data["parsed"], data["transport"], data["goods"]
+    supplier, account = data["supplier"], data["account"]
+    for item, qty, price in parsed:
+        line_total = qty * price
+        share = (transport * line_total / goods) if goods > 0 else transport / len(parsed)
+        conn.execute("INSERT INTO purchase_lines (purchase_id, material_id, quantity, unit_price, total) VALUES (?, ?, ?, ?, ?)",
+                     (purchase_id, item["id"], qty, price, line_total))
+        conn.execute(
+            """INSERT INTO stock_moves (date, material_id, quantity, unit_cost, kind, ref_type, ref_id, created_by, created_at)
+               VALUES (?, ?, ?, ?, 'achat', 'purchase', ?, ?, ?)""",
+            (form["date"], item["id"], qty, (line_total + share) / qty, purchase_id, g.user["id"], now_utc()),
+        )
+    if data["paid"] > 0:
+        label = "Achat matières" + (f" — {supplier['name']}" if supplier else "")
+        conn.execute(
+            """INSERT INTO cash_movements (date, account_id, amount, kind, label, ref_type, ref_id, created_by, created_at)
+               VALUES (?, ?, ?, 'achat', ?, 'purchase', ?, ?, ?)""",
+            (form["date"], account["id"], -data["paid"], label, purchase_id, g.user["id"], now_utc()),
+        )
+
+
 @bp.route("/achats/nouveau", methods=["GET", "POST"])
 @require("matieres", EDIT)
 def purchase_new():
@@ -537,50 +689,7 @@ def purchase_new():
             "transport_cost": "", "paid": "", "account_id": "", "notes": "", "pay_mode": "tout"}
     lines = [{"material_id": request.args.get("matiere", ""), "quantity": "", "unit_price": ""}]
     if request.method == "POST":
-        form = {k: request.form.get(k, "").strip() for k in form}
-        ids = request.form.getlist("material_id")
-        qtys = request.form.getlist("quantity")
-        prices = request.form.getlist("unit_price")
-        lines, parsed, errors = [], [], []
-        material_map = {str(m["id"]): m for m in materials}
-        for index, (mid, q, p) in enumerate(zip(ids, qtys, prices), start=1):
-            lines.append({"material_id": mid, "quantity": q, "unit_price": p})
-            if not mid and not q and not p:
-                continue
-            qty, price = parse_num(q), parse_num(p, 0)
-            if mid not in material_map:
-                errors.append(f"Ligne {index} : choisissez une matière.")
-            elif qty is None or qty <= 0:
-                errors.append(f"Ligne {index} : la quantité doit être supérieure à 0.")
-            elif price is None or price < 0:
-                errors.append(f"Ligne {index} : prix invalide.")
-            else:
-                parsed.append((material_map[mid], qty, price))
-        if not parsed and not errors:
-            errors.append("Ajoutez au moins une matière achetée.")
-        if not valid_date(form["date"]):
-            errors.append("Date invalide.")
-        transport = parse_num(form["transport_cost"], 0) or 0
-        if transport < 0:
-            errors.append("Les frais de transport ne peuvent pas être négatifs.")
-        goods = sum(q * p for _, q, p in parsed)
-        total = goods + transport
-        if form["pay_mode"] == "tout":
-            paid = total
-        elif form["pay_mode"] == "credit":
-            paid = 0
-        else:
-            paid = parse_num(form["paid"], 0) or 0
-        if paid < 0 or paid > total + 0.5:
-            errors.append("Le montant payé doit être entre 0 et le total de l'achat.")
-        account = query("SELECT * FROM accounts WHERE id = ? AND active = 1", (form["account_id"] or 0,), one=True)
-        if paid > 0 and account is None:
-            errors.append("Choisissez d'où vient l'argent (caisse ou propriétaire).")
-        supplier = None
-        if form["supplier_id"]:
-            supplier = query("SELECT * FROM suppliers WHERE id = ?", (form["supplier_id"],), one=True)
-        if paid < total - 0.5 and supplier is None:
-            errors.append("Un achat à crédit doit avoir un fournisseur (pour suivre la dette).")
+        form, lines, data, errors = _purchase_form_from_request(materials)
         if errors:
             for message in errors:
                 flash(message, "error")
@@ -589,39 +698,103 @@ def purchase_new():
                 cur = conn.execute(
                     """INSERT INTO purchases (date, supplier_id, reference, transport_cost, total, paid, account_id,
                            notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (form["date"], supplier["id"] if supplier else None, form["reference"], transport, total, paid,
-                     account["id"] if account else None, form["notes"], g.user["id"], now_utc()),
+                    (form["date"], data["supplier"]["id"] if data["supplier"] else None, form["reference"],
+                     data["transport"], data["total"], data["paid"],
+                     data["account"]["id"] if data["account"] and data["paid"] > 0 else None,
+                     form["notes"], g.user["id"], now_utc()),
                 )
                 purchase_id = cur.lastrowid
-                for item, qty, price in parsed:
-                    line_total = qty * price
-                    share = (transport * line_total / goods) if goods > 0 else transport / len(parsed)
-                    unit_cost = (line_total + share) / qty
-                    conn.execute(
-                        "INSERT INTO purchase_lines (purchase_id, material_id, quantity, unit_price, total) VALUES (?, ?, ?, ?, ?)",
-                        (purchase_id, item["id"], qty, price, line_total),
-                    )
-                    conn.execute(
-                        """INSERT INTO stock_moves (date, material_id, quantity, unit_cost, kind, ref_type, ref_id,
-                               created_by, created_at) VALUES (?, ?, ?, ?, 'achat', 'purchase', ?, ?, ?)""",
-                        (form["date"], item["id"], qty, unit_cost, purchase_id, g.user["id"], now_utc()),
-                    )
-                if paid > 0:
-                    label = "Achat matières" + (f" — {supplier['name']}" if supplier else "")
-                    conn.execute(
-                        """INSERT INTO cash_movements (date, account_id, amount, kind, label, ref_type, ref_id,
-                               created_by, created_at) VALUES (?, ?, ?, 'achat', ?, 'purchase', ?, ?, ?)""",
-                        (form["date"], account["id"], -paid, label, purchase_id, g.user["id"], now_utc()),
-                    )
-                for material_id in {item["id"] for item, _, _ in parsed}:
+                _write_purchase(conn, purchase_id, form, data)
+                for material_id in {item["id"] for item, _, _ in data["parsed"]}:
                     recompute_material(conn, material_id)
-            log_activity("Achat enregistré", f"n°{purchase_id} — {fmt_money(total)}")
-            flash(f"Achat enregistré ({fmt_money(total)}). Le stock a été mis à jour.", "success")
+            log_activity("Achat enregistré", f"n°{purchase_id} — {fmt_money(data['total'])}")
+            flash(f"Achat enregistré ({fmt_money(data['total'])}). Le stock a été mis à jour.", "success")
             return redirect(url_for("matieres.purchase", purchase_id=purchase_id))
-        if not lines:
-            lines = [{"material_id": "", "quantity": "", "unit_price": ""}]
     return render_template("matieres/purchase_form.html", form=form, lines=lines, materials=materials,
-                           suppliers=_suppliers(), accounts=accounts())
+                           suppliers=_suppliers(), accounts=accounts(), editing=None)
+
+
+@bp.route("/achats/<int:purchase_id>/corriger", methods=["GET", "POST"])
+@require("matieres", EDIT)
+def purchase_edit(purchase_id):
+    item = query("SELECT * FROM purchases WHERE id = ?", (purchase_id,), one=True)
+    if item is None:
+        abort(404)
+    if not can_correct("matieres", item):
+        abort(403)
+    old_lines = query("""SELECT l.*, m.name, m.unit FROM purchase_lines l JOIN materials m ON m.id = l.material_id
+                         WHERE l.purchase_id = ? ORDER BY l.id""", (purchase_id,))
+    used_ids = {l["material_id"] for l in old_lines}
+    materials = query(f"""SELECT * FROM materials WHERE active = 1 OR id IN ({",".join("?" * len(used_ids)) or "0"})
+                          ORDER BY name""", tuple(used_ids))
+    if item["paid"] >= item["total"] - 0.5:
+        mode = "tout"
+    elif item["paid"] <= 0:
+        mode = "credit"
+    else:
+        mode = "partiel"
+    form = {"date": item["date"], "supplier_id": str(item["supplier_id"] or ""), "reference": item["reference"],
+            "transport_cost": fmt_qty(item["transport_cost"]) if item["transport_cost"] else "",
+            "paid": fmt_qty(item["paid"]) if mode == "partiel" else "", "account_id": str(item["account_id"] or ""),
+            "notes": item["notes"], "pay_mode": mode}
+    lines = [{"material_id": str(l["material_id"]), "quantity": fmt_qty(l["quantity"]), "unit_price": fmt_qty(l["unit_price"])}
+             for l in old_lines]
+    if request.method == "POST":
+        form, lines, data, errors = _purchase_form_from_request(materials)
+        old_qty, new_qty = {}, {}
+        for l in old_lines:
+            old_qty[l["material_id"]] = old_qty.get(l["material_id"], 0) + l["quantity"]
+        for m, q, _ in data["parsed"]:
+            new_qty[m["id"]] = new_qty.get(m["id"], 0) + q
+        for material_id in set(old_qty) | set(new_qty):
+            after = material_stock(material_id) - old_qty.get(material_id, 0) + new_qty.get(material_id, 0)
+            if after < -EPS:
+                name = query("SELECT name, unit FROM materials WHERE id = ?", (material_id,), one=True)
+                errors.append(f"Impossible : « {name['name']} » a déjà été utilisé, le stock deviendrait "
+                              f"{fmt_qty(after, name['unit'])}.")
+        if errors:
+            for message in errors:
+                flash(message, "error")
+        else:
+            changes = []
+            for l in old_lines:
+                match = next((x for x in data["parsed"] if x[0]["id"] == l["material_id"]), None)
+                if match is None:
+                    changes.append(f"{l['name']} retiré")
+                else:
+                    if abs(match[1] - l["quantity"]) > EPS:
+                        changes.append(f"{l['name']} {fmt_qty(l['quantity'], l['unit'])} → {fmt_qty(match[1], l['unit'])}")
+                    if abs(match[2] - l["unit_price"]) > EPS:
+                        changes.append(f"{l['name']} prix {fmt_money(l['unit_price'])} → {fmt_money(match[2])}")
+            for m, q, _ in data["parsed"]:
+                if m["id"] not in old_qty:
+                    changes.append(f"{m['name']} ajouté ({fmt_qty(q, m['unit'])})")
+            if abs(data["total"] - item["total"]) > 0.5:
+                changes.append(f"total {fmt_money(item['total'])} → {fmt_money(data['total'])}")
+            if abs(data["paid"] - item["paid"]) > 0.5:
+                changes.append(f"payé {fmt_money(item['paid'])} → {fmt_money(data['paid'])}")
+            if form["date"] != item["date"]:
+                changes.append(f"date {date_fr(item['date'])} → {date_fr(form['date'])}")
+            with transaction() as conn:
+                conn.execute("DELETE FROM stock_moves WHERE ref_type = 'purchase' AND ref_id = ?", (purchase_id,))
+                conn.execute("DELETE FROM cash_movements WHERE ref_type = 'purchase' AND ref_id = ?", (purchase_id,))
+                conn.execute("DELETE FROM purchase_lines WHERE purchase_id = ?", (purchase_id,))
+                conn.execute(
+                    """UPDATE purchases SET date = ?, supplier_id = ?, reference = ?, transport_cost = ?, total = ?,
+                           paid = ?, account_id = ?, notes = ? WHERE id = ?""",
+                    (form["date"], data["supplier"]["id"] if data["supplier"] else None, form["reference"],
+                     data["transport"], data["total"], data["paid"],
+                     data["account"]["id"] if data["account"] and data["paid"] > 0 else None, form["notes"], purchase_id),
+                )
+                _write_purchase(conn, purchase_id, form, data)
+                for material_id in set(old_qty) | set(new_qty):
+                    recompute_material(conn, material_id)
+            log_activity("Achat corrigé", f"n°{purchase_id} : " + ("; ".join(changes) or "aucun changement de chiffre"))
+            flash("Achat corrigé. Stock, prix moyen, caisse et dette fournisseur ont été recalculés.", "success")
+            return redirect(url_for("matieres.purchase", purchase_id=purchase_id))
+    return render_template("matieres/purchase_form.html", form=form, lines=lines or [{"material_id": "", "quantity": "",
+                           "unit_price": ""}], materials=materials, suppliers=_suppliers(active_only=False),
+                           accounts=accounts(active_only=False), editing=item)
 
 
 @bp.route("/achats/<int:purchase_id>")

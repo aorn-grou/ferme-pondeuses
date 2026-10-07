@@ -600,3 +600,9 @@ dl.kv dd { margin: 0; text-align: right; }
   .card { box-shadow: none; }
 }
 tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transparent); }
+
+/* Fenêtre de correction / confirmation : toujours au centre de l'écran, jamais coupée */
+.inline-confirm[open] > summary::before { content: ""; position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 90; cursor: default; }
+.inline-confirm .confirm-box { position: fixed; left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%);
+  width: min(380px, 92vw); max-height: 88vh; overflow-y: auto; z-index: 100; text-align: left; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.confirm-box .field label { font-size: .85rem; }

@@ -48,9 +48,27 @@
         <td data-label="Coût unitaire" class="right">{{ mv.unit_cost|money }}</td>
         <td data-label="Par">{{ mv.username or '—' }}</td>
         <td data-label="Actions" class="right">
+          <div class="row-actions">
+          {% if mv.kind in ('perte', 'stock_initial', 'inventaire') and can_correct('matieres', mv) %}
+          <details class="inline-confirm">
+            <summary class="btn ghost sm">{{ icon('edit', 16) }} Corriger</summary>
+            <form method="post" action="{{ url_for('matieres.movement_edit', move_id=mv.id) }}" class="stack confirm-box">
+              {{ csrf() }}
+              <p><strong>Corriger : {{ kinds.get(mv.kind, mv.kind) }}</strong></p>
+              <div class="field"><label>{{ 'Écart (+ ou −)' if mv.kind == 'inventaire' else 'Quantité' }} ({{ item.unit }})</label>
+                <input class="input" name="quantity" inputmode="decimal" value="{{ (mv.quantity if mv.kind == 'inventaire' else mv.quantity|abs)|qty }}" required></div>
+              {% if mv.kind == 'stock_initial' %}<div class="field"><label>Prix par {{ item.unit }} (Ar)</label><input class="input" name="unit_cost" inputmode="decimal" value="{{ mv.unit_cost|qty }}"></div>{% endif %}
+              <div class="field"><label>Date</label><input class="input" type="date" name="date" value="{{ mv.date }}" required></div>
+              <div class="field"><label>Remarque</label><input class="input" name="notes" value="{{ mv.notes or '' }}" maxlength="150"></div>
+              <button class="btn primary sm" type="submit">{{ icon('check', 16) }} Enregistrer la correction</button>
+            </form>
+          </details>
+          {% endif %}
+          {% if mv.ref_type == 'purchase' and can('matieres', 3) %}<a class="btn ghost sm" href="{{ url_for('matieres.purchase_edit', purchase_id=mv.ref_id) }}">{{ icon('edit', 16) }} Corriger l'achat</a>{% endif %}
           {% if can('matieres', 3) and mv.kind in ('perte', 'stock_initial', 'inventaire') %}
           <form method="post" action="{{ url_for('matieres.movement_delete', move_id=mv.id) }}" data-confirm="Annuler ce mouvement de stock ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }} Annuler</button></form>
           {% endif %}
+          </div>
         </td>
       </tr>
     {% else %}

@@ -4,12 +4,12 @@ import json
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
 from .db import execute, now_utc, query, transaction
-from .security import EDIT, MANAGE, VIEW, require
+from .security import EDIT, MANAGE, VIEW, can_correct, require
 from .stock import (
     EPS, feed_stock, formula_cost_per_kg, formula_lines, formulas_overview, material_stock, parse_num,
     production_needs, recompute_formula, recompute_material, today, valid_date,
 )
-from .utils import fmt_money, fmt_qty, log_activity
+from .utils import date_fr, fmt_money, fmt_qty, log_activity
 
 bp = Blueprint("provenderie", __name__, url_prefix="/provenderie")
 
@@ -469,6 +469,79 @@ def production(production_id):
     return render_template("provenderie/production.html", item=item, lines=lines)
 
 
+@bp.route("/fabrications/<int:production_id>/corriger", methods=["POST"])
+@require("provenderie", EDIT)
+def production_edit(production_id):
+    item = query("SELECT * FROM productions WHERE id = ?", (production_id,), one=True)
+    if item is None:
+        abort(404)
+    if not can_correct("provenderie", item):
+        abort(403)
+    back = redirect(url_for("provenderie.production", production_id=production_id))
+    qty = parse_num(request.form.get("quantity"))
+    date = request.form.get("date", item["date"])
+    notes = request.form.get("notes", item["notes"] or "").strip()
+    if qty is None or qty <= 0 or not valid_date(date):
+        flash("Quantité ou date invalide.", "error")
+        return back
+    if feed_stock(item["formula_id"]) - item["quantity"] + qty < -EPS:
+        flash("Impossible : une partie de cette provende a déjà été distribuée ou sortie.", "error")
+        return back
+    formula = _formula(item["formula_id"])
+    old_lines = query("SELECT material_id FROM production_lines WHERE production_id = ?", (production_id,))
+    errors = []
+
+    class _Cancel(Exception):
+        pass
+
+    try:
+        with transaction() as conn:
+            conn.execute("DELETE FROM stock_moves WHERE ref_type = 'production' AND ref_id = ?", (production_id,))
+            conn.execute("DELETE FROM feed_moves WHERE ref_type = 'production' AND ref_id = ?", (production_id,))
+            conn.execute("DELETE FROM production_lines WHERE production_id = ?", (production_id,))
+            for row in old_lines:
+                recompute_material(conn, row["material_id"])
+            needs = production_needs(formula, qty, conn)
+            for n in needs:
+                if n["missing"] > EPS:
+                    errors.append(f"Stock insuffisant de « {n['name']} » : il faut {fmt_qty(n['need'], n['unit'])}, "
+                                  f"il y a {fmt_qty(n['stock'], n['unit'])}.")
+            if errors:
+                raise _Cancel()
+            cost_total = sum(n["cost"] for n in needs)
+            conn.execute("UPDATE productions SET date = ?, quantity = ?, cost_total = ?, cost_per_kg = ?, notes = ? WHERE id = ?",
+                         (date, qty, cost_total, cost_total / qty, notes, production_id))
+            for n in needs:
+                conn.execute("INSERT INTO production_lines (production_id, material_id, quantity, unit_cost) VALUES (?, ?, ?, ?)",
+                             (production_id, n["material_id"], n["need"], n["unit_cost"]))
+                conn.execute(
+                    """INSERT INTO stock_moves (date, material_id, quantity, unit_cost, kind, ref_type, ref_id, created_by, created_at)
+                       VALUES (?, ?, ?, ?, 'fabrication', 'production', ?, ?, ?)""",
+                    (date, n["material_id"], -n["need"], n["unit_cost"], production_id, item["created_by"], item["created_at"]),
+                )
+                recompute_material(conn, n["material_id"])
+            conn.execute(
+                """INSERT INTO feed_moves (date, formula_id, quantity, unit_cost, kind, ref_type, ref_id, created_by, created_at)
+                   VALUES (?, ?, ?, ?, 'fabrication', 'production', ?, ?, ?)""",
+                (date, formula["id"], qty, cost_total / qty, production_id, item["created_by"], item["created_at"]),
+            )
+            recompute_formula(conn, formula["id"])
+    except _Cancel:
+        pass
+    if errors:
+        for message in errors:
+            flash(message, "error")
+        return back
+    changes = []
+    if abs(qty - item["quantity"]) > EPS:
+        changes.append(f"quantité {fmt_qty(item['quantity'], 'kg')} → {fmt_qty(qty, 'kg')}")
+    if date != item["date"]:
+        changes.append(f"date {date_fr(item['date'])} → {date_fr(date)}")
+    log_activity("Fabrication corrigée", f"n°{production_id} ({formula['name']}) : " + ("; ".join(changes) or "remarque modifiée"))
+    flash("Fabrication corrigée : les matières et la provende ont été recalculées.", "success")
+    return back
+
+
 @bp.route("/fabrications/<int:production_id>/supprimer", methods=["POST"])
 @require("provenderie", MANAGE)
 def production_delete(production_id):
@@ -553,6 +626,44 @@ def feed_history(formula_id):
                      WHERE s.formula_id = ? ORDER BY s.date DESC, s.id DESC LIMIT 200""", (formula_id,))
     return render_template("provenderie/feed_history.html", item=item, moves=moves, stock=feed_stock(formula_id),
                            kinds=FEED_KINDS)
+
+
+@bp.route("/stock/mouvement/<int:move_id>/corriger", methods=["POST"])
+@require("provenderie", EDIT)
+def feed_move_edit(move_id):
+    move = query("SELECT * FROM feed_moves WHERE id = ?", (move_id,), one=True)
+    if move is None:
+        abort(404)
+    if not can_correct("provenderie", move):
+        abort(403)
+    back = redirect(url_for("provenderie.feed_history", formula_id=move["formula_id"]))
+    if move["kind"] not in ("perte", "inventaire", "entree"):
+        flash("Ce mouvement vient d'une fabrication ou d'une distribution : corrigez-la à sa source.", "error")
+        return back
+    qty = parse_num(request.form.get("quantity"))
+    cost = parse_num(request.form.get("unit_cost"), move["unit_cost"])
+    date = request.form.get("date", move["date"])
+    notes = request.form.get("notes", move["notes"] or "").strip()
+    if qty is None or (move["kind"] != "inventaire" and qty <= 0) or (move["kind"] == "inventaire" and abs(qty) < EPS):
+        flash("Quantité invalide.", "error")
+        return back
+    if cost is None or cost < 0 or not valid_date(date):
+        flash("Prix ou date invalide.", "error")
+        return back
+    signed = -qty if move["kind"] == "perte" else qty
+    unit_cost = cost if move["kind"] == "entree" else move["unit_cost"]
+    after = feed_stock(move["formula_id"]) - move["quantity"] + signed
+    if after < -EPS:
+        flash(f"Impossible : le stock deviendrait {fmt_qty(after, 'kg')}.", "error")
+        return back
+    with transaction() as conn:
+        conn.execute("UPDATE feed_moves SET quantity = ?, unit_cost = ?, date = ?, notes = ? WHERE id = ?",
+                     (signed, unit_cost, date, notes, move_id))
+        recompute_formula(conn, move["formula_id"])
+    formula = _formula(move["formula_id"])
+    log_activity("Mouvement de provende corrigé", f"{formula['name']} : {fmt_qty(move['quantity'], 'kg')} → {fmt_qty(signed, 'kg')}")
+    flash("Correction enregistrée.", "success")
+    return back
 
 
 @bp.route("/stock/mouvement/<int:move_id>/supprimer", methods=["POST"])
