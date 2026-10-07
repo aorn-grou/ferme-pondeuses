@@ -16,7 +16,7 @@
   {{ csrf() }}<input type="hidden" name="section" value="societe">
   <div class="logo-row">
     <div class="logo-preview">
-      {% if conf.logo_file %}<img src="{{ url_for('settings.logo') }}" alt="Logo actuel">{% else %}{{ icon('egg', 34) }}{% endif %}
+      <img src="{{ logo_url }}" alt="Logo actuel">
     </div>
     <div class="field grow">
       <label for="logo">Logo (PNG, JPG, WEBP – 2 Mo maximum)</label>

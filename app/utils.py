@@ -15,16 +15,16 @@ except Exception:  # fuseau indisponible : on reste en UTC+3 fixe
     LOCAL_TZ = timezone(timedelta(hours=3))
 
 DEFAULT_SETTINGS = {
-    "company_name": "Ma Ferme Avicole",
-    "company_slogan": "Gestion de ferme de poules pondeuses",
+    "company_name": "Androfia Farm",
+    "company_slogan": "Ferme de poules pondeuses",
     "company_address": "",
     "company_phone": "",
     "company_email": "",
     "company_nif": "",
     "company_stat": "",
     "logo_file": "",
-    "primary_color": "#2f7d4f",
-    "menu_color": "#16302b",
+    "primary_color": "#1d6b35",
+    "menu_color": "#0e3b20",
     "default_theme": "auto",
     "currency": "Ar",
     "session_timeout": "30",

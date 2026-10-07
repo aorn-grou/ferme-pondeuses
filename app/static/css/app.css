@@ -4,17 +4,23 @@
    ========================================================================== */
 
 :root {
-  --primary: #2f7d4f;
+  --primary: #1d6b35;
   --primary-text: #fff;
-  --menu-bg: #16302b;
+  --menu-bg: #0e3b20;
   --menu-fg: #fff;
 
-  --bg: #f4f6f3;
+  /* Identité Androfia Farm : vert forêt, or des œufs, crème de la paille */
+  --gold: #c9971c;
+  --gold-2: #f2c94c;
+  --gold-soft: #fbf1d3;
+  --font-brand: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;
+
+  --bg: #f7f4ea;
   --surface: #ffffff;
-  --surface-2: #f8faf7;
-  --border: #e2e7e0;
-  --text: #17211c;
-  --text-2: #5b6861;
+  --surface-2: #fbf9f2;
+  --border: #e8e2cf;
+  --text: #16241b;
+  --text-2: #5d6a5f;
   --ok: #1f8a4c;
   --ok-bg: #e5f5ec;
   --warn: #a35d00;
@@ -31,10 +37,11 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #0e1412;
-  --surface: #161e1b;
-  --surface-2: #1b2521;
-  --border: #2a3632;
+  --bg: #0c1510;
+  --surface: #142019;
+  --surface-2: #19271f;
+  --border: #29392e;
+  --gold-soft: #3a3015;
   --text: #e8efeb;
   --text-2: #9aaaa2;
   --ok: #5fd08f;
@@ -51,10 +58,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] {
-    --bg: #0e1412;
-    --surface: #161e1b;
-    --surface-2: #1b2521;
-    --border: #2a3632;
+    --bg: #0c1510;
+    --surface: #142019;
+    --surface-2: #19271f;
+    --border: #29392e;
+    --gold-soft: #3a3015;
     --text: #e8efeb;
     --text-2: #9aaaa2;
     --ok: #5fd08f;
@@ -75,7 +83,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: var(--text);
@@ -640,4 +648,66 @@ tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transpare
   .msg-delete { display: block; }
   .chat-form .btn span { display: none; }
   .chat-list { max-height: 58vh; }
+}
+
+/* ==========================================================================
+   Style Androfia Farm (inspiré du logo)
+   ========================================================================== */
+.sidebar {
+  background:
+    radial-gradient(120% 60% at 0% 0%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--menu-bg) 88%, #2f8f45) 0%, var(--menu-bg) 45%, color-mix(in srgb, var(--menu-bg) 80%, #000) 100%);
+  border-right: 3px solid var(--gold);
+}
+.brand { position: relative; flex-direction: column; text-align: center; gap: .55rem; padding: 1.2rem 1rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 35%, transparent); margin: 0 .8rem .4rem; }
+.brand-logo { width: 104px; height: 104px; border-radius: 50%; padding: 0; background: #fff;
+  box-shadow: 0 0 0 3px var(--gold), 0 6px 18px rgba(0, 0, 0, .35); object-fit: cover; }
+.brand-text { align-items: center; }
+.brand-text strong { font-family: var(--font-brand); font-size: 1.22rem; letter-spacing: .06em; text-transform: uppercase; }
+.brand-text small { color: var(--gold-2); opacity: .95; letter-spacing: .03em; }
+.icon-btn.sidebar-close { position: absolute; top: .4rem; right: 0; }
+.nav-title { color: var(--gold-2); opacity: .85; }
+.nav-link.active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 28%, transparent), color-mix(in srgb, var(--menu-fg) 8%, transparent));
+  box-shadow: inset 4px 0 0 var(--gold-2);
+}
+.nav-link.active .icon { color: var(--gold-2); }
+.sidebar-foot { color: var(--gold-2); }
+
+.topbar { border-bottom: 2px solid color-mix(in srgb, var(--gold) 55%, var(--border)); }
+.page-head h1 { font-family: var(--font-brand); letter-spacing: .02em; color: var(--primary); }
+.page-icon { background: var(--gold-soft); color: var(--gold); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
+.card { border-top: 3px solid color-mix(in srgb, var(--primary) 70%, transparent); }
+.card.flush, .auth-card { border-top-width: 1px; }
+.card h2 { color: var(--primary); }
+:root[data-theme="dark"] .page-head h1, :root[data-theme="dark"] .card h2 { color: var(--text); }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] .page-head h1, :root[data-theme="auto"] .card h2 { color: var(--text); }
+}
+.stat { border-left: 4px solid var(--gold); }
+.stat-icon { color: var(--gold); }
+.btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 82%, #fff) 0%, var(--primary) 60%);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--primary) 60%, #000); }
+.btn.gold { background: linear-gradient(180deg, var(--gold-2), var(--gold)); color: #3a2a00; border-color: transparent; }
+.input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 25%, transparent); outline: none; }
+
+.auth-page {
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 42%),
+    radial-gradient(circle at 92% 95%, color-mix(in srgb, var(--primary) 28%, transparent), transparent 45%),
+    var(--bg);
+}
+.auth-logo { width: 150px; height: 150px; border-radius: 50%; padding: 0; object-fit: cover; background: #fff;
+  box-shadow: 0 0 0 4px var(--gold), 0 10px 30px rgba(0, 0, 0, .2); }
+.auth-brand h1 { font-family: var(--font-brand); font-size: 1.9rem; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); margin-top: 1rem; }
+:root[data-theme="dark"] .auth-brand h1 { color: var(--gold-2); }
+@media (prefers-color-scheme: dark) { :root[data-theme="auto"] .auth-brand h1 { color: var(--gold-2); } }
+.auth-brand p { color: var(--gold); font-weight: 700; letter-spacing: .04em; }
+.auth-card { border-top: 4px solid var(--gold); }
+.logo-preview img { border-radius: 50%; object-fit: cover; }
+
+@media (max-width: 900px) {
+  .brand-logo { width: 84px; height: 84px; }
+  .page-head h1 { font-size: 1.3rem; }
 }

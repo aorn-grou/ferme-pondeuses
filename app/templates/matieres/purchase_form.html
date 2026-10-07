@@ -17,8 +17,9 @@
         <select class="input" id="supplier_id" name="supplier_id">
           <option value="">— Marché / sans fournisseur —</option>
           {% for s in suppliers %}<option value="{{ s.id }}" {% if form.supplier_id == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+          <option value="__new__" {% if form.supplier_id == '__new__' %}selected{% endif %}>✏️ Autre : écrire un nouveau fournisseur…</option>
         </select>
-        <p class="hint"><a href="{{ url_for('matieres.supplier_new', next=url_for('matieres.purchase_new')) }}">+ Nouveau fournisseur</a></p></div>
+        <input class="input top-gap-sm" name="supplier_new" value="{{ form.supplier_new or '' }}" maxlength="80" placeholder="Nom du nouveau fournisseur" data-free-for="supplier_id" hidden></div>
       <div class="field"><label for="reference">N° de facture / bon (facultatif)</label><input class="input" id="reference" name="reference" value="{{ form.reference }}" maxlength="50"></div>
     </div>
   </section>

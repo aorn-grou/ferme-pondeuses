@@ -6,7 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="{{ menu_color }}">
   <title>{% block title %}{% endblock %}{% if self.title() %} · {% endif %}{{ conf.company_name }}</title>
-  {% if conf.logo_file %}<link rel="icon" href="{{ url_for('settings.logo') }}">{% endif %}
+  <link rel="icon" href="{{ logo_url if conf.logo_file else url_for('static', filename='img/androfia-icon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/androfia-icon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
   <style>
     :root {
@@ -23,11 +27,7 @@
 <div class="app" data-app>
   <aside class="sidebar" id="sidebar" aria-label="Menu principal">
     <div class="brand">
-      {% if conf.logo_file %}
-        <img class="brand-logo" src="{{ url_for('settings.logo') }}" alt="" onerror="this.remove()">
-      {% else %}
-        <span class="brand-mark">{{ icon('egg', 22) }}</span>
-      {% endif %}
+      <img class="brand-logo" src="{{ logo_url }}" alt="Logo {{ conf.company_name }}">
       <div class="brand-text">
         <strong>{{ conf.company_name }}</strong>
         {% if conf.company_slogan %}<small>{{ conf.company_slogan }}</small>{% endif %}
@@ -106,11 +106,7 @@
 {% else %}
 <div class="auth-page">
   <div class="auth-brand">
-    {% if conf.logo_file %}
-      <img class="auth-logo" src="{{ url_for('settings.logo') }}" alt="" onerror="this.remove()">
-    {% else %}
-      <span class="brand-mark big">{{ icon('egg', 30) }}</span>
-    {% endif %}
+    <img class="auth-logo" src="{{ logo_url }}" alt="Logo {{ conf.company_name }}">
     <h1>{{ conf.company_name }}</h1>
     {% if conf.company_slogan %}<p>{{ conf.company_slogan }}</p>{% endif %}
   </div>

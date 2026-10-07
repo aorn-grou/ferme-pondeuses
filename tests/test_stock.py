@@ -382,3 +382,46 @@ class TestCorrections(StockBase):
         res = self.post(f"/matieres/mouvement/{own}/corriger", {"quantity": "3", "date": "2026-10-07"}, client=emp)
         self.assertEqual(res.status_code, 302)
         self.assertAlmostEqual(self.stock(mais), 97)
+
+
+class TestSaisieLibre(StockBase):
+    def test_new_category_and_free_unit(self):
+        res = self.post("/matieres/matiere/nouvelle", {"name": "Poudre de coquillage", "category_id": "__new__",
+                                                       "category_new": "Calcium", "unit": "__new__",
+                                                       "unit_new": "bidon 5 L"})
+        self.assertEqual(res.status_code, 302)
+        row = self.one("SELECT m.unit, c.name FROM materials m JOIN categories c ON c.id = m.category_id "
+                       "WHERE m.name = 'Poudre de coquillage'")
+        self.assertEqual((row[0], row[1]), ("bidon 5 L", "Calcium"))
+        # même nom de catégorie (majuscules différentes) : pas de doublon
+        self.post("/matieres/matiere/nouvelle", {"name": "Coquilles", "category_id": "__new__",
+                                                 "category_new": "calcium", "unit": "g"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM categories WHERE name = 'Calcium' COLLATE NOCASE")[0], 1)
+        self.assertEqual(self.one("SELECT unit FROM materials WHERE name = 'Coquilles'")[0], "g")
+        # « Autre » choisi sans rien écrire : refusé
+        res = self.post("/matieres/matiere/nouvelle", {"name": "Sel", "category_id": "__new__", "unit": "kg"},
+                        follow_redirects=True)
+        self.assertIn("nouvelle catégorie", res.get_data(as_text=True))
+        # le formulaire propose bien l'option « Autre »
+        page = self.client.get("/matieres/matiere/nouvelle").get_data(as_text=True)
+        self.assertIn("Autre : écrire une nouvelle catégorie", page)
+        self.assertIn("Autre : écrire mon unité", page)
+
+    def test_new_supplier_in_purchase(self):
+        mais = self.material("Maïs")
+        res = self.post("/matieres/achats/nouveau", {
+            "date": "2026-10-02", "supplier_id": "__new__", "supplier_new": "Rakoto Provende",
+            "material_id": [str(mais)], "quantity": ["10"], "unit_price": ["1000"], "pay_mode": "credit"})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:1500])
+        sup = self.one("SELECT id FROM suppliers WHERE name = 'Rakoto Provende'")
+        self.assertIsNotNone(sup)
+        self.assertEqual(self.one("SELECT supplier_id FROM purchases")[0], sup[0])
+
+    def test_brand_upgrade(self):
+        conn = self.db()
+        conn.execute("UPDATE settings SET value = 'Ma Ferme Avicole' WHERE key = 'company_name'")
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('company_name', 'Ma Ferme Avicole')")
+        conn.commit()
+        from app.db import upgrade_brand
+        upgrade_brand(conn)
+        self.assertEqual(self.one("SELECT value FROM settings WHERE key = 'company_name'")[0], "Androfia Farm")

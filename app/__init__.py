@@ -14,7 +14,7 @@ from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 
 def _secret_key(instance_dir):
@@ -106,8 +106,8 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_globals():
         conf = all_settings()
-        primary = valid_hex(conf.get("primary_color"), "#2f7d4f")
-        menu = valid_hex(conf.get("menu_color"), "#16302b")
+        primary = valid_hex(conf.get("primary_color"), "#1d6b35")
+        menu = valid_hex(conf.get("menu_color"), "#0e3b20")
         user = g.get("user")
         theme = (user["theme"] if user else None) or conf.get("default_theme") or "auto"
         if theme == "auto" and conf.get("default_theme") in ("light", "dark") and not user:
@@ -124,7 +124,13 @@ def create_app(test_config=None):
         from .alerts import current_alerts
         from .discussion import comments_for, unread_count
 
+        if conf.get("logo_file"):
+            logo_url = url_for("settings.logo") + "?v=" + conf.get("logo_file", "")
+        else:
+            logo_url = url_for("static", filename="img/androfia-logo.png", v=VERSION)
+
         return {
+            "logo_url": logo_url,
             "module_url": module_url,
             "unread_messages": unread_count() if user and not (user["must_change_password"] or not user["setup_done"]) else 0,
             "comments_for": comments_for,

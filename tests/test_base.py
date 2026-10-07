@@ -299,7 +299,7 @@ class TestSettingsAndBackups(Base):
         res = self.post("/sauvegardes/reinitialiser", {"confirm_word": "EFFACER", "password": "Poule2026!"}, follow_redirects=True)
         page = res.get_data(as_text=True)
         self.assertIn("état d", page)
-        self.assertIn("Ma Ferme Avicole", page)
+        self.assertIn("Androfia Farm", page)
         names = [r[0] for r in self.db().execute("SELECT username FROM users")]
         self.assertEqual(names, ["super-adm"])
         # toujours connecté avec le même mot de passe

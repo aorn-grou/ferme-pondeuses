@@ -11,7 +11,8 @@ from .utils import date_fr, fmt_money, fmt_qty, log_activity
 
 bp = Blueprint("matieres", __name__, url_prefix="/matieres")
 
-UNITS = ["kg", "sac", "litre", "unité", "g", "tonne", "boîte", "flacon"]
+UNITS = ["kg", "g", "tonne", "sac", "L", "mL", "unité", "pièce", "dose", "flacon", "boîte", "sachet", "carton", "plateau"]
+NEW = "__new__"  # option « Autre : écrire… » des listes déroulantes
 MOVE_KINDS = {
     "achat": "Achat",
     "fabrication": "Fabrication de provende",
@@ -79,11 +80,27 @@ def archived():
 # ---------------------------------------------------------------------------
 # Fiche matière
 # ---------------------------------------------------------------------------
+def get_or_create_category(name):
+    """Retrouve une catégorie par son nom (sans tenir compte des majuscules) ou la crée."""
+    row = query("SELECT id FROM categories WHERE kind = 'matiere' AND name = ? COLLATE NOCASE", (name,), one=True)
+    if row:
+        execute("UPDATE categories SET active = 1 WHERE id = ?", (row["id"],))
+        return row["id"]
+    log_activity("Catégorie ajoutée", name)
+    return execute("INSERT INTO categories (kind, name) VALUES ('matiere', ?)", (name,))
+
+
 def _material_form_values():
+    category_id = request.form.get("category_id") or None
+    category_new = request.form.get("category_new", "").strip()
+    unit = request.form.get("unit", "kg").strip()
+    if unit == NEW:
+        unit = request.form.get("unit_new", "").strip()
     return {
         "name": request.form.get("name", "").strip(),
-        "category_id": request.form.get("category_id") or None,
-        "unit": request.form.get("unit", "kg").strip() or "kg",
+        "category_id": category_id,
+        "category_new": category_new if category_id == NEW else "",
+        "unit": unit[:15] or "kg",
         "alert_threshold": parse_num(request.form.get("alert_threshold"), 0) or 0,
         "notes": request.form.get("notes", "").strip(),
     }
@@ -99,7 +116,14 @@ def _material_errors(values, material_id=None):
         errors.append("Une matière porte déjà ce nom.")
     if values["alert_threshold"] < 0:
         errors.append("Le seuil d'alerte ne peut pas être négatif.")
+    if values["category_id"] == NEW and len(values["category_new"]) < 2:
+        errors.append("Écrivez le nom de la nouvelle catégorie.")
     return errors
+
+
+def _apply_new_category(values):
+    if values["category_id"] == NEW:
+        values["category_id"] = get_or_create_category(values["category_new"][:60])
 
 
 @bp.route("/matiere/nouvelle", methods=["GET", "POST"])
@@ -117,6 +141,7 @@ def material_new():
             for message in errors:
                 flash(message, "error")
         else:
+            _apply_new_category(values)
             with transaction() as conn:
                 cur = conn.execute(
                     """INSERT INTO materials (name, category_id, unit, alert_threshold, notes, created_at)
@@ -170,6 +195,7 @@ def material_edit(material_id):
             for message in errors:
                 flash(message, "error")
         else:
+            _apply_new_category(values)
             execute(
                 "UPDATE materials SET name = ?, category_id = ?, unit = ?, alert_threshold = ?, notes = ? WHERE id = ?",
                 (values["name"], values["category_id"], values["unit"], values["alert_threshold"], values["notes"],
@@ -650,9 +676,23 @@ def _purchase_form_from_request(materials):
     account = query("SELECT * FROM accounts WHERE id = ?", (form["account_id"] or 0,), one=True)
     if paid > 0 and account is None:
         errors.append("Choisissez d'où vient l'argent (caisse ou propriétaire).")
-    supplier = query("SELECT * FROM suppliers WHERE id = ?", (form["supplier_id"],), one=True) if form["supplier_id"] else None
-    if paid < total - 0.5 and supplier is None:
+    form["supplier_new"] = request.form.get("supplier_new", "").strip()[:80]
+    new_supplier = form["supplier_id"] == NEW
+    if new_supplier and len(form["supplier_new"]) < 2:
+        errors.append("Écrivez le nom du nouveau fournisseur.")
+    supplier = None
+    if form["supplier_id"] and not new_supplier:
+        supplier = query("SELECT * FROM suppliers WHERE id = ?", (form["supplier_id"],), one=True)
+    if paid < total - 0.5 and supplier is None and not new_supplier:
         errors.append("Un achat à crédit doit avoir un fournisseur (pour suivre la dette).")
+    if new_supplier and not errors:
+        supplier = query("SELECT * FROM suppliers WHERE name = ? COLLATE NOCASE", (form["supplier_new"],), one=True)
+        if supplier is None:
+            supplier_id = execute("INSERT INTO suppliers (name, phone, address, notes, created_at) VALUES (?, '', '', '', ?)",
+                                  (form["supplier_new"], now_utc()))
+            log_activity("Fournisseur ajouté", form["supplier_new"])
+            supplier = query("SELECT * FROM suppliers WHERE id = ?", (supplier_id,), one=True)
+        form["supplier_id"] = str(supplier["id"])
     data = {"parsed": parsed, "transport": transport, "goods": goods, "total": total, "paid": paid,
             "account": account, "supplier": supplier}
     return form, lines or [{"material_id": "", "quantity": "", "unit_price": ""}], data, errors

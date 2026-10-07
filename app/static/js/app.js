@@ -455,3 +455,19 @@
     }, 45000);
   }
 })();
+
+/* Listes déroulantes libres : l'option « Autre : écrire… » ouvre une case à remplir */
+(function () {
+  document.querySelectorAll("[data-free-for]").forEach((input) => {
+    const select = input.form && input.form.elements[input.dataset.freeFor];
+    if (!select) return;
+    const sync = (focus) => {
+      const open = select.value === "__new__";
+      input.hidden = !open;
+      input.required = open;
+      if (open && focus) input.focus();
+    };
+    select.addEventListener("change", () => sync(true));
+    sync(false);
+  });
+})();

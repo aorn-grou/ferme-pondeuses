@@ -15,8 +15,8 @@ bp = Blueprint("settings", __name__, url_prefix="/parametres")
 LOGO_TYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "gif": "image/gif"}
 COMPANY_FIELDS = ["company_name", "company_slogan", "company_address", "company_phone",
                   "company_email", "company_nif", "company_stat"]
-COLOR_PRESETS = ["#2f7d4f", "#1f6feb", "#c2410c", "#7c3aed", "#0f766e", "#b91c1c", "#a16207", "#334155"]
-MENU_PRESETS = ["#16302b", "#0f172a", "#1e293b", "#3b0764", "#422006", "#ffffff", "#f1f5f2", "#14532d"]
+COLOR_PRESETS = ["#1d6b35", "#b8860b", "#2f7d4f", "#1f6feb", "#c2410c", "#7c3aed", "#0f766e", "#b91c1c", "#a16207", "#334155"]
+MENU_PRESETS = ["#0e3b20", "#16302b", "#0f172a", "#1e293b", "#3b0764", "#422006", "#ffffff", "#f1f5f2", "#14532d"]
 
 
 def _is_image(data, ext):
@@ -62,8 +62,8 @@ def index():
             log_activity("Paramètres modifiés", "Identité de la société")
             flash("Informations de la société enregistrées.", "success")
         elif section == "apparence":
-            set_setting("primary_color", valid_hex(request.form.get("primary_color"), "#2f7d4f"))
-            set_setting("menu_color", valid_hex(request.form.get("menu_color"), "#16302b"))
+            set_setting("primary_color", valid_hex(request.form.get("primary_color"), "#1d6b35"))
+            set_setting("menu_color", valid_hex(request.form.get("menu_color"), "#0e3b20"))
             theme = request.form.get("default_theme", "auto")
             set_setting("default_theme", theme if theme in ("auto", "light", "dark") else "auto")
             set_setting("currency", request.form.get("currency", "Ar").strip()[:6] or "Ar")

@@ -343,9 +343,24 @@ def ensure_super_admin(conn):
     conn.commit()
 
 
+BRAND_UPGRADE = [  # anciennes valeurs par défaut -> identité Androfia Farm (si jamais modifiées)
+    ("company_name", "Ma Ferme Avicole", "Androfia Farm"),
+    ("company_slogan", "Gestion de ferme de poules pondeuses", "Ferme de poules pondeuses"),
+    ("primary_color", "#2f7d4f", "#1d6b35"),
+    ("menu_color", "#16302b", "#0e3b20"),
+]
+
+
+def upgrade_brand(conn):
+    for key, old, new in BRAND_UPGRADE:
+        conn.execute("UPDATE settings SET value = ? WHERE key = ? AND value = ?", (new, key, old))
+    conn.commit()
+
+
 def seed_defaults(conn):
     """Listes de départ (une seule fois) : comptes d'argent et catégories.
     Les propriétaires peuvent ensuite tout renommer, ajouter ou retirer."""
+    upgrade_brand(conn)
     done = conn.execute("SELECT value FROM settings WHERE key = 'seeded_v1'").fetchone()
     if done:
         return

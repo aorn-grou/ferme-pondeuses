@@ -15,14 +15,20 @@
       <select class="input" id="category_id" name="category_id">
         <option value="">— Aucune —</option>
         {% for c in categories %}<option value="{{ c.id }}" {% if values.category_id|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+        <option value="__new__" {% if values.category_id == '__new__' %}selected{% endif %}>✏️ Autre : écrire une nouvelle catégorie…</option>
       </select>
+      <input class="input top-gap-sm" name="category_new" value="{{ values.category_new or '' }}" maxlength="60" placeholder="Écrivez la nouvelle catégorie" data-free-for="category_id" hidden>
       <p class="hint"><a href="{{ url_for('matieres.categories') }}">Gérer les catégories</a></p>
     </div>
     <div class="field">
       <label for="unit">Unité de stock</label>
-      <input class="input" id="unit" name="unit" value="{{ values.unit }}" list="units" maxlength="15">
-      <datalist id="units">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist>
-      <p class="hint">Pour les formules de provende, utilisez de préférence le <strong>kg</strong>.</p>
+      {% set known = values.unit in units %}
+      <select class="input" id="unit" name="unit">
+        {% for u in units %}<option value="{{ u }}" {% if values.unit == u %}selected{% endif %}>{{ u }}</option>{% endfor %}
+        <option value="__new__" {% if not known %}selected{% endif %}>✏️ Autre : écrire mon unité…</option>
+      </select>
+      <input class="input top-gap-sm" name="unit_new" value="{{ '' if known else values.unit }}" maxlength="15" placeholder="ex. bidon de 5 L, régime, botte…" data-free-for="unit" hidden>
+      <p class="hint">Choisissez une unité ou écrivez la vôtre. Pour les formules de provende, le <strong>kg</strong> est conseillé.</p>
     </div>
     <div class="field">
       <label for="alert_threshold">Seuil d'alerte</label>
