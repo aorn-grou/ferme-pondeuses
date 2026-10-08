@@ -14,6 +14,7 @@ LEVEL_LABELS = {NONE: "Aucun accès", VIEW: "Voir", EDIT: "Voir et saisir", MANA
 MODULES = [
     ("dashboard", "Tableau de bord", "home", "Pilotage", "Résumé, courbes et alertes de votre activité.", True),
     ("discussion", "Discussion", "chat", "Pilotage", "Messages entre associés et commentaires sur les saisies.", True),
+    ("controles", "Écarts & contrôles", "alert", "Pilotage", "Inventaires, pertes, poules disparues, mortalité anormale : tout ce qui ne colle pas.", True),
     ("matieres", "Achats & matières premières", "box", "Production", "Fournisseurs, achats de matières, stock des matières.", True),
     ("provenderie", "Provenderie", "factory", "Production", "Formules de provende, programmes par semaine, fabrication, stock de provende.", True),
     ("lots", "Lots de poules", "layers", "Élevage", "Entrée des poussins, âge, effectif, morts, provende consommée et à venir.", True),
@@ -45,6 +46,7 @@ MODULE_ENDPOINTS = {
     "journal": "main.journal",
     "discussion": "discussion.index",
     "lots": "lots.index",
+    "controles": "controles.index",
     "alimentation": "lots.feeding_day",
 }
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
@@ -70,7 +72,7 @@ ADMIN_ROLES = {"super_admin", "admin"}
 ROLE_DEFAULTS = {
     "achats": {"dashboard": VIEW, "matieres": MANAGE, "provenderie": VIEW, "depenses": EDIT},
     "provenderie": {"dashboard": VIEW, "matieres": VIEW, "provenderie": MANAGE},
-    "elevage": {"dashboard": VIEW, "lots": EDIT, "alimentation": MANAGE, "sanitaire": MANAGE,
+    "elevage": {"dashboard": VIEW, "controles": VIEW, "lots": EDIT, "alimentation": MANAGE, "sanitaire": MANAGE,
                 "oeufs": MANAGE, "reformes": EDIT, "provenderie": VIEW},
     "ventes": {"dashboard": VIEW, "oeufs": VIEW, "reformes": EDIT, "ventes": MANAGE},
     "caissier": {"dashboard": VIEW, "depenses": MANAGE, "caisse": MANAGE, "personnel": EDIT, "rapports": VIEW},

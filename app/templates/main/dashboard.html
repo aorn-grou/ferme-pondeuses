@@ -31,6 +31,17 @@
 </section>
 {% endif %}
 
+{# ---------- Écarts à surveiller ---------- #}
+{% if d.controls %}{% set C = d.controls %}
+<a class="ctl-banner top-gap {{ 'bad' if C.unexplained or C.loss < 0 else 'good' }}" href="{{ url_for('controles.index') }}">
+  <span class="ctl-banner-title">{{ icon('alert', 18) }} Écarts &amp; contrôles · 30 jours</span>
+  {% for key, t in C.by.items() if key != 'oeufs' %}
+  <span class="ctl-pill {{ 'bad' if t.loss < 0 or t.unexplained }}">{{ t.emoji }} {{ t.label }} : <strong>{{ t.loss|money if t.loss else 'aucune perte' }}</strong>{% if t.unexplained %} · {{ t.unexplained }} sans explication{% endif %}</span>
+  {% endfor %}
+  <span class="ctl-go">Voir le détail →</span>
+</a>
+{% endif %}
+
 {# ---------- Chiffres clés ---------- #}
 <div class="kpis top-gap">
   {% if L %}

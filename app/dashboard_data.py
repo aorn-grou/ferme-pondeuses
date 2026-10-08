@@ -105,6 +105,12 @@ def build():
         out["month_out"] = -query("SELECT COALESCE(SUM(amount), 0) AS t FROM cash_movements WHERE amount < 0 "
                                   "AND substr(date, 1, 7) = ?", (today()[:7],), one=True)["t"]
 
+    # --- Écarts à surveiller (vols, pertes, mortalité anormale) --------------
+    if can("controles"):
+        from .controls import summary
+
+        out["controls"] = summary(30)
+
     # --- Derniers signalements ----------------------------------------------
     from .discussion import _feed
 

@@ -463,18 +463,21 @@ def inventory():
             return redirect(url_for("matieres.index"))
         with transaction() as conn:
             for m, diff in changes:
+                why = " ".join(request.form.get(f"why_{m['id']}", "").split())[:150]
                 conn.execute(
                     """INSERT INTO stock_moves (date, material_id, quantity, unit_cost, kind, notes, created_by, created_at)
-                       VALUES (?, ?, ?, ?, 'inventaire', 'Inventaire physique', ?, ?)""",
-                    (date, m["id"], diff, m["avg_cost"], g.user["id"], now_utc()),
+                       VALUES (?, ?, ?, ?, 'inventaire', ?, ?, ?)""",
+                    (date, m["id"], diff, m["avg_cost"], why, g.user["id"], now_utc()),
                 )
                 recompute_material(conn, m["id"])
         details = ", ".join(f"{m['name']} {'+' if d > 0 else ''}{fmt_qty(d, m['unit'])}" for m, d in changes)
         log_activity("Inventaire des matières", details)
         for m, d in changes:
+            why = " ".join(request.form.get(f"why_{m['id']}", "").split())[:150]
             notify("material", m["id"], f"📋 Écart d'inventaire : {m['name']} — logiciel {fmt_qty(m['stock'], m['unit'])}, "
                    f"compté {fmt_qty(m['stock'] + d, m['unit'])} → écart {'+' if d > 0 else ''}{fmt_qty(d, m['unit'])} "
-                   f"(≈ {'+' if d > 0 else '-'}{fmt_money(abs(d) * m['avg_cost'])})")
+                   f"(≈ {'+' if d > 0 else '-'}{fmt_money(abs(d) * m['avg_cost'])})"
+                   + (f" — explication : {why}" if why else " — ⚠️ sans explication"))
         flash(f"Inventaire enregistré : {len(changes)} correction(s). {details}", "success")
         return redirect(url_for("matieres.index"))
     return render_template("matieres/inventory.html", materials=materials, today=today())

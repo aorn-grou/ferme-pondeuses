@@ -886,3 +886,25 @@ a.kpi:hover { text-decoration: none; transform: translateY(-2px); }
   .kpi { padding: .8rem; }
   .kpi-lab { font-size: .74rem; }
 }
+
+/* Écarts & contrôles */
+.ctl-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .9rem; }
+.ctl-card { display: flex; flex-direction: column; gap: .2rem; padding: 1rem; border-radius: 16px; background: var(--surface);
+  border: 1px solid var(--border); border-top: 4px solid var(--ok); color: var(--text); box-shadow: var(--shadow); }
+.ctl-card:hover { text-decoration: none; transform: translateY(-2px); }
+.ctl-card.has-loss { border-top-color: var(--danger); }
+.ctl-card.active { outline: 3px solid var(--gold); }
+.ctl-top { display: flex; justify-content: space-between; align-items: center; }
+.ctl-emoji { font-size: 1.6rem; }
+.ctl-val { font-family: var(--font-brand); font-size: 1.4rem; font-weight: 800; }
+.ctl-table tr.row-alert td { background: color-mix(in srgb, var(--danger-bg) 70%, var(--surface)); }
+.explain-form { display: flex; gap: .3rem; align-items: center; min-width: 200px; }
+.explain-form .input { flex: 1; min-height: 34px; }
+.ctl-banner { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; padding: .8rem 1rem; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); border-left: 5px solid var(--ok); }
+.ctl-banner.bad { border-left-color: var(--danger); background: color-mix(in srgb, var(--danger-bg) 45%, var(--surface)); }
+.ctl-banner:hover { text-decoration: none; }
+.ctl-banner-title { font-weight: 800; display: inline-flex; align-items: center; gap: .35rem; }
+.ctl-pill { font-size: .85rem; padding: .25rem .65rem; border-radius: 99px; background: var(--ok-bg); color: var(--ok); }
+.ctl-pill.bad { background: var(--danger-bg); color: var(--danger); }
+.ctl-go { margin-left: auto; font-weight: 700; color: var(--primary); font-size: .88rem; }

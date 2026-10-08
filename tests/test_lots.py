@@ -95,3 +95,29 @@ class TestLots(StockBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestControles(TestLots):
+    def test_gaps_page(self):
+        son = self.material("Son de riz", qty="400", cost="450")
+        mais = self.material("Maïs jaune", qty="100", cost="1000")
+        # écart expliqué et écart sans explication
+        self.post("/matieres/inventaire", {"date": date.today().isoformat(), f"count_{son}": "390", f"why_{son}": "Rats",
+                                           f"count_{mais}": "95"})
+        _dem, _ponte, prog = self.setup_feed()
+        self.new_lot(prog, (date.today() - timedelta(days=30)).isoformat(), account_id="", other_costs="0", paid="0")
+        lot = self.one("SELECT id FROM lots")[0]
+        self.post(f"/lots/{lot}/effectif", {"kind": "comptage", "quantity": "490", "date": date.today().isoformat()})
+        self.post(f"/lots/{lot}/effectif", {"kind": "mort", "quantity": "12", "date": date.today().isoformat(),
+                                            "notes": "Chaleur"})
+        page = self.client.get("/controles/?periode=30").get_data(as_text=True)
+        self.assertIn("Rats", page)
+        self.assertIn("Écart de comptage", page)
+        self.assertIn("Mortalité anormale", page)
+        self.assertIn("sans explication", page)
+        # ajouter une explication après coup
+        mv = self.one("SELECT id FROM stock_moves WHERE material_id = ? AND kind = 'inventaire'", (mais,))[0]
+        self.post("/controles/expliquer", {"table": "stock_moves", "id": str(mv), "why": "Erreur de pesée"})
+        self.assertEqual(self.one("SELECT notes FROM stock_moves WHERE id = ?", (mv,))[0], "Erreur de pesée")
+        # le tableau de bord montre le bandeau
+        self.assertIn("Écarts &amp; contrôles", self.client.get("/").get_data(as_text=True))

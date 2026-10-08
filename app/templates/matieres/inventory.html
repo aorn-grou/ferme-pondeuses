@@ -12,7 +12,7 @@
   </div>
   <div class="card flush">
     <table class="table responsive">
-      <thead><tr><th>Matière</th><th class="right">Stock du logiciel</th><th>Quantité comptée</th><th class="right">Écart</th></tr></thead>
+      <thead><tr><th>Matière</th><th class="right">Stock du logiciel</th><th>Quantité comptée</th><th class="right">Écart</th><th>Explication de l'écart</th></tr></thead>
       <tbody>
       {% for m in materials %}
         <tr data-inventory-row data-stock="{{ m.stock }}">
@@ -20,11 +20,14 @@
           <td data-label="Stock du logiciel" class="right">{{ m.stock|qty(m.unit) }}</td>
           <td data-label="Quantité comptée"><div class="input-group"><input class="input sm" name="count_{{ m.id }}" inputmode="decimal" data-count aria-label="Quantité comptée pour {{ m.name }}"><span class="input-addon static">{{ m.unit }}</span></div></td>
           <td data-label="Écart" class="right" data-diff>—</td>
+          <td data-label="Explication"><input class="input sm" name="why_{{ m.id }}" list="causes-ecart" maxlength="150" placeholder="ex. vol, erreur, rats…" data-combo aria-label="Explication pour {{ m.name }}"></td>
         </tr>
-      {% else %}<tr><td colspan="4" class="center muted">Aucune matière.</td></tr>{% endfor %}
+      {% else %}<tr><td colspan="5" class="center muted">Aucune matière.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
+  <datalist id="causes-ecart">{% for c in ['Vol / disparition', 'Erreur de saisie', 'Perte / casse', 'Humidité / pourriture', 'Rats / animaux', 'Maladie', 'Erreur de pesée', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist>
+  <p class="hint">🔍 Chaque écart apparaît dans « Écarts &amp; contrôles » et est signalé à vos associés. Une explication évite les doutes.</p>
   {% if materials %}<div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer l'inventaire</button></div>{% endif %}
 </form>
 {% endblock %}

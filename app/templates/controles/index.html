@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Écarts & contrôles{% endblock %}
+{% block content %}
+{% call page_head('Écarts & contrôles', "Tout ce qui manque ou ne colle pas : inventaires, pertes, poules disparues, mortalité anormale. Chaque écart doit être expliqué.", 'alert') %}{% endcall %}
+
+<div class="ctl-cards">
+  {% for key, t in totals.items() %}
+  <a class="ctl-card {{ 'has-loss' if t.loss < 0 else '' }} {{ 'active' if domain == key }}" href="{{ url_for('controles.index', domaine='' if domain == key else key, periode=period, du=du, au=au) }}">
+    <div class="ctl-top"><span class="ctl-emoji">{{ t.emoji }}</span>{% if t.unexplained %}<span class="tag tag-red">{{ t.unexplained }} sans explication</span>{% elif t.count %}<span class="tag tag-green">tout expliqué</span>{% endif %}</div>
+    <strong>{{ t.label }}</strong>
+    {% if key == 'oeufs' %}<small class="muted">avec le module Œufs (bientôt)</small>
+    {% else %}<div class="ctl-val {{ 'text-danger' if t.loss < 0 }}">{{ t.loss|money if t.loss else '0 Ar' }}</div><small class="muted">{{ t.count }} écart(s) sur la période</small>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+<form method="get" class="filters card top-gap">
+  <input type="hidden" name="domaine" value="{{ domain }}">
+  <div class="field"><label for="periode">Période</label>
+    <select class="input" id="periode" name="periode" onchange="this.form.du.value='';this.form.au.value='';this.form.submit()">
+      {% for v, l in [('7', '7 derniers jours'), ('30', '30 derniers jours'), ('90', '3 derniers mois'), ('365', '12 derniers mois'), ('tout', 'Depuis le début')] %}<option value="{{ v }}" {% if period == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      {% if period == 'dates' %}<option value="dates" selected>Dates choisies</option>{% endif %}</select></div>
+  <div class="field"><label for="du">Du</label><input class="input" type="date" id="du" name="du" value="{{ du }}"></div>
+  <div class="field"><label for="au">Au</label><input class="input" type="date" id="au" name="au" value="{{ au }}"></div>
+  <label class="check"><input type="checkbox" name="sans_explication" value="1" {% if request.args.get('sans_explication') %}checked{% endif %}> Seulement sans explication</label>
+  <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Afficher</button></div>
+</form>
+
+{% if unexplained %}
+<div class="alert-chip critical top-gap-sm">{{ icon('alert', 16) }} <strong>{{ unexplained }} écart(s) sans explication</strong> <span>— écrivez la raison dans la colonne « Explication ».</span></div>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} Tous les écarts</h2><span class="tag {{ 'tag-red' if loss < 0 else 'tag-green' }}">Pertes : {{ loss|money }}</span></div>
+  <table class="table responsive ctl-table">
+    <thead><tr><th>Date</th><th>Quoi</th><th class="right">Avant → après</th><th class="right">Écart</th><th class="right">Valeur</th><th>Explication</th><th>Par</th></tr></thead>
+    <tbody>
+    {% for i in items %}
+      <tr class="{{ 'row-alert' if not i.explained }}">
+        <td data-label="Date" class="nowrap">{{ i.date|date_fr }}</td>
+        <td data-label="Quoi">{{ i.domain == 'matiere' and '📦' or (i.domain == 'provende' and '🌾' or '🐔') }} <a href="{{ i.url }}"><strong>{{ i.name }}</strong></a><small class="muted block">{{ i.what }}</small></td>
+        <td data-label="Avant → après" class="right nowrap">{% if i.before is not none %}{{ i.before|qty }} → {{ i.after|qty }}{% else %}—{% endif %}</td>
+        <td data-label="Écart" class="right"><strong class="{{ 'text-danger' if i.qty < 0 else 'text-ok' }}">{{ '+' if i.qty > 0 }}{{ i.qty|qty(i.unit) }}</strong></td>
+        <td data-label="Valeur" class="right {{ 'text-danger' if i.value < 0 else 'text-ok' }}">{{ '+' if i.value > 0 }}{{ i.value|money }}</td>
+        <td data-label="Explication">
+          {% if i.explained %}<span>{{ i.why }}</span>
+          {% elif i.table and can(i.module, 2) %}
+            <form method="post" action="{{ url_for('controles.explain') }}" class="explain-form">{{ csrf() }}
+              <input type="hidden" name="table" value="{{ i.table }}"><input type="hidden" name="id" value="{{ i.id }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+              <input class="input sm" name="why" list="causes-all" placeholder="⚠️ À expliquer…" maxlength="150" required data-combo>
+              <button class="btn ghost sm" type="submit">{{ icon('check', 16) }}</button></form>
+          {% else %}<span class="text-danger">⚠️ Sans explication</span>{% endif %}
+        </td>
+        <td data-label="Par">{{ i.by or '—' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="center muted">✅ Aucun écart sur cette période.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+<datalist id="causes-all">{% for c in ['Vol / disparition', 'Erreur de saisie', 'Erreur de comptage', 'Perte / casse', 'Humidité / pourriture', 'Rats / animaux', 'Maladie', 'Chaleur', 'Prédateur', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist>
+<p class="hint top-gap">Comment ça marche : chaque inventaire, perte, disparition ou comptage de poules est enregistré ici avec qui l'a fait. Une mortalité anormale (plus de 3 fois la moyenne du lot, au moins 3 morts) est aussi signalée. Les associés sont prévenus dans la Discussion.</p>
+{% endblock %}

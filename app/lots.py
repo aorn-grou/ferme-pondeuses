@@ -414,7 +414,7 @@ def event_new(lot_id):
         if signed == 0:
             flash(f"Aucun écart : le logiciel compte déjà {current} poules.", "info")
             return back
-        notes = notes or f"Compté {int(qty)} poules (le logiciel en comptait {current})"
+        notes = notes  # l'explication de l'écart (le comptage avant → après est recalculé à l'affichage)
     else:
         signed = int(round(qty)) * EVENT_KINDS[kind][1]
     if current + signed < 0:

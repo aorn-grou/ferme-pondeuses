@@ -29,7 +29,8 @@
     <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ form.date }}" required></div>
   </div>
   <div class="field" data-entry-only><label for="unit_cost">Prix par unité (Ar) — pour une entrée</label><input class="input" id="unit_cost" name="unit_cost" inputmode="decimal" value="{{ form.unit_cost }}" placeholder="0"></div>
-  <div class="field"><label for="notes">Motif / remarque</label><input class="input" id="notes" name="notes" value="{{ form.notes }}" maxlength="150" placeholder="ex. sacs mouillés"></div>
+  <div class="field"><label for="notes">Motif / remarque</label><input class="input" id="notes" name="notes" value="{{ form.notes }}" maxlength="150" placeholder="ex. sacs mouillés, vol, rats…" list="causes-ecart" data-combo>
+  <datalist id="causes-ecart">{% for c in ['Vol / disparition', 'Erreur de saisie', 'Perte / casse', 'Humidité / pourriture', 'Rats / animaux', 'Maladie', 'Erreur de pesée', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist></div>
   <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
 </form>
 {% endblock %}

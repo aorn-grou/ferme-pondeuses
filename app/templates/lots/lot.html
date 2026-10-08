@@ -98,7 +98,8 @@
       <select class="input" id="e-kind" name="kind">{% for k, v in kinds.items() %}<option value="{{ k }}">{{ v[0] }}</option>{% endfor %}</select></div>
     <div class="field"><label for="e-qty">Nombre de poules</label><input class="input" id="e-qty" name="quantity" inputmode="numeric" required placeholder="ex. 2"></div>
     <div class="field"><label for="e-date">Date</label><input class="input" type="date" id="e-date" name="date" value="{{ today }}" required></div>
-    <div class="field"><label for="e-notes">Remarque</label><input class="input" id="e-notes" name="notes" maxlength="150" placeholder="ex. chaleur, maladie…"></div>
+    <div class="field"><label for="e-notes">Explication</label><input class="input" id="e-notes" name="notes" maxlength="150" placeholder="ex. chaleur, maladie, vol…" list="causes-lot" data-combo>
+      <datalist id="causes-lot">{% for c in ['Maladie', 'Chaleur', 'Vol / disparition', 'Prédateur (chien, rat…)', 'Écrasement', 'Erreur de comptage', 'Vendue', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist></div>
     <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
   </form>
   <p class="hint">« Correction après comptage » : écrivez le nombre de poules réellement comptées, le logiciel calcule l'écart.</p>
