@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Provende du jour{% endblock %}
+{% block content %}
+{% call page_head('Provende du jour', "Le logiciel propose ce que chaque lot doit manger aujourd'hui. Corrigez ce que vous voulez, puis enregistrez tout en une fois.", 'wheat') %}
+  <a class="btn ghost" href="{{ url_for('lots.index') }}">← Lots</a>
+{% endcall %}
+{% with active='alimentation' %}{% include "lots/_tabs.html" %}{% endwith %}
+
+<form method="get" class="inline-form">
+  <label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ date }}" onchange="this.form.submit()">
+</form>
+
+{% if not rows %}
+<div class="next-step top-gap"><div><strong>Aucun lot en cours</strong><p>Enregistrez d'abord un lot de poules.</p></div>
+  <a class="btn primary" href="{{ url_for('lots.lot_new') }}">{{ icon('plus', 18) }} Nouveau lot</a></div>
+{% else %}
+<form method="post" class="stack top-gap">
+  {{ csrf() }}<input type="hidden" name="date" value="{{ date }}">
+  <div class="card flush">
+    <table class="table responsive">
+      <thead><tr><th>Lot</th><th>Âge</th><th class="right">Poules</th><th>Provende</th><th>Quantité (kg)</th><th class="right">Par poule</th><th class="right">Déjà donné ce jour</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr data-feed-row data-birds="{{ r.s.birds }}">
+          <td data-label="Lot"><a href="{{ url_for('lots.lot', lot_id=r.lot.id) }}"><strong>{{ r.lot.name }}</strong></a><input type="hidden" name="lot_id" value="{{ r.lot.id }}"></td>
+          <td data-label="Âge">semaine {{ r.s.week }}</td>
+          <td data-label="Poules" class="right">{{ r.s.birds|num }}</td>
+          <td data-label="Provende">
+            <select class="input" name="formula_id" data-free="formule" data-placeholder="Écrivez la provende…" data-new-tip="Cette provende n'existe pas encore.">
+              <option value="">— Choisir —</option>
+              {% for f in formulas %}<option value="{{ f.id }}" data-label="{{ f.name }}" {% if f.id == r.s.formula_id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select>
+            {% if r.s.formula %}<small class="muted block">programme : {{ r.s.formula }}{% if r.s.formula_id in stocks %} · stock {{ stocks[r.s.formula_id]|qty('kg') }}{% endif %}</small>{% endif %}</td>
+          <td data-label="Quantité (kg)"><input class="input" name="quantity" inputmode="decimal" value="{{ (r.s.kg|qty) if (r.s.kg and not r.given) else '' }}" placeholder="{{ r.s.kg|qty if r.s.kg else '0' }}" data-feed-qty></td>
+          <td data-label="Par poule" class="right" data-per-bird>—</td>
+          <td data-label="Déjà donné ce jour" class="right">{{ r.given|qty('kg') if r.given else '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">Une ligne laissée vide n'est pas enregistrée. Si un lot a déjà reçu sa provende ce jour, la case est vide pour éviter de la donner deux fois.</p>
+  {% if can('alimentation', 2) %}<div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la distribution</button></div>{% endif %}
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll("[data-feed-row]").forEach((row) => {
+  const birds = parseFloat(row.dataset.birds) || 0, q = row.querySelector("[data-feed-qty]"), out = row.querySelector("[data-per-bird]");
+  const up = () => { const kg = parseFloat(String(q.value || "").replace(/\s/g, "").replace(",", ".")) || 0; out.textContent = kg && birds ? Math.round(kg * 1000 / birds) + " g" : "—"; };
+  q.addEventListener("input", up); up();
+});
+</script>
+{% endblock %}

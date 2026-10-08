@@ -16,8 +16,8 @@ MODULES = [
     ("discussion", "Discussion", "chat", "Pilotage", "Messages entre associés et commentaires sur les saisies.", True),
     ("matieres", "Achats & matières premières", "box", "Production", "Fournisseurs, achats de matières, stock des matières.", True),
     ("provenderie", "Provenderie", "factory", "Production", "Formules de provende, programmes par semaine, fabrication, stock de provende.", True),
-    ("lots", "Lots de poules", "layers", "Élevage", "Entrée des poussins, âge, effectif, ponte, poids, réformes.", False),
-    ("alimentation", "Alimentation", "wheat", "Élevage", "Distribution quotidienne de provende, consommation par poule et par lot.", False),
+    ("lots", "Lots de poules", "layers", "Élevage", "Entrée des poussins, âge, effectif, morts, provende consommée et à venir.", True),
+    ("alimentation", "Alimentation", "wheat", "Élevage", "Distribution quotidienne de provende, consommation par poule et par lot.", True),
     ("sanitaire", "Suivi sanitaire", "shield", "Élevage", "Vaccinations avec alertes, soins, mortalité.", False),
     ("oeufs", "Œufs", "egg", "Élevage", "Ramassage par lot et par jour, stock d'œufs.", False),
     ("reformes", "Poules de réforme", "tag", "Ventes", "Poules non rentables à vendre.", False),
@@ -44,6 +44,8 @@ MODULE_ENDPOINTS = {
     "sauvegardes": "backups.index",
     "journal": "main.journal",
     "discussion": "discussion.index",
+    "lots": "lots.index",
+    "alimentation": "lots.feeding_day",
 }
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
 MENU_GROUPS = ["Pilotage", "Production", "Élevage", "Ventes", "Finances", "Administration"]

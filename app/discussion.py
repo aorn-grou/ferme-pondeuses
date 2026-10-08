@@ -16,8 +16,9 @@ REF_TYPES = {
     "supplier": ("matieres", "Fournisseur « {name} »", "matieres.supplier", "supplier_id"),
     "production": ("provenderie", "Fabrication n°{id}", "provenderie.production", "production_id"),
     "formula": ("provenderie", "Formule « {name} »", "provenderie.formula", "formula_id"),
+    "lot": ("lots", "Lot « {name} »", "lots.lot", "lot_id"),
 }
-NAME_TABLES = {"material": "materials", "supplier": "suppliers", "formula": "formulas"}
+NAME_TABLES = {"material": "materials", "supplier": "suppliers", "formula": "formulas", "lot": "lots"}
 
 
 def notify(ref_type, ref_id, body):

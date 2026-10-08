@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Lots de poules{% endblock %}
+{% block content %}
+{% call page_head('Lots de poules', "Chaque bande : âge, effectif, provende mangée et à venir jusqu'à la réforme.", 'layers') %}
+  {% if can('alimentation', 2) and items %}<a class="btn ghost" href="{{ url_for('lots.feeding_day') }}">{{ icon('wheat', 18) }} Donner la provende du jour</a>{% endif %}
+  {% if can('lots', 2) %}<a class="btn primary" href="{{ url_for('lots.lot_new') }}">{{ icon('plus', 18) }} Nouveau lot</a>{% endif %}
+{% endcall %}
+{% with active='lots' %}{% include "lots/_tabs.html" %}{% endwith %}
+
+{% if not items %}
+<div class="next-step">
+  <div><strong>🐣 Enregistrez votre premier lot</strong>
+    <p>Nom du lot, date d'arrivée, nombre de poussins (ou de poules), et le programme de provende à suivre. Le logiciel calcule ensuite l'âge, la provende du jour et ce qu'il faudra jusqu'à la réforme.</p></div>
+  {% if can('lots', 2) %}<a class="btn primary" href="{{ url_for('lots.lot_new') }}">{{ icon('plus', 18) }} Nouveau lot</a>{% endif %}
+</div>
+{% else %}
+<div class="hero-band">
+  <div>
+    <div class="hero-sub">{{ icon('layers', 16) }} {{ totals.lots }} lot(s) en cours</div>
+    <div class="hero-line"><span class="hero-num">{{ totals.birds|num }}</span><span>poules à la ferme</span></div>
+    <div class="hero-sub">Provende prévue aujourd'hui : <strong>{{ totals.today_kg|qty('kg') }}</strong> · provende déjà mangée : <strong>{{ totals.eaten_cost|money }}</strong></div>
+  </div>
+  <div class="chips-inline">
+    <a class="pill-link {% if show == 'actifs' %}on{% endif %}" href="{{ url_for('lots.index') }}">En cours</a>
+    <a class="pill-link {% if show != 'actifs' %}on{% endif %}" href="{{ url_for('lots.index', voir='tous') }}">Tous ({{ closed }} terminé(s))</a>
+  </div>
+</div>
+
+<div class="lot-grid top-gap">
+{% for it in items %}{% set l = it.lot %}{% set s = it.s %}
+  <a class="lot-card" href="{{ url_for('lots.lot', lot_id=l.id) }}">
+    <div class="lot-card-head">
+      <strong>{{ l.name }}</strong>
+      {% if l.status != 'actif' %}<span class="tag tag-gray">Terminé</span>
+      {% elif s.mortality >= 5 %}<span class="tag tag-red">Mortalité {{ s.mortality|round(1) }} %</span>
+      {% else %}<span class="tag tag-green">Semaine {{ s.week }}</span>{% endif %}
+    </div>
+    <div class="muted small">{{ s.birds|num }} poules{% if l.building %} · {{ l.building }}{% endif %}{% if l.breed %} · {{ l.breed }}{% endif %}</div>
+    {% if s.suggest %}
+    <div class="lot-today">
+      <span>{{ icon('wheat', 16) }} Aujourd'hui</span>
+      {% if s.suggest.formula %}<strong>{{ s.suggest.kg|qty('kg') }}</strong><small>{{ s.suggest.formula }} · {{ s.suggest.grams|round(0)|int }} g/poule</small>
+      {% else %}<small class="muted">pas de programme pour la semaine {{ s.suggest.week }}</small>{% endif %}
+    </div>
+    {% endif %}
+    <div class="lot-figs">
+      <div><span>🌾 Mangé</span><strong class="text-green">{{ s.eaten_kg|qty('kg') }}</strong><small>{{ s.eaten_cost|money }}</small></div>
+      {% if s.forecast %}<div><span>🔮 Reste à manger</span><strong class="text-gold">{{ s.forecast.kg|qty('kg') }}</strong><small>{{ s.forecast.cost|money }}</small></div>{% endif %}
+    </div>
+    <div class="life-bar" title="Semaine {{ s.week }} sur {{ l.reform_week }} (réforme prévue)"><span style="width: {{ s.progress|round(0) }}%"></span></div>
+    <div class="muted small">Semaine {{ s.week }} / {{ l.reform_week }}{% if s.forecast %} · réforme prévue le {{ s.forecast.end_date|date_fr }}{% endif %}</div>
+  </a>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

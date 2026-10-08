@@ -190,6 +190,51 @@ SCHEMA = {
         ("formula_id", "INTEGER NOT NULL"),
         ("grams_per_bird", "REAL NOT NULL DEFAULT 0"),
     ],
+    # ----- Lots de poules -----
+    "lots": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("arrival_date", "TEXT NOT NULL"),
+        ("age_days_at_arrival", "INTEGER NOT NULL DEFAULT 0"),  # 0 = poussins d'un jour
+        ("initial_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("breed", "TEXT DEFAULT ''"),
+        ("building", "TEXT DEFAULT ''"),
+        ("supplier", "TEXT DEFAULT ''"),
+        ("chick_price", "REAL NOT NULL DEFAULT 0"),
+        ("other_costs", "REAL NOT NULL DEFAULT 0"),
+        ("paid", "REAL NOT NULL DEFAULT 0"),
+        ("account_id", "INTEGER"),
+        ("program_id", "INTEGER"),
+        ("reform_week", "INTEGER NOT NULL DEFAULT 72"),
+        ("egg_price", "REAL NOT NULL DEFAULT 0"),
+        ("status", "TEXT NOT NULL DEFAULT 'actif'"),
+        ("end_date", "TEXT DEFAULT ''"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "lot_events": [  # morts, réformes, ventes, ajouts, corrections de comptage
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("lot_id", "INTEGER NOT NULL"),
+        ("date", "TEXT NOT NULL"),
+        ("kind", "TEXT NOT NULL"),
+        ("quantity", "INTEGER NOT NULL"),  # signé : négatif = poules en moins
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "feedings": [  # provende donnée à un lot
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("lot_id", "INTEGER NOT NULL"),
+        ("date", "TEXT NOT NULL"),
+        ("formula_id", "INTEGER NOT NULL"),
+        ("quantity", "REAL NOT NULL"),
+        ("unit_cost", "REAL NOT NULL DEFAULT 0"),
+        ("birds", "INTEGER NOT NULL DEFAULT 0"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
     "productions": [
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
         ("date", "TEXT NOT NULL"),
@@ -229,6 +274,7 @@ SCHEMA = {
 TRANSACTION_TABLES = [
     "purchases", "purchase_lines", "supplier_payments", "stock_moves",
     "productions", "production_lines", "feed_moves", "cash_movements",
+    "lots", "lot_events", "feedings",
 ]
 
 DEFAULT_ACCOUNTS = [

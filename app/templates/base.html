@@ -35,12 +35,17 @@
       <button class="icon-btn sidebar-close" type="button" data-menu-close aria-label="Fermer le menu">{{ icon('x') }}</button>
     </div>
     <nav class="nav">
+      {# le lien actif est celui dont l'adresse correspond le mieux à la page ouverte #}
+      {% set act = namespace(href='') %}
+      {% for group, items in menu_groups %}{% for item in items %}{% set h = module_url(item.key) %}
+        {% if (request.path == h or (h != '/' and request.path.startswith(h))) and h|length > act.href|length %}{% set act.href = h %}{% endif %}
+      {% endfor %}{% endfor %}
       {% for group, items in menu_groups %}
         <div class="nav-group">
           <p class="nav-title">{{ group }}</p>
           {% for item in items %}
             {% set href = module_url(item.key) %}
-            <a class="nav-link {% if request.path == href or (href != '/' and request.path.startswith(href)) %}active{% endif %}" href="{{ href }}">
+            <a class="nav-link {% if href == act.href or (not act.href and request.path == href) %}active{% endif %}" href="{{ href }}">
               {{ icon(item.icon) }}<span>{{ item.label }}</span>
               {% if not item.built %}<em class="soon">bientôt</em>{% endif %}
               {% if item.key == 'discussion' %}<em class="nav-badge" data-unread-badge {% if not unread_messages %}hidden{% endif %}>{{ unread_messages }}</em>{% endif %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ ('Modifier ' ~ lot.name) if lot else 'Nouveau lot' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier « ' ~ lot.name ~ ' »') if lot else 'Nouveau lot de poules', "Tout s'écrit librement. Le programme de provende est conseillé, pas obligatoire.", 'layers') %}
+  <a class="btn ghost" href="{{ url_for('lots.lot', lot_id=lot.id) if lot else url_for('lots.index') }}">← Retour</a>
+{% endcall %}
+{% set age_days = values.age_days_at_arrival or 0 %}
+<form method="post" class="stack" data-autosave="lot-{{ lot.id if lot else 'nouveau' }}">
+  {{ csrf() }}
+  <section class="card">
+    <h2>{{ icon('layers', 20) }} Le lot</h2>
+    <div class="grid three">
+      <div class="field"><label for="name">Nom du lot *</label><input class="input" id="name" name="name" value="{{ values.name }}" required maxlength="60" placeholder="ex. Lot A, Bande octobre"></div>
+      <div class="field"><label for="arrival_date">Date d'arrivée *</label><input class="input" type="date" id="arrival_date" name="arrival_date" value="{{ values.arrival_date }}" required></div>
+      <div class="field"><label for="initial_count">Nombre à l'arrivée *</label><input class="input" id="initial_count" name="initial_count" inputmode="numeric" value="{{ values.initial_count }}" required placeholder="ex. 500"></div>
+    </div>
+    <div class="grid three">
+      <div class="field"><label>Âge à l'arrivée</label>
+        <div class="input-group"><input class="input" name="age_weeks" inputmode="numeric" value="{{ (age_days // 7) if age_days else '' }}" placeholder="0"><span class="input-addon static">semaines</span>
+          <input class="input" name="age_days" inputmode="numeric" value="{{ (age_days % 7) if age_days else '' }}" placeholder="0"><span class="input-addon static">jours</span></div>
+        <p class="hint">Poussins d'un jour : laissez 0. Poulettes achetées à 16 semaines : écrivez 16.</p></div>
+      <div class="field"><label for="breed">Race / souche</label><input class="input" id="breed" name="breed" value="{{ values.breed }}" list="dl-breed" placeholder="ex. Isa Brown" data-combo>
+        <datalist id="dl-breed">{% for v in suggestions.breed + ['Isa Brown', 'Lohmann Brown', 'Hy-Line', 'Gasy'] %}<option value="{{ v }}">{% endfor %}</datalist></div>
+      <div class="field"><label for="building">Bâtiment / poulailler</label><input class="input" id="building" name="building" value="{{ values.building }}" list="dl-building" placeholder="ex. Bâtiment 1" data-combo>
+        <datalist id="dl-building">{% for v in suggestions.building %}<option value="{{ v }}">{% endfor %}</datalist></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>{{ icon('wheat', 20) }} Provende et durée de vie</h2>
+    <div class="grid three">
+      <div class="field"><label for="program_id">Programme de provende</label>
+        <select class="input" id="program_id" name="program_id"><option value="">— Sans programme (je choisis chaque jour) —</option>
+          {% for p in programs %}<option value="{{ p.id }}" {% if values.program_id|string == p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+        <p class="hint">Le programme propose la provende et les grammes par poule selon l'âge. {% if not programs %}<a href="{{ url_for('provenderie.program_new') }}">Créer un programme</a>{% endif %}</p></div>
+      <div class="field"><label for="reform_week">Réforme prévue à la semaine</label><input class="input" id="reform_week" name="reform_week" inputmode="numeric" value="{{ values.reform_week }}">
+        <p class="hint">Sert à calculer la provende à venir. Modifiable à tout moment.</p></div>
+      <div class="field"><label for="egg_price">Prix de vente d'un œuf (Ar)</label><input class="input" id="egg_price" name="egg_price" inputmode="decimal" value="{{ values.egg_price or '' }}" placeholder="ex. 500">
+        <p class="hint">Servira à calculer si le lot est rentable.</p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>{{ icon('wallet', 20) }} Achat des poussins</h2>
+    <div class="grid three">
+      <div class="field"><label for="supplier">Fournisseur / couvoir</label><input class="input" id="supplier" name="supplier" value="{{ values.supplier }}" list="dl-supplier" placeholder="ex. Couvoir Rabe" data-combo>
+        <datalist id="dl-supplier">{% for v in suggestions.supplier %}<option value="{{ v }}">{% endfor %}</datalist></div>
+      <div class="field"><label for="chick_price">Prix d'un poussin (Ar)</label><input class="input" id="chick_price" name="chick_price" inputmode="decimal" value="{{ values.chick_price or '' }}" placeholder="0" data-chick-price></div>
+      <div class="field"><label for="other_costs">Transport et autres frais (Ar)</label><input class="input" id="other_costs" name="other_costs" inputmode="decimal" value="{{ values.other_costs or '' }}" placeholder="0" data-chick-other></div>
+    </div>
+    {% if not lot %}
+    <div class="grid three">
+      <div class="totals"><div class="grand"><span>Coût total</span><strong data-chick-total>0 Ar</strong></div></div>
+      <div class="field"><label for="paid">Payé maintenant (Ar)</label><input class="input" id="paid" name="paid" inputmode="decimal" value="{{ values.paid if values.paid is not none else '' }}" placeholder="= coût total">
+        <p class="hint">Laissez vide si tout est payé. Écrivez 0 si rien n'est payé.</p></div>
+      <div class="field"><label for="account_id">L'argent vient de</label>
+        <select class="input" id="account_id" name="account_id" data-free="compte" data-new-tip="Nouveau compte : il sera créé.">
+          <option value="">— Choisir —</option>
+          {% for a in accounts %}<option value="{{ a.id }}" {% if values.account_id|string == a.id|string %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+    </div>
+    {% else %}
+    <p class="hint">Le paiement des poussins se corrige dans la caisse (bientôt). Ici vous pouvez corriger les prix pour les calculs du lot.</p>
+    {% endif %}
+  </section>
+
+  <section class="card"><div class="field"><label for="notes">Remarques</label><textarea class="input" id="notes" name="notes" rows="2">{{ values.notes or '' }}</textarea></div></section>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} {{ 'Enregistrer les modifications' if lot else 'Enregistrer le lot' }}</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const n = document.getElementById("initial_count"), p = document.querySelector("[data-chick-price]"),
+        o = document.querySelector("[data-chick-other]"), t = document.querySelector("[data-chick-total]");
+  if (!t) return;
+  const v = (el) => parseFloat(String(el.value || "").replace(/\s/g, "").replace(",", ".")) || 0;
+  const up = () => { t.textContent = Math.round(v(n) * v(p) + v(o)).toLocaleString("fr-FR") + " Ar"; };
+  [n, p, o].forEach((el) => el.addEventListener("input", up)); up();
+})();
+</script>
+{% endblock %}

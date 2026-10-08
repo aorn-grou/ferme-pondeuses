@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+{% call page_head(item.name, ('Semaine ' ~ s.week ~ ' · ' ~ s.days ~ ' jours') ~ (' · ' ~ item.building if item.building else '') ~ (' · terminé' if item.status != 'actif' else ''), 'layers') %}
+  <a class="btn ghost" href="{{ url_for('lots.index') }}">← Lots</a>
+  {% if can('lots', 2) %}<a class="btn ghost" href="{{ url_for('lots.lot_edit', lot_id=item.id) }}">{{ icon('edit', 18) }} Modifier</a>{% endif %}
+{% endcall %}
+
+{% if item.notes %}<section class="card note-card"><h2>📝 Remarques</h2><p class="pre-line">{{ item.notes }}</p></section>{% endif %}
+
+<div class="hero-band top-gap">
+  <div>
+    <div class="hero-sub">{{ icon('layers', 16) }} Effectif aujourd'hui</div>
+    <div class="hero-line"><span class="hero-num">{{ s.birds|num }}</span><span>poules sur {{ item.initial_count|num }} au départ</span></div>
+    <div class="hero-sub">Mortalité : <strong>{{ s.deaths|num }}</strong> ({{ s.mortality|round(1) }} %) · arrivé le {{ item.arrival_date|date_fr }}{% if item.breed %} · {{ item.breed }}{% endif %}</div>
+  </div>
+  <div class="hero-side">
+    <div class="life-bar light"><span style="width: {{ s.progress|round(0) }}%"></span></div>
+    <small>Semaine {{ s.week }} sur {{ item.reform_week }} (réforme prévue)</small>
+  </div>
+</div>
+
+<div class="stats top-gap">
+  <div class="stat"><span class="stat-icon">{{ icon('wheat') }}</span><span class="stat-label">Déjà mangé</span><strong class="stat-value small text-green">{{ s.eaten_kg|qty('kg') }}</strong><small class="muted">{{ s.eaten_cost|money }} · {{ s.per_bird|qty('kg') }} / poule</small></div>
+  {% if s.forecast %}
+  <div class="stat"><span class="stat-icon">{{ icon('clock') }}</span><span class="stat-label">Reste à manger (prévision)</span><strong class="stat-value small text-gold">{{ s.forecast.kg|qty('kg') }}</strong><small class="muted">{{ s.forecast.cost|money }} · jusqu'au {{ s.forecast.end_date|date_fr }}</small></div>
+  {% endif %}
+  <div class="stat"><span class="stat-icon">{{ icon('wallet') }}</span><span class="stat-label">Achat des poussins</span><strong class="stat-value small">{{ s.chick_cost|money }}</strong><small class="muted">{{ item.chick_price|money }} / poussin{% if item.supplier %} · {{ item.supplier }}{% endif %}</small></div>
+  <div class="stat"><span class="stat-icon">{{ icon('egg') }}</span><span class="stat-label">Rentabilité</span><strong class="stat-value small muted">bientôt</strong><small class="muted">avec le module Œufs et Ventes</small></div>
+</div>
+
+{% if s.suggest and can('alimentation', 2) %}
+<section class="card top-gap" id="provende">
+  <h2>{{ icon('wheat', 20) }} Donner la provende</h2>
+  {% if s.suggest.formula %}
+  <p class="muted">Le programme <strong>{{ item.program }}</strong> propose pour la semaine {{ s.suggest.week }} :
+    <strong>{{ s.suggest.formula }}</strong>, {{ s.suggest.grams|round(0)|int }} g × {{ s.suggest.birds|num }} poules = <strong>{{ s.suggest.kg|qty('kg') }}</strong> par jour.
+    Vous pouvez tout changer.</p>
+  {% elif item.program_id %}
+  <p class="muted">Le programme <strong>{{ item.program }}</strong> ne prévoit rien pour la semaine {{ s.suggest.week }} : choisissez librement.</p>
+  {% else %}
+  <p class="muted">Ce lot n'a pas de programme : choisissez la provende et la quantité.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('lots.feeding_new', lot_id=item.id) }}" class="grid four">
+    {{ csrf() }}
+    <div class="field"><label for="f-formula">Provende</label>
+      <select class="input" id="f-formula" name="formula_id" required data-free="formule" data-placeholder="Écrivez la provende…" data-new-tip="Cette provende n'existe pas : créez sa formule puis fabriquez-la.">
+        <option value="">— Choisir —</option>
+        {% for f in formulas %}<option value="{{ f.id }}" data-label="{{ f.name }}" {% if f.id == s.suggest.formula_id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="f-qty">Quantité (kg)</label><input class="input" id="f-qty" name="quantity" inputmode="decimal" value="{{ s.suggest.kg|qty if s.suggest.kg else '' }}" required placeholder="ex. 57,5"></div>
+    <div class="field"><label for="f-date">Date</label><input class="input" type="date" id="f-date" name="date" value="{{ today }}" required></div>
+    <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+  </form>
+</section>
+{% endif %}
+
+{% if chart %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Provende mangée et à venir, par semaine</h2>
+    <span class="legend-inline"><span><i class="sw sw-green"></i> Déjà mangé</span><span><i class="sw sw-gold-dash"></i> Prévision</span></span></div>
+  <div class="chart-box" aria-label="Provende mangée par semaine et prévision jusqu'à la réforme" data-chart='{{ chart }}'></div>
+  {% if not s.forecast.has_program %}<p class="hint">Sans programme, la prévision ne peut pas être calculée : choisissez un programme dans « Modifier ».</p>{% endif %}
+</section>
+{% endif %}
+
+{% if s.forecast and s.forecast.by_formula %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Provende à prévoir jusqu'à la réforme</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Provende</th><th>Semaines</th><th class="right">Quantité</th><th class="right">Coût estimé</th></tr></thead>
+    <tbody>{% for name, f in s.forecast.by_formula.items() %}
+      <tr><td data-label="Provende"><strong>{{ name }}</strong></td><td data-label="Semaines">{{ f.from }} → {{ f.to }}</td>
+        <td data-label="Quantité" class="right">{{ f.kg|qty('kg') }}</td><td data-label="Coût estimé" class="right">{{ f.cost|money }}</td></tr>{% endfor %}
+      <tr class="total-row"><td colspan="2"><strong>Total à venir</strong></td><td class="right"><strong>{{ s.forecast.kg|qty('kg') }}</strong></td><td class="right"><strong>{{ s.forecast.cost|money }}</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="hint padded-x">Calcul : poules restantes × grammes du programme × jours{% if s.forecast.weekly_rate %}, avec la mortalité observée ({{ (s.forecast.weekly_rate * 100)|round(2) }} % par semaine){% endif %}. Coût aux prix actuels de la provende.</p>
+</section>
+{% endif %}
+
+{% if cons.by_formula %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('wheat', 20) }} Déjà mangé, par provende</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Provende</th><th class="right">Quantité</th><th class="right">Coût</th></tr></thead>
+    <tbody>{% for name, f in cons.by_formula.items() %}<tr><td data-label="Provende">{{ name }}</td><td data-label="Quantité" class="right">{{ f.kg|qty('kg') }}</td><td data-label="Coût" class="right">{{ f.cost|money }}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="card top-gap" id="effectif">
+  <h2>{{ icon('users', 20) }} Effectif : morts, réformes, ajouts</h2>
+  {% if can('lots', 2) and item.status == 'actif' %}
+  <form method="post" action="{{ url_for('lots.event_new', lot_id=item.id) }}" class="grid four">
+    {{ csrf() }}
+    <div class="field"><label for="e-kind">Quoi ?</label>
+      <select class="input" id="e-kind" name="kind">{% for k, v in kinds.items() %}<option value="{{ k }}">{{ v[0] }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="e-qty">Nombre de poules</label><input class="input" id="e-qty" name="quantity" inputmode="numeric" required placeholder="ex. 2"></div>
+    <div class="field"><label for="e-date">Date</label><input class="input" type="date" id="e-date" name="date" value="{{ today }}" required></div>
+    <div class="field"><label for="e-notes">Remarque</label><input class="input" id="e-notes" name="notes" maxlength="150" placeholder="ex. chaleur, maladie…"></div>
+    <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+  </form>
+  <p class="hint">« Correction après comptage » : écrivez le nombre de poules réellement comptées, le logiciel calcule l'écart.</p>
+  {% endif %}
+</section>
+{% if events %}
+<div class="card flush">
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Quoi</th><th class="right">Poules</th><th>Remarque</th><th>Par</th><th class="right">Actions</th></tr></thead>
+    <tbody>{% for e in events %}
+      <tr><td data-label="Date" class="nowrap">{{ e.date|date_fr }}</td><td data-label="Quoi">{{ kinds.get(e.kind, (e.kind,))[0] }}</td>
+        <td data-label="Poules" class="right"><strong class="{{ 'text-danger' if e.quantity < 0 else 'text-ok' }}">{{ '+' if e.quantity > 0 }}{{ e.quantity }}</strong></td>
+        <td data-label="Remarque">{{ e.notes or '—' }}</td><td data-label="Par">{{ e.username or '—' }}</td>
+        <td data-label="Actions" class="right">{% if can_correct('lots', e) %}<form method="post" action="{{ url_for('lots.event_delete', event_id=e.id) }}" data-confirm="Annuler cette saisie ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }} Annuler</button></form>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+</div>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Provende donnée à ce lot</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Provende</th><th class="right">Quantité</th><th class="right">Par poule</th><th class="right">Coût</th><th>Par</th><th class="right">Actions</th></tr></thead>
+    <tbody>{% for fd in feedings %}
+      <tr><td data-label="Date" class="nowrap">{{ fd.date|date_fr }}</td><td data-label="Provende">{{ fd.formula }}</td>
+        <td data-label="Quantité" class="right"><strong>{{ fd.quantity|qty('kg') }}</strong></td>
+        <td data-label="Par poule" class="right">{{ (fd.quantity * 1000 / fd.birds)|round(0)|int if fd.birds else '—' }} g</td>
+        <td data-label="Coût" class="right">{{ (fd.quantity * fd.unit_cost)|money }}</td><td data-label="Par">{{ fd.username or '—' }}</td>
+        <td data-label="Actions" class="right">{% if can_correct('alimentation', fd) %}<form method="post" action="{{ url_for('lots.feeding_delete', feeding_id=fd.id) }}" data-confirm="Annuler cette distribution ? La provende reviendra en stock.">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }} Annuler</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Aucune provende donnée pour l'instant.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+
+{% if can('lots', 3) %}
+<section class="card top-gap">
+  <h2>{{ 'Terminer ce lot' if item.status == 'actif' else 'Lot terminé' }}</h2>
+  <p class="muted">{{ "Quand toutes les poules sont réformées ou vendues. Le lot reste consultable avec tout son historique." if item.status == 'actif' else "Terminé le " ~ (item.end_date|date_fr) ~ ". Vous pouvez le réactiver." }}</p>
+  <form method="post" action="{{ url_for('lots.lot_close', lot_id=item.id) }}" class="inline-form" data-confirm="{{ 'Terminer' if item.status == 'actif' else 'Réactiver' }} le lot {{ item.name }} ?">{{ csrf() }}
+    {% if item.status == 'actif' %}<input class="input" type="date" name="end_date" value="{{ today }}">{% endif %}
+    <button class="btn ghost" type="submit">{{ icon('check', 18) }} {{ 'Terminer le lot' if item.status == 'actif' else 'Réactiver le lot' }}</button></form>
+  {% if not feedings %}
+  <form method="post" action="{{ url_for('lots.lot_delete', lot_id=item.id) }}" class="top-gap" data-confirm="Supprimer le lot {{ item.name }} ? (saisie faite par erreur)">{{ csrf() }}<button class="btn danger-ghost" type="submit">{{ icon('trash', 18) }} Supprimer ce lot (erreur de saisie)</button></form>
+  {% endif %}
+</section>
+{% endif %}
+{% with ref_type='lot', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
+{% endblock %}
+{% block scripts %}
+{% if chart %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endif %}
+{% endblock %}

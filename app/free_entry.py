@@ -13,7 +13,7 @@ from .security import EDIT, can
 from .utils import log_activity
 
 PREFIX = "__new__:"
-BLUEPRINTS = {"matieres", "provenderie"}
+BLUEPRINTS = {"matieres", "provenderie", "lots"}
 # Fabriquer une provende demande sa composition : pas de création automatique ici
 NO_FORMULA_CREATION = {"provenderie.production_new", "provenderie.production_edit"}
 
@@ -53,9 +53,9 @@ def _formula(name):
         if not row["active"]:
             execute("UPDATE formulas SET active = 1 WHERE id = ?", (row["id"],))
         return row["id"]
-    if request.endpoint in NO_FORMULA_CREATION:
+    if request.endpoint in NO_FORMULA_CREATION or request.blueprint == "lots":
         flash(f"La formule « {name} » n'existe pas encore. Créez d'abord sa composition "
-              "dans Provenderie → Formules, puis revenez fabriquer.", "error")
+              "dans Provenderie → Formules, puis fabriquez-la avant de la distribuer.", "error")
         return ""
     new_id = execute("INSERT INTO formulas (name, base_qty, notes, created_at) VALUES (?, 100, ?, ?)",
                      (name, "Créée en saisie libre — composition à compléter.", now_utc()))
@@ -88,7 +88,10 @@ def resolve_free_entries():
         return
     if not any(v.startswith(PREFIX) for _, v in request.form.items(multi=True)):
         return
-    if not can(request.blueprint, EDIT):
+    module = request.blueprint
+    if module == "lots" and request.endpoint in ("lots.feeding_day", "lots.feeding_new"):
+        module = "alimentation"
+    if not can(module, EDIT):
         return
     cache = {}
     items = []

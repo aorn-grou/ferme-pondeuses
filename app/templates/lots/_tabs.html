@@ -1,0 +1,6 @@
+{% from "_macros.html" import icon %}
+<nav class="tabs" aria-label="Sections">
+  <a class="tab {% if active == 'lots' %}active{% endif %}" href="{{ url_for('lots.index') }}">{{ icon('layers', 18) }} Lots de poules</a>
+  {% if can('alimentation') %}<a class="tab {% if active == 'alimentation' %}active{% endif %}" href="{{ url_for('lots.feeding_day') }}">{{ icon('wheat', 18) }} Provende du jour</a>{% endif %}
+  {% if can('provenderie') %}<a class="tab" href="{{ url_for('provenderie.feed_history_all') }}">{{ icon('clock', 18) }} Stock de provende</a>{% endif %}
+</nav>
