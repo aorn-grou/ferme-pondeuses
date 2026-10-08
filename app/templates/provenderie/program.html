@@ -21,7 +21,7 @@
 <section class="card top-gap">
   <h2>{{ 'Archiver' if item.active else 'Réactiver' }} ce programme</h2>
   <div class="row-actions start">
-    <form method="post" action="{{ url_for('provenderie.program_archive', program_id=item.id) }}">{{ csrf() }}<button class="btn ghost" type="submit">{{ 'Archiver' if item.active else 'Réactiver' }}</button></form>
+    <form method="post" action="{{ url_for('provenderie.program_archive', program_id=item.id) }}"{% if item.active %} data-confirm="Archiver ce programme ? Les lots ne pourront plus le suivre tant qu'il n'est pas réactivé."{% endif %}>{{ csrf() }}<button class="btn ghost" type="submit">{{ 'Archiver' if item.active else 'Réactiver' }}</button></form>
     <form method="post" action="{{ url_for('provenderie.program_archive', program_id=item.id) }}" data-confirm="Supprimer ce programme ?">{{ csrf() }}<input type="hidden" name="action" value="delete"><button class="btn danger-ghost" type="submit">{{ icon('trash', 18) }} Supprimer</button></form>
   </div>
 </section>
