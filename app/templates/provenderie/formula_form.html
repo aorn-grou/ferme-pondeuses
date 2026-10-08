@@ -37,11 +37,16 @@
     <script type="application/json" id="units-table">{{ units_table|tojson }}</script>
     <p class="hint">✏️ <strong>L'unité se change librement</strong> : cliquez dans la case jaune à droite de la quantité et écrivez g, kg, L, sac… Le logiciel convertit tout seul pour le stock.</p>
     <div class="grid two top-gap">
-      <div class="field"><label for="base_qty">Ce mélange donne (kg de provende)</label><input class="input" id="base_qty" name="base_qty" inputmode="decimal" value="{{ values.base_qty|qty if values.base_qty else '' }}" data-base-qty>
-        <p class="hint">Rempli automatiquement avec le total des ingrédients. Modifiez-le seulement s'il y a une perte au mélange.</p></div>
+      <div class="field"><label for="base_qty">Poids total visé du mélange (kg de provende)</label><input class="input" id="base_qty" name="base_qty" inputmode="decimal" value="{{ values.base_qty|qty if values.base_qty else '' }}" data-base-qty>
+        <p class="hint">Rempli automatiquement avec le total des ingrédients. Si vous écrivez vous-même un poids (ex. 150), il reste fixe et le logiciel vous dit ce qui manque.</p></div>
       <div class="totals">
         <div><span>Total des ingrédients</span><strong data-sum>0</strong></div>
         <p class="hint text-danger" data-sum-note hidden></p>
+        <div class="target-gap" data-target-gap hidden>
+          <p data-target-text></p>
+          <button type="button" class="btn gold sm" data-scale>⚖️ Ajuster toutes les quantités pour faire <span data-target-kg></span> kg</button>
+          <p class="hint">Ou corrigez vous-même une quantité (par exemple le maïs) jusqu'à ce que le total soit juste.</p>
+        </div>
         <div class="grand"><span>Coût estimé par kg</span><strong data-cost-kg>0 Ar</strong></div>
       </div>
     </div>

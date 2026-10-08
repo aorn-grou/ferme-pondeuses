@@ -246,7 +246,8 @@
     const toKg = (q, u) => { const a = table[key(u)]; return a ? q * a[1] : null; };
     let baseTouched = base.value !== "";
     let lastAuto = null;
-    base.addEventListener("input", () => { baseTouched = base.value !== ""; });
+    // dès qu'on écrit soi-même le poids visé (ex. 150), il reste fixe
+    base.addEventListener("input", () => { baseTouched = base.value !== ""; lastAuto = null; });
     const rowInfo = (row) => {
       const q = num($("[data-qty]", row).value);
       const opt = $("[data-unit-select]", row).selectedOptions[0];
@@ -276,6 +277,20 @@
       if (!baseTouched || base.value === lastAuto) { base.value = sum > 0 ? qty(sum) : ""; lastAuto = base.value; baseTouched = false; }
       const b = num(base.value) || sum;
       $("[data-sum]", form).textContent = qty(sum) + " kg";
+      // poids visé fixe (ex. 150 kg) : on montre ce qui manque ou dépasse
+      const gapBox = $("[data-target-gap]", form);
+      if (gapBox) {
+        const target = num(base.value);
+        const diff = sum - target;
+        const show = baseTouched && target > 0 && sum > 0 && Math.abs(diff) > 0.0005;
+        gapBox.hidden = !show;
+        if (show) {
+          $("[data-target-text]", gapBox).innerHTML = diff < 0
+            ? `⚠️ Les ingrédients font <strong>${qty(sum)} kg</strong> : il <strong>manque ${qty(-diff)} kg</strong> pour atteindre ${qty(target)} kg.`
+            : `⚠️ Les ingrédients font <strong>${qty(sum)} kg</strong> : il y a <strong>${qty(diff)} kg de trop</strong> pour ${qty(target)} kg.`;
+          $("[data-target-kg]", gapBox).textContent = qty(target);
+        }
+      }
       const note = $("[data-sum-note]", form);
       const notKg = infos.filter((i) => i.q > 0 && toKg(1, i.unit) === null).map((i) => i.unit);
       if (note) {
@@ -288,6 +303,22 @@
     container.addEventListener("change", update);
     container.addEventListener("input", (e) => {
       if (e.target.matches("[data-qty-unit]")) e.target.dataset.auto = "";
+      update();
+    });
+    const scaleBtn = $("[data-scale]", form);
+    if (scaleBtn) scaleBtn.addEventListener("click", () => {
+      const target = num(base.value);
+      const rows = $$("[data-line]", container);
+      const sum = rows.map(rowInfo).reduce((t, i) => t + i.kg, 0);
+      if (!(target > 0 && sum > 0)) return;
+      const factor = target / sum;
+      rows.forEach((row) => {
+        const i = rowInfo(row);
+        if (i.kg > 0) {
+          const v = Math.round(i.q * factor * 1000) / 1000;
+          $("[data-qty]", row).value = String(v).replace(".", ",");
+        }
+      });
       update();
     });
     base.addEventListener("input", update);
