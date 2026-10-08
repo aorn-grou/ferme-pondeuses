@@ -471,3 +471,20 @@
     sync(false);
   });
 })();
+
+/* Cases libres avec suggestions : au clic, toutes les suggestions s'affichent */
+(function () {
+  document.querySelectorAll("input[data-combo]").forEach((input) => {
+    const hint = input.placeholder;
+    let saved = "", typed = false;
+    input.addEventListener("focus", () => {
+      saved = input.value; typed = false;
+      if (saved) { input.placeholder = saved; input.value = ""; }
+    });
+    input.addEventListener("input", () => { typed = true; });
+    input.addEventListener("blur", () => {
+      if (!typed && !input.value) input.value = saved;  // rien tapé : on garde l'ancienne valeur
+      input.placeholder = hint;
+    });
+  });
+})();

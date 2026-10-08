@@ -13,13 +13,13 @@
   <section class="card">
     <div class="grid three">
       <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ form.date }}" required></div>
-      <div class="field"><label for="supplier_id">Fournisseur</label>
-        <select class="input" id="supplier_id" name="supplier_id">
-          <option value="">— Marché / sans fournisseur —</option>
-          {% for s in suppliers %}<option value="{{ s.id }}" {% if form.supplier_id == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
-          <option value="__new__" {% if form.supplier_id == '__new__' %}selected{% endif %}>✏️ Autre : écrire un nouveau fournisseur…</option>
-        </select>
-        <input class="input top-gap-sm" name="supplier_new" value="{{ form.supplier_new or '' }}" maxlength="80" placeholder="Nom du nouveau fournisseur" data-free-for="supplier_id" hidden></div>
+      {% set ns = namespace(name=form.supplier_name or '') %}
+      {% if not ns.name %}{% for s in suppliers %}{% if form.supplier_id == s.id|string %}{% set ns.name = s.name %}{% endif %}{% endfor %}{% endif %}
+      <div class="field"><label for="supplier_name">Fournisseur</label>
+        <input class="input" id="supplier_name" name="supplier_name" list="liste-fournisseurs" autocomplete="off" maxlength="80"
+               value="{{ ns.name }}" placeholder="Écrivez le nom (vide = marché)" data-combo>
+        <datalist id="liste-fournisseurs">{% for s in suppliers %}<option value="{{ s.name }}">{% endfor %}</datalist>
+        <p class="hint">Un nom nouveau crée le fournisseur tout seul.</p></div>
       <div class="field"><label for="reference">N° de facture / bon (facultatif)</label><input class="input" id="reference" name="reference" value="{{ form.reference }}" maxlength="50"></div>
     </div>
   </section>

@@ -386,36 +386,43 @@ class TestCorrections(StockBase):
 
 class TestSaisieLibre(StockBase):
     def test_new_category_and_free_unit(self):
-        res = self.post("/matieres/matiere/nouvelle", {"name": "Poudre de coquillage", "category_id": "__new__",
-                                                       "category_new": "Calcium", "unit": "__new__",
-                                                       "unit_new": "bidon 5 L"})
+        res = self.post("/matieres/matiere/nouvelle", {"name": "Poudre de coquillage", "category_name": "Calcium",
+                                                       "unit": "bidon 5 L"})
         self.assertEqual(res.status_code, 302)
         row = self.one("SELECT m.unit, c.name FROM materials m JOIN categories c ON c.id = m.category_id "
                        "WHERE m.name = 'Poudre de coquillage'")
         self.assertEqual((row[0], row[1]), ("bidon 5 L", "Calcium"))
         # même nom de catégorie (majuscules différentes) : pas de doublon
-        self.post("/matieres/matiere/nouvelle", {"name": "Coquilles", "category_id": "__new__",
-                                                 "category_new": "calcium", "unit": "g"})
+        self.post("/matieres/matiere/nouvelle", {"name": "Coquilles", "category_name": "calcium", "unit": "g"})
         self.assertEqual(self.one("SELECT COUNT(*) FROM categories WHERE name = 'Calcium' COLLATE NOCASE")[0], 1)
         self.assertEqual(self.one("SELECT unit FROM materials WHERE name = 'Coquilles'")[0], "g")
-        # « Autre » choisi sans rien écrire : refusé
-        res = self.post("/matieres/matiere/nouvelle", {"name": "Sel", "category_id": "__new__", "unit": "kg"},
-                        follow_redirects=True)
-        self.assertIn("nouvelle catégorie", res.get_data(as_text=True))
-        # le formulaire propose bien l'option « Autre »
+        # catégorie laissée vide : aucune catégorie
+        self.post("/matieres/matiere/nouvelle", {"name": "Sel", "category_name": "", "unit": "kg"})
+        self.assertIsNone(self.one("SELECT category_id FROM materials WHERE name = 'Sel'")[0])
+        # le formulaire propose des cases où l'on écrit directement
         page = self.client.get("/matieres/matiere/nouvelle").get_data(as_text=True)
-        self.assertIn("Autre : écrire une nouvelle catégorie", page)
-        self.assertIn("Autre : écrire mon unité", page)
+        self.assertIn('name="category_name"', page)
+        self.assertIn('list="liste-unites"', page)
 
     def test_new_supplier_in_purchase(self):
         mais = self.material("Maïs")
         res = self.post("/matieres/achats/nouveau", {
-            "date": "2026-10-02", "supplier_id": "__new__", "supplier_new": "Rakoto Provende",
+            "date": "2026-10-02", "supplier_name": "Rakoto Provende",
             "material_id": [str(mais)], "quantity": ["10"], "unit_price": ["1000"], "pay_mode": "credit"})
         self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:1500])
         sup = self.one("SELECT id FROM suppliers WHERE name = 'Rakoto Provende'")
         self.assertIsNotNone(sup)
         self.assertEqual(self.one("SELECT supplier_id FROM purchases")[0], sup[0])
+        # même nom écrit en minuscules : on réutilise le fournisseur existant
+        self.post("/matieres/achats/nouveau", {
+            "date": "2026-10-03", "supplier_name": "rakoto provende",
+            "material_id": [str(mais)], "quantity": ["5"], "unit_price": ["1000"], "pay_mode": "credit"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM suppliers")[0], 1)
+        # vide = marché, payé comptant
+        res = self.post("/matieres/achats/nouveau", {
+            "date": "2026-10-03", "supplier_name": "", "material_id": [str(mais)], "quantity": ["5"],
+            "unit_price": ["1000"], "pay_mode": "comptant", "account_id": str(self.account())})
+        self.assertEqual(res.status_code, 302)
 
     def test_brand_upgrade(self):
         conn = self.db()

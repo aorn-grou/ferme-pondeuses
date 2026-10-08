@@ -92,14 +92,19 @@ def get_or_create_category(name):
 
 def _material_form_values():
     category_id = request.form.get("category_id") or None
-    category_new = request.form.get("category_new", "").strip()
-    unit = request.form.get("unit", "kg").strip()
+    category_new = ""
+    if "category_name" in request.form:  # catégorie écrite librement (ou choisie dans les suggestions)
+        category_new = " ".join(request.form.get("category_name", "").split())[:60]
+        category_id = NEW if category_new else None
+    elif category_id == NEW:
+        category_new = request.form.get("category_new", "").strip()
+    unit = " ".join(request.form.get("unit", "kg").split())
     if unit == NEW:
         unit = request.form.get("unit_new", "").strip()
     return {
         "name": request.form.get("name", "").strip(),
         "category_id": category_id,
-        "category_new": category_new if category_id == NEW else "",
+        "category_new": category_new,
         "unit": unit[:15] or "kg",
         "alert_threshold": parse_num(request.form.get("alert_threshold"), 0) or 0,
         "notes": request.form.get("notes", "").strip(),
@@ -117,7 +122,7 @@ def _material_errors(values, material_id=None):
     if values["alert_threshold"] < 0:
         errors.append("Le seuil d'alerte ne peut pas être négatif.")
     if values["category_id"] == NEW and len(values["category_new"]) < 2:
-        errors.append("Écrivez le nom de la nouvelle catégorie.")
+        errors.append("Le nom de la catégorie est trop court (au moins 2 lettres).")
     return errors
 
 
@@ -676,23 +681,27 @@ def _purchase_form_from_request(materials):
     account = query("SELECT * FROM accounts WHERE id = ?", (form["account_id"] or 0,), one=True)
     if paid > 0 and account is None:
         errors.append("Choisissez d'où vient l'argent (caisse ou propriétaire).")
-    form["supplier_new"] = request.form.get("supplier_new", "").strip()[:80]
-    new_supplier = form["supplier_id"] == NEW
-    if new_supplier and len(form["supplier_new"]) < 2:
-        errors.append("Écrivez le nom du nouveau fournisseur.")
+    # Fournisseur écrit librement : on retrouve celui qui porte ce nom, sinon on le créera
+    typed = " ".join(request.form.get("supplier_name", "").split())[:80]
+    form["supplier_name"] = typed
     supplier = None
-    if form["supplier_id"] and not new_supplier:
+    new_supplier = False
+    if "supplier_name" in request.form:
+        if typed:
+            supplier = query("SELECT * FROM suppliers WHERE name = ? COLLATE NOCASE", (typed,), one=True)
+            new_supplier = supplier is None
+            if new_supplier and len(typed) < 2:
+                errors.append("Le nom du fournisseur est trop court.")
+    elif form["supplier_id"]:
         supplier = query("SELECT * FROM suppliers WHERE id = ?", (form["supplier_id"],), one=True)
     if paid < total - 0.5 and supplier is None and not new_supplier:
         errors.append("Un achat à crédit doit avoir un fournisseur (pour suivre la dette).")
     if new_supplier and not errors:
-        supplier = query("SELECT * FROM suppliers WHERE name = ? COLLATE NOCASE", (form["supplier_new"],), one=True)
-        if supplier is None:
-            supplier_id = execute("INSERT INTO suppliers (name, phone, address, notes, created_at) VALUES (?, '', '', '', ?)",
-                                  (form["supplier_new"], now_utc()))
-            log_activity("Fournisseur ajouté", form["supplier_new"])
-            supplier = query("SELECT * FROM suppliers WHERE id = ?", (supplier_id,), one=True)
-        form["supplier_id"] = str(supplier["id"])
+        supplier_id = execute("INSERT INTO suppliers (name, phone, address, notes, created_at) VALUES (?, '', '', '', ?)",
+                              (typed, now_utc()))
+        log_activity("Fournisseur ajouté", typed)
+        supplier = query("SELECT * FROM suppliers WHERE id = ?", (supplier_id,), one=True)
+    form["supplier_id"] = str(supplier["id"]) if supplier else ""
     data = {"parsed": parsed, "transport": transport, "goods": goods, "total": total, "paid": paid,
             "account": account, "supplier": supplier}
     return form, lines or [{"material_id": "", "quantity": "", "unit_price": ""}], data, errors
