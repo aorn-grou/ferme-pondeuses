@@ -45,5 +45,8 @@
   <form method="post" action="{{ url_for('matieres.purchase_delete', purchase_id=item.id) }}" data-confirm="Annuler l'achat n°{{ item.id }} ?">{{ csrf() }}<button class="btn danger" type="submit">{{ icon('trash', 18) }} Annuler l'achat</button></form>
 </section>
 {% endif %}
+<div class="quick-actions top-gap">
+  <a class="btn ghost" href="{{ url_for('matieres.history') }}">{{ icon('box', 18) }} Voir le stock &amp; l'historique des matières</a>
+</div>
 {% with ref_type='purchase', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
 {% endblock %}

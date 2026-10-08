@@ -4,7 +4,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from .db import execute, now_utc, query, transaction
 from .security import EDIT, MANAGE, VIEW, can, can_correct, require
 from .stock import (
-    EPS, accounts, inventory_gaps, last_moves, material_stock, materials_overview, parse_num, recompute_material, supplier_balance,
+    EPS, accounts, inventory_gaps, last_moves, moves_with_balance, material_stock, materials_overview, parse_num, recompute_material, supplier_balance,
     today, valid_date,
 )
 from .utils import date_fr, fmt_money, fmt_qty, log_activity
@@ -83,6 +83,22 @@ def _days_ago(days):
 
     from .utils import local_now
     return (local_now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+
+@bp.route("/historique")
+@require("matieres", VIEW)
+def history():
+    """Tout l'historique du stock des matières : achats, fabrications, pertes, inventaires…"""
+    f = {"matiere": request.args.get("matiere", type=int), "type": request.args.get("type", ""),
+         "du": request.args.get("du", ""), "au": request.args.get("au", "")}
+    moves = moves_with_balance("material", item_id=f["matiere"], move_kind=f["type"] or None,
+                               since=f["du"] if valid_date(f["du"]) else None,
+                               until=f["au"] if valid_date(f["au"]) else None)
+    entries = sum(m["quantity"] for m in moves if m["quantity"] > 0)
+    exits = sum(-m["quantity"] for m in moves if m["quantity"] < 0)
+    materials = query("SELECT id, name FROM materials ORDER BY name")
+    return render_template("matieres/history.html", moves=moves, filters=f, materials=materials, kinds=MOVE_KINDS,
+                           overview=materials_overview(), entries=entries, exits=exits)
 
 
 @bp.route("/archives")

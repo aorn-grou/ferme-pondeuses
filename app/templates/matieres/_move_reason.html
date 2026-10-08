@@ -1,0 +1,8 @@
+{# Raison d'un mouvement de stock, avec lien vers sa source #}
+{% if mv.kind == 'fabrication' and mv.ref_type == 'production' %}<a href="{{ url_for('provenderie.production', production_id=mv.ref_id) }}">🏭 Fabrication n°{{ mv.ref_id }}{% if mv.production_formula %} « {{ mv.production_formula }} »{% endif %}</a>
+{% elif mv.kind == 'achat' and mv.ref_type == 'purchase' %}<a href="{{ url_for('matieres.purchase', purchase_id=mv.ref_id) }}">🛒 Achat n°{{ mv.ref_id }}</a>
+{% elif mv.kind == 'perte' %}⚠️ {{ kinds.get(mv.kind, mv.kind) }}
+{% elif mv.kind == 'inventaire' %}📋 {{ kinds.get(mv.kind, mv.kind) }}
+{% elif mv.kind == 'distribution' %}🐔 {{ kinds.get(mv.kind, mv.kind) }}
+{% else %}➕ {{ kinds.get(mv.kind, mv.kind) }}{% endif %}
+{% if mv.notes %}<small class="muted block">{{ mv.notes }}</small>{% endif %}

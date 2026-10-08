@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Historique du stock{% endblock %}
+{% block content %}
+{% call page_head('Stock & historique des matières', "Tout ce qui est entré et sorti : achats, fabrications de provende, pertes, inventaires. Avant → après à chaque fois.", 'list') %}
+  <a class="btn ghost" href="{{ url_for('matieres.index') }}">← Stock</a>
+{% endcall %}
+{% with active='historique' %}{% include "matieres/_tabs.html" %}{% endwith %}
+
+<section class="card flush">
+  <div class="card-head padded"><h2>{{ icon('box', 20) }} Stock actuel</h2></div>
+  <table class="table responsive compact">
+    <thead><tr><th>Matière</th><th class="right">Stock</th><th class="right">Prix moyen</th><th class="right">Valeur</th><th>État</th></tr></thead>
+    <tbody>{% for m in overview %}
+      <tr><td data-label="Matière"><a href="{{ url_for('matieres.history', matiere=m.id) }}"><strong>{{ m.name }}</strong></a></td>
+        <td data-label="Stock" class="right"><strong>{{ m.stock|qty(m.unit) }}</strong></td>
+        <td data-label="Prix moyen" class="right">{{ m.avg_cost|money }} / {{ m.unit }}</td>
+        <td data-label="Valeur" class="right">{{ m.value|money }}</td>
+        <td data-label="État">{% if m.status == 'empty' %}<span class="badge badge-danger">Épuisé</span>{% elif m.status == 'low' %}<span class="badge badge-warn">Stock bas</span>{% else %}<span class="badge badge-ok">OK</span>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+</section>
+
+<form method="get" class="card filters top-gap">
+  <div class="field"><label for="matiere">Matière</label>
+    <select class="input" id="matiere" name="matiere"><option value="">Toutes</option>
+      {% for m in materials %}<option value="{{ m.id }}" {% if filters.matiere == m.id %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="type">Type</label>
+    <select class="input" id="type" name="type"><option value="">Tous</option>
+      {% for k, v in kinds.items() %}<option value="{{ k }}" {% if filters.type == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="du">Du</label><input class="input" type="date" id="du" name="du" value="{{ filters.du }}"></div>
+  <div class="field"><label for="au">Au</label><input class="input" type="date" id="au" name="au" value="{{ filters.au }}"></div>
+  <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Afficher</button></div>
+</form>
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Historique des mouvements</h2>
+    {% if filters.matiere and moves %}<span class="muted">Entrées : <strong class="text-ok">+{{ entries|qty(moves[0].unit) }}</strong> · Sorties : <strong class="text-danger">-{{ exits|qty(moves[0].unit) }}</strong></span>{% endif %}</div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Matière</th><th>Mouvement</th><th class="right">Avant</th><th class="right">Entrée / sortie</th><th class="right">Après</th><th class="right">Valeur</th><th>Par</th></tr></thead>
+    <tbody>
+    {% for mv in moves %}
+      <tr>
+        <td data-label="Date" class="nowrap">{{ mv.date|date_fr }}</td>
+        <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=mv.item_id) }}">{{ mv.item_name }}</a></td>
+        <td data-label="Mouvement">{% include "matieres/_move_reason.html" %}</td>
+        <td data-label="Avant" class="right">{{ mv.before|qty(mv.unit) }}</td>
+        <td data-label="Entrée / sortie" class="right"><strong class="{{ 'text-ok' if mv.quantity > 0 else 'text-danger' }}">{{ '+' if mv.quantity > 0 }}{{ mv.quantity|qty(mv.unit) }}</strong></td>
+        <td data-label="Après" class="right"><strong>{{ mv.after|qty(mv.unit) }}</strong></td>
+        <td data-label="Valeur" class="right">{{ mv.value|money }}</td>
+        <td data-label="Par">{{ mv.full_name or mv.username or '—' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="center muted">Aucun mouvement pour ces critères.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

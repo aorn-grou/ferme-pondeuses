@@ -54,7 +54,11 @@
     </tbody>
   </table>
 </div>
-<p class="hint top-gap">L'autonomie se calculera quand les distributions aux lots seront enregistrées (module Alimentation).</p>
+<div class="quick-actions top-gap">
+  <a class="btn ghost" href="{{ url_for('provenderie.feed_history_all') }}">{{ icon('clock', 18) }} Historique complet de la provende</a>
+  <a class="btn ghost" href="{{ url_for('matieres.history') }}">{{ icon('box', 18) }} Stock &amp; historique des matières</a>
+</div>
+{% with overview=formulas %}{% include "provenderie/_duration.html" %}{% endwith %}
 
 {% if recent %}
 <section class="card flush top-gap">

@@ -6,6 +6,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from .db import execute, now_utc, query, transaction
 from .security import EDIT, MANAGE, VIEW, can_correct, require
 from .stock import (
+    moves_with_balance,
     EPS, feed_stock, formula_cost_per_kg, formula_lines, formulas_overview, material_stock, parse_num,
     production_needs, recompute_formula, recompute_material, today, valid_date,
 )
@@ -58,7 +59,7 @@ def index():
     }
     programs = query("SELECT COUNT(*) AS n FROM feed_programs WHERE active = 1", one=True)["n"]
     return render_template("provenderie/index.html", formulas=formulas, summary=summary, recent=recent,
-                           programs=programs)
+                           programs=programs, grams=_program_grams())
 
 
 # ---------------------------------------------------------------------------
@@ -504,7 +505,11 @@ def production(production_id):
         abort(404)
     lines = query("""SELECT l.*, m.name, m.unit FROM production_lines l JOIN materials m ON m.id = l.material_id
                      WHERE l.production_id = ? ORDER BY l.quantity DESC""", (production_id,))
-    return render_template("provenderie/production.html", item=item, lines=lines)
+    # avant → après pour chaque matière et pour la provende
+    mat_moves = {m["item_id"]: m for m in moves_with_balance("material", ref=("production", production_id))}
+    feed_moves = moves_with_balance("feed", ref=("production", production_id))
+    return render_template("provenderie/production.html", item=item, lines=lines, mat_moves=mat_moves,
+                           feed_move=feed_moves[0] if feed_moves else None)
 
 
 @bp.route("/fabrications/<int:production_id>/corriger", methods=["POST"])
@@ -670,6 +675,28 @@ def feed_history(formula_id):
                      WHERE s.formula_id = ? ORDER BY s.date DESC, s.id DESC LIMIT 200""", (formula_id,))
     return render_template("provenderie/feed_history.html", item=item, moves=moves, stock=feed_stock(formula_id),
                            kinds=FEED_KINDS)
+
+
+@bp.route("/historique")
+@require("provenderie", VIEW)
+def feed_history_all():
+    """Stock de provende et tout son historique (fabrications, distributions, pertes…)."""
+    f = {"formule": request.args.get("formule", type=int), "type": request.args.get("type", ""),
+         "du": request.args.get("du", ""), "au": request.args.get("au", "")}
+    moves = moves_with_balance("feed", item_id=f["formule"], move_kind=f["type"] or None,
+                               since=f["du"] if valid_date(f["du"]) else None,
+                               until=f["au"] if valid_date(f["au"]) else None)
+    formulas = query("SELECT id, name FROM formulas ORDER BY name")
+    return render_template("provenderie/history.html", moves=moves, filters=f, formulas=formulas, kinds=FEED_KINDS,
+                           overview=formulas_overview(), grams=_program_grams())
+
+
+def _program_grams():
+    """g / poule / jour prévus dans les programmes, par formule (pour l'estimation de durée)."""
+    rows = query("""SELECT w.formula_id, AVG(w.grams_per_bird) AS g FROM feed_program_weeks w
+                    JOIN feed_programs p ON p.id = w.program_id
+                    WHERE p.active = 1 AND w.grams_per_bird > 0 GROUP BY w.formula_id""")
+    return {r["formula_id"]: r["g"] for r in rows}
 
 
 @bp.route("/stock/mouvement/<int:move_id>/corriger", methods=["POST"])

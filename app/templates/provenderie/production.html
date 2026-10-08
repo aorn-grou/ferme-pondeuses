@@ -10,12 +10,36 @@
   <div class="stat"><span class="stat-label">Coût total</span><strong class="stat-value small">{{ item.cost_total|money }}</strong></div>
   <div class="stat"><span class="stat-label">Coût par kg</span><strong class="stat-value small">{{ item.cost_per_kg|money }}</strong></div>
 </div>
-<div class="card flush top-gap">
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('box', 20) }} Matières premières retirées du stock</h2></div>
   <table class="table responsive">
-    <thead><tr><th>Matière utilisée</th><th class="right">Quantité</th><th class="right">Coût unitaire</th><th class="right">Coût</th></tr></thead>
-    <tbody>{% for l in lines %}<tr><td data-label="Matière utilisée"><a href="{{ url_for('matieres.material', material_id=l.material_id) }}">{{ l.name }}</a></td>
-      <td data-label="Quantité" class="right">{{ l.quantity|qty(l.unit) }}</td><td data-label="Coût unitaire" class="right">{{ l.unit_cost|money }}</td><td data-label="Coût" class="right">{{ (l.quantity * l.unit_cost)|money }}</td></tr>{% endfor %}</tbody>
+    <thead><tr><th>Matière utilisée</th><th class="right">Avant</th><th class="right">Retiré</th><th class="right">Après</th><th class="right">Aujourd'hui</th><th class="right">Coût</th></tr></thead>
+    <tbody>{% for l in lines %}{% set mv = mat_moves.get(l.material_id) %}
+      <tr><td data-label="Matière utilisée"><a href="{{ url_for('matieres.material', material_id=l.material_id) }}"><strong>{{ l.name }}</strong></a>
+          <small class="muted block">{{ l.unit_cost|money }} / {{ l.unit }}</small></td>
+        <td data-label="Avant" class="right">{{ mv.before|qty(l.unit) if mv else '—' }}</td>
+        <td data-label="Retiré" class="right"><strong class="text-danger">-{{ l.quantity|qty(l.unit) }}</strong></td>
+        <td data-label="Après" class="right"><strong>{{ mv.after|qty(l.unit) if mv else '—' }}</strong></td>
+        <td data-label="Aujourd'hui" class="right">{{ mv.now|qty(l.unit) if mv else '—' }}</td>
+        <td data-label="Coût" class="right">{{ (l.quantity * l.unit_cost)|money }}</td></tr>{% endfor %}</tbody>
   </table>
+</section>
+{% if feed_move %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('factory', 20) }} Provende entrée en stock</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Provende</th><th class="right">Avant</th><th class="right">Fabriqué</th><th class="right">Après</th><th class="right">Aujourd'hui</th></tr></thead>
+    <tbody><tr><td data-label="Provende"><a href="{{ url_for('provenderie.feed_history', formula_id=item.formula_id) }}"><strong>{{ item.formula }}</strong></a></td>
+      <td data-label="Avant" class="right">{{ feed_move.before|qty('kg') }}</td>
+      <td data-label="Fabriqué" class="right"><strong class="text-ok">+{{ feed_move.quantity|qty('kg') }}</strong></td>
+      <td data-label="Après" class="right"><strong>{{ feed_move.after|qty('kg') }}</strong></td>
+      <td data-label="Aujourd'hui" class="right">{{ feed_move.now|qty('kg') }}</td></tr></tbody>
+  </table>
+</section>
+{% endif %}
+<div class="quick-actions top-gap">
+  <a class="btn ghost" href="{{ url_for('matieres.history') }}">{{ icon('box', 18) }} Stock &amp; historique des matières</a>
+  <a class="btn ghost" href="{{ url_for('provenderie.feed_history_all') }}">{{ icon('factory', 18) }} Stock &amp; historique de la provende</a>
 </div>
 <p class="hint top-gap">Saisi par {{ item.username or '—' }} le {{ item.created_at|localdt }}{% if item.notes %} · {{ item.notes }}{% endif %}</p>
 {% if can_correct('provenderie', item) %}

@@ -1,0 +1,23 @@
+{# Combien de temps va durer la provende ? (nombre de poules × grammes par jour) #}
+<section class="card top-gap" id="duree">
+  <h2>{{ icon('clock', 20) }} Combien de temps va durer la provende ?</h2>
+  <p class="muted">Écrivez le nombre de poules qui mangent chaque provende et combien de grammes une poule mange par jour.
+    Le logiciel calcule la consommation par jour et la <strong>date où le stock sera fini</strong>.
+    <em>Avec le module Lots, ces chiffres seront remplis tout seuls d'après vos lots.</em></p>
+  <table class="table responsive duration-table" data-duration>
+    <thead><tr><th>Provende</th><th class="right">En stock</th><th>Nombre de poules</th><th>g / poule / jour</th><th class="right">Par jour</th><th class="right">Durée</th><th>Fini le</th></tr></thead>
+    <tbody>
+    {% for f in overview if f.active %}
+      <tr data-duration-row data-stock="{{ f.stock }}">
+        <td data-label="Provende"><strong>{{ f.name }}</strong>{% if f.phase %}<small class="muted block">{{ f.phase }}</small>{% endif %}</td>
+        <td data-label="En stock" class="right">{{ f.stock|qty('kg') }}</td>
+        <td data-label="Nombre de poules"><input class="input" inputmode="numeric" placeholder="ex. 500" data-birds data-key="poules-{{ f.id }}"></td>
+        <td data-label="g / poule / jour"><input class="input" inputmode="decimal" placeholder="ex. 115" value="{{ grams.get(f.id)|round(0)|int if grams.get(f.id) else '' }}" data-grams data-key="grammes-{{ f.id }}"></td>
+        <td data-label="Par jour" class="right" data-per-day>—</td>
+        <td data-label="Durée" class="right"><strong data-days>—</strong></td>
+        <td data-label="Fini le" data-end>—</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>

@@ -715,3 +715,30 @@
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
 })();
+
+/* Durée de la provende : poules × g/jour → kg/jour, jours restants, date de fin.
+   Les chiffres écrits sont gardés sur cet appareil pour la prochaine visite. */
+(function () {
+  document.querySelectorAll("[data-duration-row]").forEach((row) => {
+    const stock = parseFloat(row.dataset.stock) || 0;
+    const birds = row.querySelector("[data-birds]"), grams = row.querySelector("[data-grams]");
+    const parse = (v) => parseFloat(String(v || "").replace(/\s/g, "").replace(",", ".")) || 0;
+    const fmt = (n, d = 1) => n.toLocaleString("fr-FR", { maximumFractionDigits: d });
+    [birds, grams].forEach((el) => {
+      try { const v = localStorage.getItem("duree-" + el.dataset.key); if (v && !el.value) el.value = v; } catch (e) { /* rien */ }
+    });
+    const update = () => {
+      [birds, grams].forEach((el) => { try { localStorage.setItem("duree-" + el.dataset.key, el.value); } catch (e) { /* rien */ } });
+      const perDay = parse(birds.value) * parse(grams.value) / 1000;
+      const cells = { per: row.querySelector("[data-per-day]"), days: row.querySelector("[data-days]"), end: row.querySelector("[data-end]") };
+      if (perDay <= 0) { cells.per.textContent = "—"; cells.days.textContent = "—"; cells.end.textContent = "—"; row.classList.remove("ending-soon"); return; }
+      const days = stock / perDay;
+      cells.per.textContent = fmt(perDay) + " kg";
+      cells.days.textContent = days < 1 ? "moins d'1 jour" : fmt(Math.floor(days), 0) + " jour(s)";
+      const end = new Date(); end.setDate(end.getDate() + Math.floor(days));
+      cells.end.textContent = end.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
+      row.classList.toggle("ending-soon", days < 7);
+    };
+    birds.addEventListener("input", update); grams.addEventListener("input", update); update();
+  });
+})();

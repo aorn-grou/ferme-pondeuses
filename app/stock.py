@@ -238,3 +238,49 @@ def last_moves():
         item["after"] = item["before"] + item["quantity"]
         result[item["material_id"]] = item
     return result
+
+
+def moves_with_balance(kind="material", item_id=None, ref=None, since=None, until=None, move_kind=None, limit=500):
+    """Historique des mouvements avec le stock AVANT et APRÈS chaque mouvement.
+    kind = "material" (matières premières) ou "feed" (provende)."""
+    if kind == "material":
+        table, col, items = "stock_moves", "material_id", "materials"
+        extra = "i.unit AS unit"
+    else:
+        table, col, items = "feed_moves", "formula_id", "formulas"
+        extra = "'kg' AS unit"
+    where, params = ["1 = 1"], []
+    if item_id:
+        where.append(f"s.{col} = ?")
+        params.append(item_id)
+    if ref:
+        where.append("s.ref_type = ? AND s.ref_id = ?")
+        params.extend(ref)
+    if since:
+        where.append("s.date >= ?")
+        params.append(since)
+    if until:
+        where.append("s.date <= ?")
+        params.append(until)
+    if move_kind:
+        where.append("s.kind = ?")
+        params.append(move_kind)
+    rows = query(
+        f"""SELECT s.*, s.{col} AS item_id, i.name AS item_name, {extra}, u.username, u.full_name,
+                   f.name AS production_formula,
+                   COALESCE((SELECT SUM(t.quantity) FROM {table} t WHERE t.{col} = s.{col} AND t.id < s.id), 0) AS before,
+                   COALESCE((SELECT SUM(t.quantity) FROM {table} t WHERE t.{col} = s.{col}), 0) AS now
+            FROM {table} s JOIN {items} i ON i.id = s.{col}
+            LEFT JOIN users u ON u.id = s.created_by
+            LEFT JOIN productions p ON s.ref_type = 'production' AND p.id = s.ref_id
+            LEFT JOIN formulas f ON f.id = p.formula_id
+            WHERE {' AND '.join(where)} ORDER BY s.date DESC, s.id DESC LIMIT ?""",
+        (*params, limit),
+    )
+    result = []
+    for row in rows:
+        item = dict(row)
+        item["after"] = item["before"] + item["quantity"]
+        item["value"] = item["quantity"] * (item["unit_cost"] or 0)
+        result.append(item)
+    return result
