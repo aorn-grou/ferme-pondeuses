@@ -9,6 +9,7 @@ from .stock import (
     EPS, feed_stock, formula_cost_per_kg, formula_lines, formulas_overview, material_stock, parse_num,
     production_needs, recompute_formula, recompute_material, today, valid_date,
 )
+from .units import convert, js_table, to_kg
 from .utils import date_fr, fmt_money, fmt_qty, log_activity
 
 from .discussion import notify  # noqa: E402
@@ -85,32 +86,50 @@ def _formula_form():
     }
     lines, parsed, errors = [], [], []
     seen = set()
-    for index, (mid, q) in enumerate(zip(request.form.getlist("material_id"), request.form.getlist("quantity")), 1):
-        lines.append({"material_id": mid, "quantity": q})
+    mids, qtys = request.form.getlist("material_id"), request.form.getlist("quantity")
+    units = request.form.getlist("qty_unit") or [""] * len(mids)
+    units += [""] * (len(mids) - len(units))
+    for index, (mid, q, unit) in enumerate(zip(mids, qtys, units), 1):
+        unit = " ".join(unit.split())[:15]
+        lines.append({"material_id": mid, "quantity": q, "unit": unit})
         if not mid and not q:
             continue
         qty = parse_num(q)
         material = query("SELECT * FROM materials WHERE id = ? AND active = 1", (mid or 0,), one=True)
         if material is None:
             errors.append(f"Ligne {index} : choisissez une matière.")
-        elif qty is None or qty <= 0:
+            continue
+        unit = unit or material["unit"]
+        converted = convert(qty, unit, material["unit"]) if qty is not None else None
+        if qty is None or qty <= 0:
             errors.append(f"Ligne {index} : la quantité doit être supérieure à 0.")
+        elif converted is None:
+            errors.append(f"« {material['name']} » est compté en « {material['unit']} » dans le stock : impossible de "
+                          f"convertir des « {unit} ». Écrivez la quantité en {material['unit']} "
+                          f"(ou changez l'unité de la matière dans sa fiche).")
         elif material["id"] in seen:
             errors.append(f"« {material['name']} » apparaît deux fois : regroupez les quantités sur une seule ligne.")
         else:
             seen.add(material["id"])
-            parsed.append((material, qty))
+            parsed.append((material, converted, qty, unit))
     if len(values["name"]) < 2:
         errors.append("Donnez un nom à la formule (ex. « Ponte 1 »).")
     if not parsed:
         errors.append("Ajoutez au moins un ingrédient.")
     if values["base_qty"] is None:
-        values["base_qty"] = sum(q for _, q in parsed)
+        # poids total du mélange, toutes unités converties en kg
+        values["base_qty"] = sum((to_kg(raw, unit) if to_kg(raw, unit) is not None else 0) for _, _, raw, unit in parsed)
     if values["base_qty"] <= 0:
         errors.append("La quantité de provende obtenue doit être supérieure à 0.")
     if values["alert_threshold"] < 0:
         errors.append("Le seuil d'alerte ne peut pas être négatif.")
     return values, lines, parsed, errors
+
+
+def _lines_for_form(formula_id):
+    return [{"material_id": str(l["material_id"]),
+             "quantity": fmt_qty(l["input_qty"] if l["input_qty"] is not None else l["quantity"]),
+             "unit": l["input_unit"] or l["unit"]} for l in formula_lines(formula_id)]
 
 
 def _materials_for_form():
@@ -127,7 +146,7 @@ def formula_new():
         source = _formula(source_id)
         values = {"name": f"{source['name']} (copie)", "phase": source["phase"], "base_qty": source["base_qty"],
                   "alert_threshold": source["alert_threshold"], "notes": source["notes"]}
-        lines = [{"material_id": str(l["material_id"]), "quantity": fmt_qty(l["quantity"])} for l in formula_lines(source_id)]
+        lines = _lines_for_form(source_id)
     if request.method == "POST":
         values, lines, parsed, errors = _formula_form()
         if query("SELECT 1 FROM formulas WHERE name = ? COLLATE NOCASE AND active = 1", (values["name"],), one=True):
@@ -143,20 +162,29 @@ def formula_new():
                     (values["name"], values["phase"], values["base_qty"], values["alert_threshold"], values["notes"], now_utc()),
                 )
                 formula_id = cur.lastrowid
-                conn.executemany("INSERT INTO formula_lines (formula_id, material_id, quantity) VALUES (?, ?, ?)",
-                                 [(formula_id, m["id"], q) for m, q in parsed])
+                conn.executemany("INSERT INTO formula_lines (formula_id, material_id, quantity, input_qty, input_unit) "
+                                 "VALUES (?, ?, ?, ?, ?)",
+                                 [(formula_id, m["id"], q, raw, unit) for m, q, raw, unit in parsed])
             log_activity("Formule créée", values["name"])
             flash(f"Formule « {values['name']} » enregistrée.", "success")
             return redirect(url_for("provenderie.formula", formula_id=formula_id))
     return render_template("provenderie/formula_form.html", values=values, lines=lines, formula=None,
-                           materials=_materials_for_form(), phases=PHASES)
+                           materials=_materials_for_form(), phases=PHASES, units_table=js_table())
 
 
 @bp.route("/formules/<int:formula_id>")
 @require("provenderie", VIEW)
 def formula(formula_id):
     item = _formula(formula_id)
-    lines = formula_lines(formula_id)
+    lines = []
+    for l in formula_lines(formula_id):
+        line = dict(l)
+        kg = to_kg(l["quantity"], l["unit"])
+        line["kg"] = kg if kg is not None else l["quantity"]
+        line["shown_qty"] = l["input_qty"] if l["input_qty"] is not None else l["quantity"]
+        line["shown_unit"] = l["input_unit"] or l["unit"]
+        line["cost"] = l["quantity"] * l["avg_cost"]
+        lines.append(line)
     cost_per_kg, total_qty = formula_cost_per_kg(item)
     productions = query("SELECT * FROM productions WHERE formula_id = ? ORDER BY date DESC, id DESC LIMIT 20", (formula_id,))
     programs = query("""SELECT DISTINCT p.id, p.name FROM feed_program_weeks w JOIN feed_programs p ON p.id = w.program_id
@@ -172,7 +200,7 @@ def formula(formula_id):
 def formula_edit(formula_id):
     item = _formula(formula_id)
     values = dict(item)
-    lines = [{"material_id": str(l["material_id"]), "quantity": fmt_qty(l["quantity"])} for l in formula_lines(formula_id)]
+    lines = _lines_for_form(formula_id)
     if request.method == "POST":
         values, lines, parsed, errors = _formula_form()
         if query("SELECT 1 FROM formulas WHERE name = ? COLLATE NOCASE AND active = 1 AND id != ?",
@@ -187,13 +215,14 @@ def formula_edit(formula_id):
                              (values["name"], values["phase"], values["base_qty"], values["alert_threshold"],
                               values["notes"], formula_id))
                 conn.execute("DELETE FROM formula_lines WHERE formula_id = ?", (formula_id,))
-                conn.executemany("INSERT INTO formula_lines (formula_id, material_id, quantity) VALUES (?, ?, ?)",
-                                 [(formula_id, m["id"], q) for m, q in parsed])
+                conn.executemany("INSERT INTO formula_lines (formula_id, material_id, quantity, input_qty, input_unit) "
+                                 "VALUES (?, ?, ?, ?, ?)",
+                                 [(formula_id, m["id"], q, raw, unit) for m, q, raw, unit in parsed])
             log_activity("Formule modifiée", values["name"])
             flash("Formule mise à jour. Les fabrications déjà faites ne changent pas.", "success")
             return redirect(url_for("provenderie.formula", formula_id=formula_id))
     return render_template("provenderie/formula_form.html", values=values, lines=lines or [{"material_id": "", "quantity": ""}],
-                           formula=item, materials=_materials_for_form(), phases=PHASES)
+                           formula=item, materials=_materials_for_form(), phases=PHASES, units_table=js_table())
 
 
 @bp.route("/formules/<int:formula_id>/archiver", methods=["POST"])
@@ -422,6 +451,11 @@ def production_new():
                     recompute_formula(conn, formula["id"])
             if not errors:
                 log_activity("Provende fabriquée", f"{formula['name']} : {fmt_qty(qty, 'kg')} — {fmt_money(cost_total)}")
+                used = ", ".join(f"{n['name']} -{fmt_qty(n['need'], n['unit'])} (reste {fmt_qty(n['stock'] - n['need'], n['unit'])})"
+                                 for n in needs)
+                notify("production", production_id,
+                       f"🏭 Fabrication : {fmt_qty(qty, 'kg')} de « {formula['name']} » ({fmt_money(cost_total / qty)} le kg). "
+                       f"Matières retirées du stock : {used}.")
                 flash(f"{fmt_qty(qty, 'kg')} de « {formula['name']} » fabriqués. Coût : {fmt_money(cost_total / qty)} le kg.",
                       "success")
                 return redirect(url_for("provenderie.production", production_id=production_id))

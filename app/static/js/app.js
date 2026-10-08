@@ -134,7 +134,7 @@
       delete sel.dataset.freeDone;
       Array.from(sel.options).filter((o) => o.value.startsWith("__new__")).forEach((o) => o.remove());
     });
-    $$("input", clone).forEach((i) => { i.value = ""; if (i.matches("[data-unit-input]")) { i.readOnly = false; i.dataset.auto = "1"; } });
+    $$("input", clone).forEach((i) => { i.value = ""; if (i.matches("[data-unit-input], [data-qty-unit]")) { i.readOnly = false; i.dataset.auto = "1"; } });
     $$("select", clone).forEach((s) => { s.selectedIndex = 0; });
     $$("[data-line-total], [data-share]", clone).forEach((el) => { el.textContent = "—"; });
     $$("[data-unit-label]", clone).forEach((el) => { el.textContent = "—"; });
@@ -232,32 +232,64 @@
     update();
   });
 
-  /* ---------- Formule : total, parts et coût par kg ---------- */
+  /* ---------- Formule : total, parts et coût par kg (unités libres : g, kg, L…) ---------- */
   $$("form[data-formula-form]").forEach((form) => {
     const container = $("[data-lines]", form);
     const base = $("[data-base-qty]", form);
+    const table = JSON.parse(($("#units-table", form) || {}).textContent || "{}");
+    const key = (u) => (u || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/\.$/, "");
+    const convert = (q, from, to) => {
+      if (!from || key(from) === key(to)) return q;
+      const a = table[key(from)], b = table[key(to)];
+      return a && b && a[0] === b[0] ? q * a[1] / b[1] : null;
+    };
+    const toKg = (q, u) => { const a = table[key(u)]; return a ? q * a[1] : null; };
     let baseTouched = base.value !== "";
     let lastAuto = null;
     base.addEventListener("input", () => { baseTouched = base.value !== ""; });
+    const rowInfo = (row) => {
+      const q = num($("[data-qty]", row).value);
+      const opt = $("[data-unit-select]", row).selectedOptions[0];
+      const unitInput = $("[data-qty-unit]", row);
+      const matUnit = opt && opt.dataset.unit ? opt.dataset.unit : "";
+      if (unitInput && unitInput.dataset.auto && matUnit) unitInput.value = matUnit;
+      const unit = (unitInput && unitInput.value.trim()) || matUnit || "kg";
+      const inMat = matUnit ? convert(q, unit, matUnit) : q;
+      let kg = toKg(q, unit);
+      if (kg === null) kg = 0;
+      return { q, kg, inMat, cost: inMat === null ? 0 : inMat * num(opt && opt.dataset.cost), bad: inMat === null && q > 0, matUnit, unit };
+    };
     const update = () => {
-      let sum = 0, cost = 0;
       const rows = $$("[data-line]", container);
-      rows.forEach((row) => {
-        const q = num($("[data-qty]", row).value);
-        const opt = $("[data-unit-select]", row).selectedOptions[0];
-        sum += q;
-        cost += q * num(opt && opt.dataset.cost);
-      });
-      rows.forEach((row) => {
-        const q = num($("[data-qty]", row).value);
-        $("[data-share]", row).textContent = sum > 0 && q > 0 ? qty((q / sum) * 100) + " %" : "—";
+      const infos = rows.map(rowInfo);
+      const sum = infos.reduce((t, i) => t + i.kg, 0);
+      const cost = infos.reduce((t, i) => t + i.cost, 0);
+      rows.forEach((row, idx) => {
+        const i = infos[idx];
+        $("[data-share]", row).textContent = sum > 0 && i.kg > 0 ? qty((i.kg / sum) * 100) + " %" : "—";
+        let warn = $("[data-unit-warn]", row);
+        if (i.bad) {
+          if (!warn) { warn = document.createElement("small"); warn.className = "hint text-danger"; warn.setAttribute("data-unit-warn", ""); $("[data-qty]", row).closest(".field").appendChild(warn); }
+          warn.textContent = `Le stock est en « ${i.matUnit} » : impossible de convertir des « ${i.unit} ».`;
+        } else if (warn) warn.remove();
       });
       if (!baseTouched || base.value === lastAuto) { base.value = sum > 0 ? qty(sum) : ""; lastAuto = base.value; baseTouched = false; }
       const b = num(base.value) || sum;
-      $("[data-sum]", form).textContent = qty(sum);
+      $("[data-sum]", form).textContent = qty(sum) + " kg";
+      const note = $("[data-sum-note]", form);
+      const notKg = infos.filter((i) => i.q > 0 && toKg(1, i.unit) === null).map((i) => i.unit);
+      if (note) {
+        note.hidden = !notKg.length;
+        note.textContent = notKg.length ? `Les quantités en « ${[...new Set(notKg)].join(", ")} » ne sont pas comptées dans ce total en kg : indiquez vous-même le poids du mélange dans « Ce mélange donne ».` : "";
+      }
       $("[data-cost-kg]", form).textContent = b > 0 ? money(cost / b) : "0 Ar";
     };
     container.addEventListener("lines-changed", update);
+    container.addEventListener("change", update);
+    container.addEventListener("input", (e) => {
+      if (e.target.matches("[data-qty-unit]")) e.target.dataset.auto = "";
+      update();
+    });
     base.addEventListener("input", update);
     update();
   });
@@ -609,4 +641,17 @@
     if (select && select.matches("select[data-free]")) apply(select, input);
   });
   window.freeEnhance = scan;
+})();
+
+/* Fabrication : nombre de sacs × kg par sac → quantité */
+(function () {
+  const n = document.querySelector("[data-bags-n]"), kg = document.querySelector("[data-bags-kg]");
+  const target = document.querySelector("[data-prod-qty]");
+  if (!n || !kg || !target) return;
+  const parse = (v) => parseFloat(String(v || "").replace(/\s/g, "").replace(",", ".")) || 0;
+  const sync = () => {
+    const total = parse(n.value) * (parse(kg.value) || 50);
+    if (parse(n.value) > 0) { target.value = String(Math.round(total * 1000) / 1000).replace(".", ","); target.dispatchEvent(new Event("input", { bubbles: true })); }
+  };
+  n.addEventListener("input", sync); kg.addEventListener("input", sync);
 })();

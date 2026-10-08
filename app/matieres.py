@@ -4,7 +4,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from .db import execute, now_utc, query, transaction
 from .security import EDIT, MANAGE, VIEW, can, can_correct, require
 from .stock import (
-    EPS, accounts, inventory_gaps, material_stock, materials_overview, parse_num, recompute_material, supplier_balance,
+    EPS, accounts, inventory_gaps, last_moves, material_stock, materials_overview, parse_num, recompute_material, supplier_balance,
     today, valid_date,
 )
 from .utils import date_fr, fmt_money, fmt_qty, log_activity
@@ -74,7 +74,8 @@ def index():
         last_gap.setdefault(gap["material_id"], gap)
     summary["gap_value"] = sum(g_["value"] for g_ in gaps)
     return render_template("matieres/index.html", materials=shown, summary=summary, categories=_categories(),
-                           category=category, archived=archived, gaps=gaps, last_gap=last_gap)
+                           category=category, archived=archived, gaps=gaps, last_gap=last_gap,
+                           last_move=last_moves(), kinds=MOVE_KINDS)
 
 
 def _days_ago(days):

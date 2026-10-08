@@ -171,7 +171,9 @@ SCHEMA = {
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
         ("formula_id", "INTEGER NOT NULL"),
         ("material_id", "INTEGER NOT NULL"),
-        ("quantity", "REAL NOT NULL"),
+        ("quantity", "REAL NOT NULL"),          # dans l'unité de stock de la matière (pour les calculs)
+        ("input_qty", "REAL"),                   # quantité telle qu'écrite (ex. 500)
+        ("input_unit", "TEXT DEFAULT ''"),       # unité telle qu'écrite (ex. g)
     ],
     "feed_programs": [
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),

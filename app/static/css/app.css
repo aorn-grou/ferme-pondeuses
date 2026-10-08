@@ -736,3 +736,9 @@ tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transpare
 .text-danger { color: var(--danger); }
 .text-ok { color: var(--ok); }
 .gap-card { border-top-color: var(--danger); }
+
+.bags-helper { display: flex; align-items: center; gap: .4rem; margin-top: .45rem; font-size: .85rem; color: var(--text-2); flex-wrap: wrap; }
+.bags-helper .input { width: 5.5rem; min-height: 36px; padding: .3rem .55rem; }
+.last-move { display: block; font-size: .78rem; margin-top: .15rem; white-space: nowrap; }
+.last-move.neg { color: var(--danger); }
+.last-move.pos { color: var(--ok); }

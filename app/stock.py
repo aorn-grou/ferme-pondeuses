@@ -167,7 +167,10 @@ def production_needs(formula, quantity, conn=None):
 def formula_cost_per_kg(formula):
     lines = formula_lines(formula["id"])
     base = formula["base_qty"] or 100
-    total_qty = sum(line["quantity"] for line in lines)
+    from .units import to_kg
+
+    total_qty = sum((to_kg(line["quantity"], line["unit"]) if to_kg(line["quantity"], line["unit"]) is not None
+                     else line["quantity"]) for line in lines)
     cost = sum(line["quantity"] * line["avg_cost"] for line in lines)
     return (cost / base) if base else 0, total_qty
 
@@ -214,4 +217,24 @@ def inventory_gaps(since=None, material_id=None, limit=200):
         item["after"] = item["before"] + item["quantity"]
         item["value"] = item["quantity"] * (item["unit_cost"] or 0)
         result.append(item)
+    return result
+
+
+def last_moves():
+    """Dernier mouvement de chaque matière : avant → après et la raison
+    (achat, fabrication de telle provende, perte, inventaire…)."""
+    rows = query(
+        """SELECT s.*, f.name AS formula, p.id AS production_id,
+                  COALESCE((SELECT SUM(t.quantity) FROM stock_moves t
+                            WHERE t.material_id = s.material_id AND t.id < s.id), 0) AS before
+           FROM stock_moves s
+           LEFT JOIN productions p ON s.ref_type = 'production' AND p.id = s.ref_id
+           LEFT JOIN formulas f ON f.id = p.formula_id
+           WHERE s.id = (SELECT x.id FROM stock_moves x WHERE x.material_id = s.material_id
+                         ORDER BY x.date DESC, x.id DESC LIMIT 1)""")
+    result = {}
+    for row in rows:
+        item = dict(row)
+        item["after"] = item["before"] + item["quantity"]
+        result[item["material_id"]] = item
     return result

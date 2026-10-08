@@ -491,3 +491,31 @@ class TestSignalements(StockBase):
         page = self.client.get("/discussion/").get_data(as_text=True)
         self.assertIn("Signalement automatique", page)
         self.assertIn("sacs mouillés", page)
+
+
+class TestUnitesFormule(StockBase):
+    def test_formula_in_grams_and_production_report(self):
+        mais = self.material("Maïs", qty="100", cost="1000")
+        premix = self.material("Prémix", qty="5", cost="10000")
+        res = self.post("/provenderie/formules/nouvelle", {
+            "name": "Ponte test", "material_id": [str(mais), str(premix)],
+            "quantity": ["49,5", "500"], "qty_unit": ["kg", "g"]})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:1500])
+        f = self.one("SELECT * FROM formulas WHERE name = 'Ponte test'")
+        self.assertAlmostEqual(f["base_qty"], 50)
+        line = self.one("SELECT * FROM formula_lines WHERE material_id = ?", (premix,))
+        self.assertAlmostEqual(line["quantity"], 0.5)
+        self.assertEqual(line["input_unit"], "g")
+        # unités incompatibles : refusé avec explication
+        res = self.post("/provenderie/formules/nouvelle", {
+            "name": "Mauvaise", "material_id": [str(mais)], "quantity": ["2"], "qty_unit": ["sac"]},
+            follow_redirects=True)
+        self.assertIn("impossible de", res.get_data(as_text=True))
+        # fabrication d'un sac de 50 kg : stock diminué et associé prévenu
+        self.post("/provenderie/fabrication/nouvelle", {"formula_id": str(f["id"]), "quantity": "50", "date": "2026-10-08"})
+        self.assertAlmostEqual(self.stock(mais), 50.5)
+        self.assertAlmostEqual(self.stock(premix), 4.5)
+        msg = self.one("SELECT body FROM messages WHERE auto = 1 AND ref_type = 'production'")
+        self.assertIn("Matières retirées du stock", msg[0])
+        page = self.client.get("/matieres/").get_data(as_text=True)
+        self.assertIn("Fabrication « Ponte test »", page)

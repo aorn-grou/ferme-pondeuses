@@ -32,7 +32,12 @@
       <tr class="clickable" data-href="{{ url_for('matieres.material', material_id=m.id) }}">
         <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=m.id) }}"><strong>{{ m.name }}</strong></a>{% if m.notes %}<small class="muted block" title="{{ m.notes }}">📝 {{ m.notes|truncate(60) }}</small>{% endif %}</td>
         <td data-label="Catégorie">{{ m.category or '—' }}</td>
-        <td data-label="Stock" class="right"><strong>{{ m.stock|qty(m.unit) }}</strong></td>
+        <td data-label="Stock" class="right"><strong>{{ m.stock|qty(m.unit) }}</strong>
+          {% set lm = last_move.get(m.id) %}
+          {% if lm %}<span class="last-move {{ 'neg' if lm.quantity < 0 else 'pos' }}" title="Dernier mouvement le {{ lm.date|date_fr }}">
+            {{ '↓' if lm.quantity < 0 else '↑' }} {{ lm.before|qty }} → {{ lm.after|qty }} ·
+            {% if lm.kind == 'fabrication' and lm.formula %}Fabrication « {{ lm.formula }} »{% else %}{{ kinds.get(lm.kind, lm.kind) }}{% endif %}
+            · {{ lm.date[8:10] }}/{{ lm.date[5:7] }}</span>{% endif %}</td>
         <td data-label="Prix moyen" class="right">{{ m.avg_cost|money }} / {{ m.unit }}</td>
         <td data-label="Valeur" class="right">{{ m.value|money }}</td>
         <td data-label="Dernier inventaire">{% set lg = last_gap.get(m.id) %}
@@ -40,7 +45,8 @@
             {{ lg.before|qty }} → {{ lg.after|qty }} <strong>({{ '+' if lg.quantity > 0 }}{{ lg.quantity|qty(m.unit) }})</strong></span>
             <small class="muted block">le {{ lg.date|date_fr }}</small>
           {% else %}<span class="muted">—</span>{% endif %}</td>
-        <td data-label="Autonomie">{% if m.autonomy_days is not none %}≈ {{ m.autonomy_days|round(0)|int }} jour(s){% else %}<span class="muted">—</span>{% endif %}</td>
+        <td data-label="Autonomie">{% if m.autonomy_days is not none %}≈ {{ m.autonomy_days|round(0)|int }} jour(s)
+          <small class="muted block">{{ m.used_30|qty(m.unit) }} utilisés en provende (30 j)</small>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td data-label="État">
           {% if m.status == 'empty' %}<span class="badge badge-danger">Épuisé</span>
           {% elif m.status == 'low' %}<span class="badge badge-warn">Stock bas</span>

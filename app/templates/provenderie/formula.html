@@ -17,13 +17,13 @@
 </div>
 <div class="card flush top-gap">
   <table class="table responsive">
-    <thead><tr><th>Ingrédient</th><th class="right">Quantité</th><th class="right">Part</th><th class="right">Prix moyen</th><th class="right">En stock</th></tr></thead>
+    <thead><tr><th>Ingrédient</th><th class="right">Quantité</th><th class="right">Part</th><th class="right">Coût</th><th class="right">En stock</th></tr></thead>
     <tbody>
     {% for l in lines %}
       <tr><td data-label="Ingrédient"><a href="{{ url_for('matieres.material', material_id=l.material_id) }}"><strong>{{ l.name }}</strong></a></td>
-      <td data-label="Quantité" class="right">{{ l.quantity|qty(l.unit) }}</td>
-      <td data-label="Part" class="right">{{ (l.quantity / total_qty * 100)|round(1) if total_qty else 0 }} %</td>
-      <td data-label="Prix moyen" class="right">{{ l.avg_cost|money }}</td>
+      <td data-label="Quantité" class="right">{{ l.shown_qty|qty(l.shown_unit) }}{% if l.shown_unit != l.unit %}<small class="muted block">= {{ l.quantity|qty(l.unit) }}</small>{% endif %}</td>
+      <td data-label="Part" class="right">{{ (l.kg / total_qty * 100)|round(1) if total_qty else 0 }} %</td>
+      <td data-label="Coût" class="right">{{ l.cost|money }}<small class="muted block">{{ l.avg_cost|money }} / {{ l.unit }}</small></td>
       <td data-label="En stock" class="right">{{ l.stock|qty(l.unit) }}</td></tr>
     {% endfor %}
     </tbody>
