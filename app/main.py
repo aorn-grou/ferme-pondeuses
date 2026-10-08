@@ -25,8 +25,11 @@ def dashboard():
 
         backups = list_backups()
         stats["last_backup"] = backups[0] if backups else None
+    from .dashboard_data import build
+    from .stock import today
+
     return render_template("main/dashboard.html", greeting=greeting, modules=modules, stats=stats,
-                           role=role_label(g.user["role"]))
+                           role=role_label(g.user["role"]), d=build(), today=today())
 
 
 @bp.route("/module/<key>")

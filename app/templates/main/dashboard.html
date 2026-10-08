@@ -1,76 +1,183 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_head %}
+{% from "_macros.html" import icon %}
 {% block title %}Tableau de bord{% endblock %}
 {% block content %}
-<section class="hero card">
+{% set L = d.lots %}{% set F = d.feed %}{% set M = d.materials %}
+
+{# ---------- Bandeau du jour ---------- #}
+<section class="hero-band dash-hero">
   <div>
-    <p class="eyebrow">{{ role }}</p>
-    <h1>{{ greeting }}, {{ current_user.full_name or current_user.username }} !</h1>
-    <p class="muted">Les modules de la ferme arrivent un par un. Ceux marqués « bientôt » sont en préparation.</p>
+    <div class="hero-sub">{{ icon('sun', 16) }} {{ greeting }}, {{ current_user.full_name or current_user.username }} · {{ today|date_fr }}</div>
+    {% if L %}
+    <div class="hero-line"><span class="hero-num">{{ L.birds|num }}</span><span>poules dans {{ L.count }} lot(s)</span></div>
+    <div class="hero-sub">Provende à donner aujourd'hui : <strong>{{ L.today_kg|qty('kg') }}</strong>
+      {% if F and F.min_days is not none %} · stock de provende pour <strong>{{ F.min_days|round(0)|int }} jour(s)</strong> au plus court{% endif %}</div>
+    {% else %}
+    <div class="hero-line"><span class="hero-num">{{ conf.company_name }}</span></div>
+    {% endif %}
   </div>
-  <span class="hero-icon">{{ icon('egg', 44) }}</span>
+  <div class="hero-actions">
+    {% if can('alimentation', 2) and L and L.count %}<a class="btn gold" href="{{ url_for('lots.feeding_day') }}">{{ icon('wheat', 18) }} Provende du jour</a>{% endif %}
+    {% if can('provenderie', 2) %}<a class="btn hero-btn" href="{{ url_for('provenderie.production_new') }}">{{ icon('factory', 18) }} Fabriquer</a>{% endif %}
+    {% if can('matieres', 2) %}<a class="btn hero-btn" href="{{ url_for('matieres.purchase_new') }}">{{ icon('cart', 18) }} Nouvel achat</a>{% endif %}
+    {% if can('lots', 2) %}<a class="btn hero-btn" href="{{ url_for('lots.lot_new') }}">{{ icon('plus', 18) }} Nouveau lot</a>{% endif %}
+  </div>
 </section>
 
+{# ---------- Alertes ---------- #}
 {% if alerts %}
-<section class="card top-gap-sm alert-card">
-  <div class="card-head"><h2>{{ icon('bell', 20) }} Alertes ({{ alerts|length }})</h2></div>
-  <ul class="alert-list">
-    {% for a in alerts[:6] %}<li class="{{ a.level }}"><a href="{{ a.url }}"><strong>{{ a.title }}</strong></a> <span class="muted">{{ a.text }}</span></li>{% endfor %}
-  </ul>
+<section class="alert-strip top-gap-sm">
+  {% for a in alerts[:4] %}<a class="alert-chip {{ a.level }}" href="{{ a.url }}">{{ icon('alert', 16) }} <strong>{{ a.title }}</strong> <span>{{ a.text }}</span></a>{% endfor %}
 </section>
 {% endif %}
+
+{# ---------- Chiffres clés ---------- #}
+<div class="kpis top-gap">
+  {% if L %}
+  <a class="kpi" href="{{ url_for('lots.index') }}">
+    <div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('layers', 18) }}</span>
+      {% set dd = L.deaths7 - L.deaths_prev7 %}
+      <span class="tag {{ 'tag-red' if L.deaths7 > L.deaths_prev7 else 'tag-green' }}">{{ L.deaths7 }} mort(s) / 7 j</span></div>
+    <div class="kpi-val">{{ L.birds|num }}</div><div class="kpi-lab">Poules à la ferme</div>
+  </a>
+  {% endif %}
+  {% if F %}
+  <a class="kpi" href="{{ url_for('provenderie.feed_history_all') }}">
+    <div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('wheat', 18) }}</span>
+      {% if F.min_days is not none %}<span class="tag {{ 'tag-red' if F.min_days < 7 else 'tag-gold' }}">{{ F.min_days|round(0)|int }} jour(s)</span>{% endif %}</div>
+    <div class="kpi-val">{{ F.stock|qty('kg') }}</div><div class="kpi-lab">Provende en stock · {{ F.value|money }}</div>
+    <div class="kpi-spark" data-chart-type="spark" data-chart='{{ {"values": F.given_weeks, "color": "#0f6e56"}|tojson }}'></div>
+  </a>
+  {% endif %}
+  {% if M %}
+  <a class="kpi" href="{{ url_for('matieres.history') }}">
+    <div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('box', 18) }}</span>
+      <span class="tag {{ 'tag-red' if M.alerts else 'tag-green' }}">{{ M.alerts|length }} alerte(s)</span></div>
+    <div class="kpi-val">{{ M.value|money }}</div><div class="kpi-lab">Matières premières en stock</div>
+  </a>
+  <a class="kpi" href="{{ url_for('matieres.purchases') }}">
+    <div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('cart', 18) }}</span>
+      {% if M.due %}<span class="tag tag-red">dette {{ M.due|money }}</span>{% else %}<span class="tag tag-green">aucune dette</span>{% endif %}</div>
+    <div class="kpi-val">{{ M.month_buys|money }}</div><div class="kpi-lab">Achats ce mois</div>
+    <div class="kpi-spark" data-chart-type="spark" data-chart='{{ {"values": M.buy_weeks, "color": "#a32d2d"}|tojson }}'></div>
+  </a>
+  {% endif %}
+  {% if L %}
+  <a class="kpi" href="{{ url_for('lots.index') }}">
+    <div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('clock', 18) }}</span><span class="tag tag-gold">jusqu'aux réformes</span></div>
+    <div class="kpi-val">{{ L.future_kg|qty('kg') }}</div><div class="kpi-lab">Provende à prévoir · {{ L.future_cost|money }}</div>
+  </a>
+  {% endif %}
+  <div class="kpi kpi-soon">
+    <div class="kpi-top"><span class="kpi-ic ic-gray">{{ icon('egg', 18) }}</span><span class="tag tag-gray">bientôt</span></div>
+    <div class="kpi-val">— œufs</div><div class="kpi-lab">Ponte, coût d'un œuf, bénéfice</div>
+  </div>
+</div>
+
+{# ---------- Courbes ---------- #}
+{% if F %}
+<div class="dash-grid top-gap">
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('wheat', 20) }} Provende donnée aux poules · 30 jours</h2>
+      <span class="legend-inline"><span><i class="sw sw-green"></i> kg / jour</span><span><i class="sw sw-gold-dash"></i> moyenne</span></span></div>
+    <div class="chart-box sm" data-chart-type="line" data-chart='{{ {"labels": d.labels30, "values": F.given, "unit": "kg", "color": "#3a8a2e"}|tojson }}'></div>
+    <p class="hint">Total du mois : <strong>{{ F.given_month|qty('kg') }}</strong>. ▲ jour le plus fort · ▼ jour le plus faible.</p>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('factory', 20) }} Provende fabriquée · 30 jours</h2></div>
+    <div class="chart-box sm" data-chart-type="line" data-chart='{{ {"labels": d.labels30, "values": F.made, "unit": "kg", "color": "#c9971c"}|tojson }}'></div>
+    <p class="hint">Total du mois : <strong>{{ F.made_month|qty('kg') }}</strong>.</p>
+  </section>
+</div>
+{% endif %}
+
+{# ---------- Stocks : provende et matières ---------- #}
+<div class="dash-grid top-gap">
+  {% if F and F['items'] %}
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('clock', 20) }} Combien de temps dure la provende</h2></div>
+    <div class="meters">
+      {% for f in F['items'] %}{% set pct = ([f.days, 30]|min / 30 * 100) if f.days is not none else 100 %}
+      <a class="meter" href="{{ url_for('provenderie.feed_history_all', formule=f.id) }}">
+        <div class="meter-top"><strong>{{ f.name }}</strong><span>{{ f.stock|qty('kg') }}</span></div>
+        <div class="meter-bar"><span class="{{ 'm-red' if f.days is not none and f.days < 7 else ('m-gold' if f.days is not none and f.days < 15 else 'm-green') }}" style="width: {{ [pct, 3]|max|round(0) }}%"></span></div>
+        <small>{% if f.days is not none %}{{ f.per_day|qty('kg') }} / jour · <strong>{{ f.days|round(0)|int }} jour(s)</strong>{% else %}pas encore consommée{% endif %}</small>
+      </a>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  {% if M and M['items'] %}
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('box', 20) }} Stock des matières premières</h2><a class="btn ghost sm" href="{{ url_for('matieres.history') }}">Historique</a></div>
+    <div class="meters">
+      {% for m in M['items'] %}
+      <a class="meter" href="{{ url_for('matieres.material', material_id=m.id) }}">
+        <div class="meter-top"><strong>{{ m.name }}</strong><span>{{ m.stock|qty(m.unit) }}</span></div>
+        <div class="meter-bar"><span class="{{ 'm-red' if m.status == 'empty' else ('m-gold' if m.status == 'low' else 'm-green') }}" style="width: {{ m.fill|round(0) }}%"></span></div>
+        <small>{{ m.value|money }}{% if m.alert_threshold %} · seuil {{ m.alert_threshold|qty(m.unit) }}{% endif %}{% if m.autonomy_days is not none %} · ≈ {{ m.autonomy_days|round(0)|int }} j{% endif %}</small>
+      </a>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+{# ---------- Lots ---------- #}
+{% if L and L.cards %}
+<div class="section-head top-gap"><h2 class="section-title">Vos lots</h2><a class="btn ghost sm" href="{{ url_for('lots.index') }}">Tous les lots</a></div>
+<div class="lot-grid">
+{% for it in L.cards %}{% set l = it.lot %}{% set s = it.s %}
+  <a class="lot-card" href="{{ url_for('lots.lot', lot_id=l.id) }}">
+    <div class="lot-card-head"><strong>{{ l.name }}</strong>
+      {% if s.mortality >= 5 %}<span class="tag tag-red">Mortalité {{ s.mortality|round(1) }} %</span>{% else %}<span class="tag tag-green">Semaine {{ s.week }}</span>{% endif %}</div>
+    <div class="muted small">{{ s.birds|num }} poules{% if l.building %} · {{ l.building }}{% endif %}</div>
+    {% if s.suggest and s.suggest.formula %}<div class="lot-today"><span>{{ icon('wheat', 16) }} Aujourd'hui</span><strong>{{ s.suggest.kg|qty('kg') }}</strong><small>{{ s.suggest.formula }} · {{ s.suggest.grams|round(0)|int }} g/poule</small></div>{% endif %}
+    <div class="lot-figs">
+      <div><span>🌾 Mangé</span><strong class="text-green">{{ s.eaten_kg|qty('kg') }}</strong><small>{{ s.eaten_cost|money }}</small></div>
+      {% if s.forecast %}<div><span>🔮 Reste à manger</span><strong class="text-gold">{{ s.forecast.kg|qty('kg') }}</strong><small>{{ s.forecast.cost|money }}</small></div>{% endif %}
+    </div>
+    <div class="life-bar"><span style="width: {{ s.progress|round(0) }}%"></span></div>
+    <div class="muted small">Semaine {{ s.week }} / {{ l.reform_week }}{% if s.forecast %} · réforme le {{ s.forecast.end_date|date_fr }}{% endif %}</div>
+  </a>
+{% endfor %}
+</div>
+{% endif %}
+
+{# ---------- Argent et nouvelles ---------- #}
+<div class="dash-grid top-gap">
+  {% if d.accounts %}
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('wallet', 20) }} Argent par compte</h2>{% if d.month_out %}<span class="tag tag-red">sorti ce mois : {{ d.month_out|money }}</span>{% endif %}</div>
+    <div class="money-list">
+      {% for a in d.accounts %}<div class="money-row"><span>{{ a.name }}</span><strong class="{{ 'text-danger' if a.balance < 0 else 'text-green' }}">{{ a.balance|money }}</strong></div>{% endfor %}
+    </div>
+    <p class="hint">Pour l'instant : sorties pour achats et poussins. Les apports, ventes et retraits viendront avec le module Caisse.</p>
+  </section>
+  {% endif %}
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('bell', 20) }} Ce qui s'est passé</h2><a class="btn ghost sm" href="{{ url_for('discussion.index') }}">Discussion</a></div>
+    {% if d.news %}
+    <ul class="news">{% for m in d.news %}<li><span class="news-time">{{ m.created_at|localdt('%d/%m %H:%M') }}</span><span>{{ m.body }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="muted">Rien de nouveau pour l'instant.</p>{% endif %}
+  </section>
+</div>
 
 {% if stats %}
-<div class="stats top-gap">
-  <a class="stat" href="{{ url_for('users.index') }}">
-    <span class="stat-icon">{{ icon('users') }}</span>
-    <span class="stat-label">Utilisateurs actifs</span>
-    <strong class="stat-value">{{ stats.users }}</strong>
-    {% if stats.inactive %}<small class="muted">{{ stats.inactive }} désactivé(s)</small>{% endif %}
-  </a>
-  <a class="stat" href="{{ url_for('backups.index') }}">
-    <span class="stat-icon">{{ icon('database') }}</span>
-    <span class="stat-label">Dernière sauvegarde</span>
-    <strong class="stat-value small">{{ stats.last_backup.date if stats.last_backup else 'Aucune' }}</strong>
-    {% if stats.last_backup %}<small class="muted">{{ stats.last_backup.kind }}</small>{% endif %}
-  </a>
-  <a class="stat" href="{{ url_for('settings.index') }}">
-    <span class="stat-icon">{{ icon('palette') }}</span>
-    <span class="stat-label">Société</span>
-    <strong class="stat-value small">{{ conf.company_name }}</strong>
-    <small class="muted">Nom, logo et couleurs</small>
-  </a>
-</div>
-{% endif %}
-
-<h2 class="section-title">Mes modules</h2>
-<div class="module-grid">
-  {% for m in modules %}
-    {% set href = module_url(m.key) %}
-    <a class="module-card" href="{{ href }}">
-      <span class="module-icon">{{ icon(m.icon, 22) }}</span>
-      <span class="module-text">
-        <strong>{{ m.label }}</strong>
-        <small>{{ m.desc }}</small>
-      </span>
-      {% if not m.built %}<em class="soon">bientôt</em>{% endif %}
-    </a>
-  {% else %}
-    <p class="muted">Aucun module ne vous est encore attribué. Demandez l'accès à l'administrateur.</p>
-  {% endfor %}
-</div>
-
-{% if stats and stats.activity %}
-<section class="card top-gap">
-  <div class="card-head">
-    <h2>Activité récente</h2>
-    <a class="btn ghost sm" href="{{ url_for('main.journal') }}">Tout voir</a>
+<details class="card top-gap admin-box">
+  <summary>{{ icon('settings', 18) }} Administration : utilisateurs, sauvegarde, activité</summary>
+  <div class="stats top-gap-sm">
+    <a class="stat" href="{{ url_for('users.index') }}"><span class="stat-label">Utilisateurs actifs</span><strong class="stat-value">{{ stats.users }}</strong></a>
+    <a class="stat" href="{{ url_for('backups.index') }}"><span class="stat-label">Dernière sauvegarde</span><strong class="stat-value small">{{ stats.last_backup.date if stats.last_backup else 'Aucune' }}</strong></a>
   </div>
-  <ul class="timeline">
-    {% for a in stats.activity %}
-      <li><span class="tl-dot"></span><div><strong>{{ a.action }}</strong>{% if a.details %} — {{ a.details }}{% endif %}<small class="muted">{{ a.username or 'système' }} · {{ a.created_at|localdt }}</small></div></li>
-    {% endfor %}
+  <ul class="timeline top-gap-sm">
+    {% for a in stats.activity %}<li><span class="tl-dot"></span><div><strong>{{ a.action }}</strong>{% if a.details %} — {{ a.details }}{% endif %}<small class="muted">{{ a.username or 'système' }} · {{ a.created_at|localdt }}</small></div></li>{% endfor %}
   </ul>
-</section>
+</details>
 {% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>
+<script>
+/* Le tableau de bord se met à jour tout seul toutes les 2 minutes (si la page est visible). */
+setInterval(() => { if (!document.hidden && !document.querySelector("input:focus, textarea:focus")) location.reload(); }, 120000);
+</script>
 {% endblock %}

@@ -36,7 +36,7 @@
       const t = el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: muted }, svg);
       t.textContent = fmt(v) + (data.unit ? " " + data.unit : "");
     }
-    const every = Math.ceil(n / 14);
+    const every = Math.ceil(n / Math.max(3, Math.floor(iw / 48)));
     data.labels.forEach((lab, i) => {
       if (i % every) return;
       const t = el("text", { x: x(i), y: H - 8, "text-anchor": "middle", "font-size": 11, fill: muted }, svg);
@@ -84,10 +84,82 @@
     hit.addEventListener("mouseleave", () => { tip.hidden = true; });
   }
 
-  window.FermeChart = { barsLine };
+  /* Courbe avec moyenne (pointillés), pic ▲ et creux ▼ */
+  function line(box, data) {
+    box.innerHTML = "";
+    const W = Math.max(320, box.clientWidth || 600), H = box.clientHeight || 240;
+    const m = { l: 48, r: 14, t: 24, b: 26 }, n = data.labels.length;
+    if (!n) return;
+    const vals = data.values.map((v) => v || 0);
+    const max = niceMax(Math.max(1, ...vals)), iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const x = (i) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1)), y = (v) => m.t + ih - (v / max) * ih;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img" }, box);
+    const grid = css("--border", "#e8e2cf"), muted = css("--text-2", "#5d6a5f");
+    const col = data.color || "#3a8a2e", gold = css("--gold", "#c9971c");
+    for (let k = 0; k <= 4; k++) {
+      const v = (max / 4) * k, yy = y(v);
+      el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: grid }, svg);
+      el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: muted }, svg).textContent = fmt(v);
+    }
+    const every = Math.ceil(n / Math.max(3, Math.floor(iw / 62)));
+    data.labels.forEach((lab, i) => { if ((i % every === 0 && (n - 1 - i >= every / 2 || i === n - 1)) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
+    const pts = vals.map((v, i) => [x(i), y(v)]);
+    const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+    el("path", { d: d + ` L${pts[n - 1][0]} ${m.t + ih} L${pts[0][0]} ${m.t + ih} Z`, fill: col, "fill-opacity": 0.13 }, svg);
+    el("path", { d, fill: "none", stroke: col, "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+    const nonZero = vals.filter((v) => v > 0);
+    if (nonZero.length) {
+      const avg = vals.reduce((a, b) => a + b, 0) / n;
+      el("line", { x1: m.l, x2: W - m.r, y1: y(avg), y2: y(avg), stroke: gold, "stroke-dasharray": "6 4", "stroke-width": 1.5 }, svg);
+      const hi = vals.indexOf(Math.max(...vals));
+      const loVal = Math.min(...nonZero), lo = vals.indexOf(loVal);
+      const marks = [[hi, "#2e7d32", -10, "▲ " + fmt(vals[hi])]];
+      if (nonZero.length > 1 && loVal < vals[hi]) marks.push([lo, "#c0352b", 18, "▼ " + fmt(loVal)]);
+      marks.forEach(([i, c, o, t]) => {
+        el("circle", { cx: x(i), cy: y(vals[i]), r: 5, fill: c, stroke: css("--surface", "#fff"), "stroke-width": 2 }, svg);
+        el("text", { x: Math.min(W - 30, Math.max(m.l + 20, x(i))), y: y(vals[i]) + o, "text-anchor": "middle", "font-size": 11, "font-weight": 700, fill: c }, svg).textContent = t;
+      });
+    }
+    tooltip(box, svg, W, n, (px) => Math.max(0, Math.min(n - 1, Math.round((px - m.l) / (iw / Math.max(1, n - 1))))),
+      (i) => `<strong>${data.labels[i]}</strong><br>${fmt(vals[i])} ${data.unit || ""}`, x);
+  }
+
+  function tooltip(box, svg, W, n, indexAt, html, xOf) {
+    const tip = document.createElement("div");
+    tip.className = "chart-tip"; tip.hidden = true;
+    box.style.position = "relative"; box.appendChild(tip);
+    const move = (evt) => {
+      const r = svg.getBoundingClientRect();
+      const px = ((evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left) * (W / r.width);
+      const i = indexAt(px);
+      tip.innerHTML = html(i); tip.hidden = false;
+      tip.style.left = Math.min(r.width - 150, Math.max(0, (xOf(i) / W) * r.width - 70)) + "px"; tip.style.top = "0px";
+    };
+    svg.addEventListener("mousemove", move);
+    svg.addEventListener("touchstart", move, { passive: true });
+    svg.addEventListener("mouseleave", () => { tip.hidden = true; });
+  }
+
+  /* Mini-courbe pour les cartes */
+  function spark(box, data) {
+    box.innerHTML = "";
+    const vals = data.values.map((v) => v || 0), n = vals.length;
+    if (n < 2) return;
+    const W = 160, H = 34, max = Math.max(...vals), min = Math.min(...vals), span = max - min || 1;
+    const x = (i) => (W * i) / (n - 1), y = (v) => H - 3 - ((v - min) / span) * (H - 6);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, preserveAspectRatio: "none" }, box);
+    const d = vals.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+    const col = data.color || "#3a8a2e";
+    el("path", { d: d + ` L${W} ${H} L0 ${H} Z`, fill: col, "fill-opacity": 0.12 }, svg);
+    el("path", { d, fill: "none", stroke: col, "stroke-width": 2, "vector-effect": "non-scaling-stroke" }, svg);
+  }
+
+  window.FermeChart = { barsLine, line, spark };
+  const kinds = { barsLine, line, spark };
   document.querySelectorAll("[data-chart]").forEach((box) => {
     const data = JSON.parse(box.dataset.chart);
-    const draw = () => barsLine(box, data);
+    const fn = kinds[box.dataset.chartType || "barsLine"] || barsLine;
+    const draw = () => fn(box, data);
     draw();
     let t;
     window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(draw, 150); });
