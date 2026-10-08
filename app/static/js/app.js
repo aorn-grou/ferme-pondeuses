@@ -742,3 +742,17 @@
     birds.addEventListener("input", update); grams.addEventListener("input", update); update();
   });
 })();
+
+/* Programme : afficher les jours correspondant aux semaines (semaine 1 = jours 1 à 7, semaine 2 = jours 8 à 14…) */
+(function () {
+  const update = () => document.querySelectorAll("[data-line]").forEach((row) => {
+    const hint = row.querySelector("[data-days-hint]");
+    if (!hint) return;
+    const wf = parseInt(row.querySelector("[data-week-from]").value, 10);
+    const wt = parseInt(row.querySelector("[data-week-to]").value, 10) || wf;
+    hint.textContent = wf > 0 && wt >= wf ? `= jours ${(wf - 1) * 7 + 1} à ${wt * 7}` : "";
+  });
+  document.addEventListener("input", (e) => { if (e.target.matches("[data-week-from], [data-week-to]")) update(); });
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-add-line], [data-fill-weeks]")) setTimeout(update, 0); });
+  update();
+})();
