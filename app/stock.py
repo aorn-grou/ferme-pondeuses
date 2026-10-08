@@ -185,3 +185,33 @@ def supplier_balance(supplier_id):
     paid_later = query("SELECT COALESCE(SUM(amount), 0) AS a FROM supplier_payments WHERE supplier_id = ?",
                        (supplier_id,), one=True)["a"]
     return {"bought": bought["t"], "paid": bought["p"] + paid_later, "due": bought["t"] - bought["p"] - paid_later}
+
+
+def inventory_gaps(since=None, material_id=None, limit=200):
+    """Écarts d'inventaire : pour chaque comptage, le stock du logiciel avant,
+    la quantité comptée, l'écart et sa valeur. Calculé depuis l'historique,
+    donc les anciens inventaires sont aussi visibles."""
+    where = ["s.kind = 'inventaire'"]
+    params = []
+    if since:
+        where.append("s.date >= ?")
+        params.append(since)
+    if material_id:
+        where.append("s.material_id = ?")
+        params.append(material_id)
+    rows = query(
+        f"""SELECT s.*, m.name, m.unit, u.username, u.full_name,
+                   COALESCE((SELECT SUM(t.quantity) FROM stock_moves t
+                             WHERE t.material_id = s.material_id AND t.id < s.id), 0) AS before
+            FROM stock_moves s JOIN materials m ON m.id = s.material_id
+            LEFT JOIN users u ON u.id = s.created_by
+            WHERE {' AND '.join(where)} ORDER BY s.date DESC, s.id DESC LIMIT ?""",
+        (*params, limit),
+    )
+    result = []
+    for row in rows:
+        item = dict(row)
+        item["after"] = item["before"] + item["quantity"]
+        item["value"] = item["quantity"] * (item["unit_cost"] or 0)
+        result.append(item)
+    return result

@@ -26,7 +26,7 @@
 
 <div class="card flush top-gap">
   <table class="table responsive">
-    <thead><tr><th>Matière</th><th>Catégorie</th><th class="right">Stock</th><th class="right">Prix moyen</th><th class="right">Valeur</th><th>Autonomie</th><th>État</th></tr></thead>
+    <thead><tr><th>Matière</th><th>Catégorie</th><th class="right">Stock</th><th class="right">Prix moyen</th><th class="right">Valeur</th><th>Dernier inventaire</th><th>Autonomie</th><th>État</th></tr></thead>
     <tbody>
     {% for m in materials %}
       <tr class="clickable" data-href="{{ url_for('matieres.material', material_id=m.id) }}">
@@ -35,6 +35,11 @@
         <td data-label="Stock" class="right"><strong>{{ m.stock|qty(m.unit) }}</strong></td>
         <td data-label="Prix moyen" class="right">{{ m.avg_cost|money }} / {{ m.unit }}</td>
         <td data-label="Valeur" class="right">{{ m.value|money }}</td>
+        <td data-label="Dernier inventaire">{% set lg = last_gap.get(m.id) %}
+          {% if lg %}<span class="gap {{ 'gap-neg' if lg.quantity < 0 else 'gap-pos' }}" title="Inventaire du {{ lg.date|date_fr }} par {{ lg.full_name or lg.username or '?' }}">
+            {{ lg.before|qty }} → {{ lg.after|qty }} <strong>({{ '+' if lg.quantity > 0 }}{{ lg.quantity|qty(m.unit) }})</strong></span>
+            <small class="muted block">le {{ lg.date|date_fr }}</small>
+          {% else %}<span class="muted">—</span>{% endif %}</td>
         <td data-label="Autonomie">{% if m.autonomy_days is not none %}≈ {{ m.autonomy_days|round(0)|int }} jour(s){% else %}<span class="muted">—</span>{% endif %}</td>
         <td data-label="État">
           {% if m.status == 'empty' %}<span class="badge badge-danger">Épuisé</span>
@@ -43,7 +48,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="7" class="center muted">
+      <tr><td colspan="8" class="center muted">
         Aucune matière pour l'instant.
         {% if can('matieres', 2) %}<br><a href="{{ url_for('matieres.material_new') }}">Ajoutez votre première matière première</a> (maïs, son, soja…).{% endif %}
       </td></tr>
@@ -51,6 +56,28 @@
     </tbody>
   </table>
 </div>
+{% if gaps %}
+<section class="card flush top-gap gap-card" id="ecarts">
+  <div class="card-head padded"><h2>{{ icon('alert', 20) }} Écarts d'inventaire — 30 derniers jours</h2>
+    <span class="badge {{ 'badge-danger' if summary.gap_value < 0 else 'badge-ok' }}">Total : {{ '+' if summary.gap_value > 0 }}{{ summary.gap_value|money }}</span></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Matière</th><th class="right">Avant (logiciel)</th><th class="right">Après (compté)</th><th class="right">Écart</th><th class="right">Valeur</th><th>Par</th></tr></thead>
+    <tbody>
+    {% for gp in gaps %}
+      <tr>
+        <td data-label="Date" class="nowrap">{{ gp.date|date_fr }}</td>
+        <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=gp.material_id) }}">{{ gp.name }}</a></td>
+        <td data-label="Avant (logiciel)" class="right">{{ gp.before|qty(gp.unit) }}</td>
+        <td data-label="Après (compté)" class="right">{{ gp.after|qty(gp.unit) }}</td>
+        <td data-label="Écart" class="right"><strong class="{{ 'text-danger' if gp.quantity < 0 else 'text-ok' }}">{{ '+' if gp.quantity > 0 }}{{ gp.quantity|qty(gp.unit) }}</strong></td>
+        <td data-label="Valeur" class="right {{ 'text-danger' if gp.value < 0 else 'text-ok' }}">{{ '+' if gp.value > 0 }}{{ gp.value|money }}</td>
+        <td data-label="Par">{{ gp.full_name or gp.username or '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
 <p class="hint top-gap">L'autonomie est calculée à partir de la consommation des 30 derniers jours pour la fabrication de provende.
   {% if archived %} · <a href="{{ url_for('matieres.archived') }}">{{ archived }} matière(s) archivée(s)</a>{% endif %}</p>
 {% endblock %}

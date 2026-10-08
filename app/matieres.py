@@ -4,7 +4,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from .db import execute, now_utc, query, transaction
 from .security import EDIT, MANAGE, VIEW, can, can_correct, require
 from .stock import (
-    EPS, accounts, material_stock, materials_overview, parse_num, recompute_material, supplier_balance,
+    EPS, accounts, inventory_gaps, material_stock, materials_overview, parse_num, recompute_material, supplier_balance,
     today, valid_date,
 )
 from .utils import date_fr, fmt_money, fmt_qty, log_activity
@@ -68,8 +68,20 @@ def index():
         "count": len(materials),
     }
     archived = query("SELECT COUNT(*) AS n FROM materials WHERE active = 0", one=True)["n"]
+    gaps = inventory_gaps(since=_days_ago(30))
+    last_gap = {}
+    for gap in inventory_gaps():
+        last_gap.setdefault(gap["material_id"], gap)
+    summary["gap_value"] = sum(g_["value"] for g_ in gaps)
     return render_template("matieres/index.html", materials=shown, summary=summary, categories=_categories(),
-                           category=category, archived=archived)
+                           category=category, archived=archived, gaps=gaps, last_gap=last_gap)
+
+
+def _days_ago(days):
+    from datetime import timedelta
+
+    from .utils import local_now
+    return (local_now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
 
 @bp.route("/archives")

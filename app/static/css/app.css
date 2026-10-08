@@ -728,3 +728,11 @@ tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transpare
 .msg.auto .msg-bubble { border-radius: 12px; background: var(--gold-soft); border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border)); border-left: 4px solid var(--gold); }
 .msg.auto .msg-meta { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; color: color-mix(in srgb, var(--gold) 70%, var(--text)); }
 .msg.auto .msg-ref { margin: .25rem 0 0; }
+
+/* Écarts d'inventaire */
+.gap { display: inline-block; padding: .1rem .45rem; border-radius: 7px; font-size: .88rem; white-space: nowrap; }
+.gap-neg { background: var(--danger-bg); color: var(--danger); }
+.gap-pos { background: var(--ok-bg); color: var(--ok); }
+.text-danger { color: var(--danger); }
+.text-ok { color: var(--ok); }
+.gap-card { border-top-color: var(--danger); }
