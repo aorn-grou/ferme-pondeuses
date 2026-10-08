@@ -10,7 +10,23 @@
   <a class="btn primary" href="{{ url_for('provenderie.production_new', formule=item.id) }}">{{ icon('factory', 18) }} Fabriquer</a>{% endif %}
   {% endif %}
 {% endcall %}
-<div class="stats">
+{% if item.notes %}
+<section class="card note-card">
+  <h2>📝 Remarques</h2>
+  <p class="pre-line">{{ item.notes }}</p>
+</section>
+{% endif %}
+{% if item.active and not productions and can('provenderie', 2) %}
+<div class="next-step top-gap">
+  <div>
+    <strong>👉 Étape suivante : fabriquer</strong>
+    <p>Cette formule est la <strong>recette</strong>. Les stocks n'ont pas encore bougé : ils changent seulement quand vous <strong>fabriquez</strong>
+      (les matières premières diminuent et la provende « {{ item.name }} » entre en stock).</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('provenderie.production_new', formule=item.id, quantite=base|qty) }}">{{ icon('factory', 18) }} Fabriquer {{ base|qty('kg') }} maintenant</a>
+</div>
+{% endif %}
+<div class="stats {{ 'top-gap' if item.notes or not productions }}">
   <div class="stat"><span class="stat-label">Mélange</span><strong class="stat-value small">{{ base|qty('kg') }}</strong><small class="muted">ingrédients : {{ total_qty|qty }}</small></div>
   <div class="stat"><span class="stat-label">Coût estimé</span><strong class="stat-value small">{{ cost_per_kg|money }} / kg</strong><small class="muted">aux prix moyens actuels</small></div>
   <a class="stat" href="{{ url_for('provenderie.feed_history', formula_id=item.id) }}"><span class="stat-label">En stock</span><strong class="stat-value small">{{ stock|qty('kg') }}</strong><small class="muted">voir l'historique</small></a>
@@ -30,7 +46,6 @@
   </table>
 </div>
 {% if programs %}<p class="hint top-gap">Utilisée dans : {% for p in programs %}<a href="{{ url_for('provenderie.program', program_id=p.id) }}">{{ p.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
-{% if item.notes %}<p class="muted top-gap">{{ item.notes }}</p>{% endif %}
 {% if productions %}
 <section class="card flush top-gap">
   <div class="card-head padded"><h2>Fabrications récentes</h2></div>

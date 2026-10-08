@@ -166,7 +166,8 @@ def formula_new():
                                  "VALUES (?, ?, ?, ?, ?)",
                                  [(formula_id, m["id"], q, raw, unit) for m, q, raw, unit in parsed])
             log_activity("Formule créée", values["name"])
-            flash(f"Formule « {values['name']} » enregistrée.", "success")
+            flash(f"Formule « {values['name']} » enregistrée. C'est la recette : pour que les stocks bougent, "
+                  "cliquez maintenant sur « Fabriquer ».", "success")
             return redirect(url_for("provenderie.formula", formula_id=formula_id))
     return render_template("provenderie/formula_form.html", values=values, lines=lines, formula=None,
                            materials=_materials_for_form(), phases=PHASES, units_table=js_table())
@@ -405,7 +406,8 @@ def program_archive(program_id):
 @require("provenderie", EDIT)
 def production_new():
     formulas = [f for f in _active_formulas()]
-    form = {"formula_id": request.args.get("formule", ""), "quantity": "", "date": today(), "notes": ""}
+    form = {"formula_id": request.args.get("formule", ""), "quantity": request.args.get("quantite", ""),
+            "date": today(), "notes": ""}
     if request.method == "POST":
         form = {k: request.form.get(k, "").strip() for k in form}
         qty = parse_num(form["quantity"])

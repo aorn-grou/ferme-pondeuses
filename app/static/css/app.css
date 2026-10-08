@@ -752,3 +752,8 @@ tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transpare
 .totals > .target-gap { display: block; }
 .totals > .target-gap .btn { width: 100%; white-space: normal; justify-content: center; }
 .totals > .target-gap .btn span { display: inline; }
+
+.next-step { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  padding: 1rem 1.2rem; border-radius: var(--radius); background: color-mix(in srgb, var(--primary) 9%, var(--surface));
+  border: 2px dashed color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.next-step p { margin: .3rem 0 0; color: var(--text-2); max-width: 60ch; }
