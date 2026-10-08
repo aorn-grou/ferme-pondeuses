@@ -31,11 +31,11 @@
       {% for line in lines %}
       <div class="line-row" data-line>
         <div class="field"><label class="line-label">Matière</label>
-          <select class="input" name="material_id" data-unit-select>
+          <select class="input" name="material_id" data-unit-select data-free="matiere" data-placeholder="Écrivez la matière…" data-new-tip="Nouvelle matière : elle sera créée. Indiquez son unité à droite.">
             <option value="">— Choisir —</option>
             {% for m in materials %}<option value="{{ m.id }}" data-unit="{{ m.unit }}" data-avg="{{ m.avg_cost|round(2) }}" {% if line.material_id == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
           </select></div>
-        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><span class="input-addon static" data-unit-label>—</span></div></div>
+        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><input class="input-addon unit-addon" name="line_unit" value="" maxlength="15" placeholder="unité" aria-label="Unité" data-unit-input data-auto="1" title="Unité (modifiable pour une matière nouvelle)"></div></div>
         <div class="field"><label class="line-label">Prix unitaire (Ar)</label><input class="input" name="unit_price" inputmode="decimal" value="{{ line.unit_price }}" data-price></div>
         <div class="line-total"><span class="line-label">Total</span><strong data-line-total>0 Ar</strong></div>
         <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer la ligne">{{ icon('trash', 18) }}</button>
@@ -67,7 +67,7 @@
     <div class="grid two">
       <div class="field" data-paid-field><label for="paid">Montant payé maintenant (Ar)</label><input class="input" id="paid" name="paid" inputmode="decimal" value="{{ form.paid }}"></div>
       <div class="field" data-account-field><label for="account_id">L'argent vient de</label>
-        <select class="input" id="account_id" name="account_id">
+        <select class="input" id="account_id" name="account_id" data-free="compte" data-placeholder="Caisse, mobile money, propriétaire…" data-new-tip="Nouveau compte : il sera créé.">
           <option value="">— Choisir —</option>
           {% for a in accounts %}<option value="{{ a.id }}" {% if form.account_id == a.id|string %}selected{% endif %}>{{ a.name }}</option>{% endfor %}
         </select>

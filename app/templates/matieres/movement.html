@@ -16,10 +16,13 @@
   </div>
   <div class="field">
     <label for="material_id">Matière</label>
-    <select class="input" id="material_id" name="material_id" required>
+    <div class="input-group">
+    <select class="input" id="material_id" name="material_id" required data-free="matiere" data-placeholder="Écrivez la matière…" data-new-tip="Nouvelle matière : elle sera créée avec l'unité indiquée.">
       <option value="">— Choisir —</option>
-      {% for m in materials %}<option value="{{ m.id }}" {% if form.material_id == m.id|string %}selected{% endif %}>{{ m.name }} ({{ m.unit }})</option>{% endfor %}
+      {% for m in materials %}<option value="{{ m.id }}" data-unit="{{ m.unit }}" data-label="{{ m.name }}" {% if form.material_id == m.id|string %}selected{% endif %}>{{ m.name }} ({{ m.unit }})</option>{% endfor %}
     </select>
+    <input class="input-addon unit-addon" name="line_unit" value="" maxlength="15" placeholder="unité" aria-label="Unité" data-unit-input data-auto="1" title="Unité (modifiable pour une matière nouvelle)">
+    </div>
   </div>
   <div class="grid two">
     <div class="field"><label for="quantity">Quantité</label><input class="input" id="quantity" name="quantity" inputmode="decimal" value="{{ form.quantity }}" required></div>

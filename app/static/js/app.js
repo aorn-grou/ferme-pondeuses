@@ -129,7 +129,12 @@
   /* ---------- Lignes répétées (achats, formules, programmes) ---------- */
   function blankRow(row) {
     const clone = row.cloneNode(true);
-    $$("input", clone).forEach((i) => { i.value = ""; });
+    $$("[data-free-input], [data-free-tip]", clone).forEach((el) => el.remove());
+    $$("select[data-free]", clone).forEach((sel) => {
+      delete sel.dataset.freeDone;
+      Array.from(sel.options).filter((o) => o.value.startsWith("__new__")).forEach((o) => o.remove());
+    });
+    $$("input", clone).forEach((i) => { i.value = ""; if (i.matches("[data-unit-input]")) { i.readOnly = false; i.dataset.auto = "1"; } });
     $$("select", clone).forEach((s) => { s.selectedIndex = 0; });
     $$("[data-line-total], [data-share]", clone).forEach((el) => { el.textContent = "—"; });
     $$("[data-unit-label]", clone).forEach((el) => { el.textContent = "—"; });
@@ -139,6 +144,7 @@
     const rows = $$("[data-line]", container);
     const row = blankRow(rows[rows.length - 1]);
     container.appendChild(row);
+    if (window.freeEnhance) window.freeEnhance(row);
     if (values) Object.entries(values).forEach(([name, value]) => { const el = $(`[name="${name}"]`, row); if (el) el.value = value; });
     bindRow(row, container);
     container.dispatchEvent(new Event("lines-changed"));
@@ -157,6 +163,7 @@
         const opt = unitSelect.selectedOptions[0];
         const unit = opt && opt.dataset.unit ? opt.dataset.unit : "—";
         $$("[data-unit-label]", row).forEach((el) => { el.textContent = unit; });
+        if (opt && opt.dataset.unit) $$("[data-unit-input]", row).forEach((el) => { el.value = opt.dataset.unit; el.readOnly = true; });
         const price = $("[data-price]", row);
         if (price && opt && opt.dataset.avg && num(opt.dataset.avg) > 0) price.placeholder = "prix moyen : " + qty(num(opt.dataset.avg));
       };
@@ -177,7 +184,7 @@
         values = { week_from: String(next), week_to: String(next) };
       }
       const row = addLine(container, values);
-      const first = $("select, input", row);
+      const first = $("[data-free-input], select, input", row);
       if (first) first.focus();
     }));
   });
@@ -487,4 +494,119 @@
       input.placeholder = hint;
     });
   });
+})();
+
+/* ==========================================================================
+   Saisie libre partout : chaque liste [data-free] devient une case où l'on écrit.
+   Un nom connu choisit l'élément existant ; un nom nouveau est envoyé comme
+   « __new__:nom|unité » et le serveur le crée tout seul.
+   ========================================================================== */
+(function () {
+  const norm = (s) => (s || "").trim().replace(/\s+/g, " ").toLowerCase();
+  let counter = 0;
+  const label = (opt) => (opt.dataset.label || opt.textContent || "").trim();
+
+  function datalistFor(select) {
+    const id = "free-dl-" + (select.dataset.free || "x") + "-" + (++counter);
+    const dl = document.createElement("datalist");
+    dl.id = id;
+    Array.from(select.options).forEach((o) => {
+      if (!o.value || o.value.startsWith("__new__")) return;
+      const opt = document.createElement("option");
+      opt.value = label(o);
+      dl.appendChild(opt);
+    });
+    document.body.appendChild(dl);
+    return id;
+  }
+
+  function unitInputOf(select) {
+    const row = select.closest("[data-line]") || select.closest("form");
+    return row ? row.querySelector("[data-unit-input]") : null;
+  }
+
+  function apply(select, input) {
+    const text = input.value.trim().replace(/\s+/g, " ");
+    Array.from(select.options).filter((o) => o.value.startsWith("__new__")).forEach((o) => o.remove());
+    const unitInput = unitInputOf(select);
+    let match = null;
+    if (text) match = Array.from(select.options).find((o) => o.value && norm(label(o)) === norm(text));
+    if (!match && text) {
+      // le nom écrit peut aussi être le nom sans la précision entre parenthèses
+      match = Array.from(select.options).find((o) => o.value && norm(label(o).replace(/\s*\(.*\)\s*$/, "")) === norm(text));
+    }
+    if (match) {
+      select.value = match.value;
+      input.classList.remove("is-new");
+      if (unitInput) { unitInput.value = match.dataset.unit || unitInput.value; unitInput.readOnly = true; }
+    } else if (text) {
+      const unit = unitInput ? (unitInput.value.trim() || "kg") : "";
+      const opt = document.createElement("option");
+      opt.value = "__new__:" + text + (unit ? "|" + unit : "");
+      opt.textContent = text;
+      select.appendChild(opt);
+      select.value = opt.value;
+      input.classList.add("is-new");
+      if (unitInput) { unitInput.readOnly = false; if (!unitInput.value || unitInput.dataset.auto) unitInput.value = unit; }
+    } else {
+      select.value = "";
+      input.classList.remove("is-new");
+      if (unitInput) unitInput.readOnly = false;
+    }
+    const tip = input.parentElement.querySelector("[data-free-tip]");
+    if (tip) tip.hidden = !input.classList.contains("is-new");
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function enhance(select) {
+    if (select.dataset.freeDone) return;
+    select.dataset.freeDone = "1";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "input free-input";
+    input.autocomplete = "off";
+    input.maxLength = 80;
+    input.placeholder = select.dataset.placeholder || "Écrivez ou choisissez…";
+    input.setAttribute("list", datalistFor(select));
+    input.setAttribute("data-free-input", "");
+    if (select.id) { input.id = select.id; select.removeAttribute("id"); }
+    if (select.required) input.required = true;
+    select.required = false;
+    const cur = select.selectedOptions[0];
+    input.value = cur && cur.value ? label(cur) : "";
+    select.hidden = true;
+    select.tabIndex = -1;
+    select.after(input);
+    const tip = document.createElement("small");
+    tip.className = "hint new-tip";
+    tip.setAttribute("data-free-tip", "");
+    tip.hidden = true;
+    tip.textContent = select.dataset.newTip || "Nouveau : sera créé automatiquement.";
+    input.after(tip);
+    // au clic : toutes les suggestions (on garde l'ancienne valeur si rien n'est tapé)
+    let saved = "", typed = false;
+    input.addEventListener("focus", () => { saved = input.value; typed = false; if (saved) { input.placeholder = saved; input.value = ""; } });
+    input.addEventListener("input", () => { typed = true; apply(select, input); });
+    input.addEventListener("change", () => apply(select, input));
+    input.addEventListener("blur", () => {
+      if (!typed && !input.value) input.value = saved;
+      input.placeholder = select.dataset.placeholder || "Écrivez ou choisissez…";
+      apply(select, input);
+    });
+    if (cur && cur.value) apply(select, input);
+  }
+
+  function scan(root) { (root || document).querySelectorAll("select[data-free]").forEach(enhance); }
+  scan();
+  // unité modifiée pour une matière nouvelle : on met à jour la valeur envoyée
+  document.addEventListener("input", (e) => {
+    const unit = e.target.closest("[data-unit-input]");
+    if (!unit) return;
+    unit.dataset.auto = "";
+    const row = unit.closest("[data-line]") || unit.closest("form");
+    const input = row && row.querySelector("[data-free-input]");
+    const select = input && input.previousElementSibling;
+    if (select && select.matches("select[data-free]")) apply(select, input);
+  });
+  window.freeEnhance = scan;
 })();

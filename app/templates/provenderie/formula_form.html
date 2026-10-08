@@ -22,11 +22,11 @@
       {% for line in lines %}
       <div class="line-row two-cols" data-line>
         <div class="field"><label class="line-label">Matière</label>
-          <select class="input" name="material_id" data-unit-select>
+          <select class="input" name="material_id" data-unit-select data-free="matiere" data-placeholder="Écrivez la matière…" data-new-tip="Nouvelle matière : elle sera créée. Indiquez son unité à droite.">
             <option value="">— Choisir —</option>
             {% for m in materials %}<option value="{{ m.id }}" data-unit="{{ m.unit }}" data-cost="{{ m.avg_cost }}" {% if line.material_id == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
           </select></div>
-        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><span class="input-addon static" data-unit-label>—</span></div></div>
+        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><input class="input-addon unit-addon" name="line_unit" value="" maxlength="15" placeholder="unité" aria-label="Unité" data-unit-input data-auto="1" title="Unité (modifiable pour une matière nouvelle)"></div></div>
         <div class="line-total"><span class="line-label">Part</span><strong data-share>—</strong></div>
         <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer">{{ icon('trash', 18) }}</button>
       </div>

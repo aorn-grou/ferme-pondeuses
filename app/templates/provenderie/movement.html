@@ -15,7 +15,7 @@
     </div>
     <p class="hint">Perte : quantité perdue. Inventaire : quantité réellement comptée en magasin. Entrée : provende achetée toute faite ou stock de départ.</p></div>
   <div class="field"><label for="formula_id">Provende</label>
-    <select class="input" id="formula_id" name="formula_id" required><option value="">— Choisir —</option>
+    <select class="input" id="formula_id" name="formula_id" required data-free="formule" data-placeholder="Écrivez la provende…" data-new-tip="Nouvelle provende : elle sera créée (ex. provende achetée toute faite)."><option value="">— Choisir —</option>
       {% for f in formulas %}<option value="{{ f.id }}" {% if form.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
   <div class="grid two">
     <div class="field"><label for="quantity">Quantité (kg)</label><input class="input" id="quantity" name="quantity" inputmode="decimal" value="{{ form.quantity }}" required></div>

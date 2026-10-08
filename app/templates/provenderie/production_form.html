@@ -12,8 +12,8 @@
   <section class="card">
     <div class="grid three">
       <div class="field"><label for="formula_id">Formule</label>
-        <select class="input" id="formula_id" name="formula_id" required data-formula-select><option value="">— Choisir —</option>
-          {% for f in formulas %}<option value="{{ f.id }}" {% if form.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}{% if f.phase %} ({{ f.phase }}){% endif %}</option>{% endfor %}</select></div>
+        <select class="input" id="formula_id" name="formula_id" required data-formula-select data-free="formule" data-placeholder="Écrivez la formule…" data-new-tip="Cette formule n'existe pas encore : créez d'abord sa composition."><option value="">— Choisir —</option>
+          {% for f in formulas %}<option value="{{ f.id }}" data-label="{{ f.name }}" {% if form.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}{% if f.phase %} ({{ f.phase }}){% endif %}</option>{% endfor %}</select></div>
       <div class="field"><label for="quantity">Quantité à fabriquer (kg)</label><input class="input" id="quantity" name="quantity" inputmode="decimal" value="{{ form.quantity }}" required data-prod-qty placeholder="ex. 500"></div>
       <div class="field"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ form.date }}" required></div>
     </div>

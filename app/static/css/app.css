@@ -714,3 +714,11 @@ tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transpare
 
 .pre-line { white-space: pre-line; margin: 0; }
 .note-card { border-left: 4px solid var(--gold); background: color-mix(in srgb, var(--gold-soft) 45%, var(--surface)); }
+
+/* Saisie libre */
+.input-addon.unit-addon { width: 5.5rem; text-align: center; font: inherit; color: var(--text); background: var(--surface-2); }
+.input-addon.unit-addon:read-only { color: var(--text-2); cursor: default; }
+.input-addon.unit-addon:not(:read-only) { background: var(--gold-soft); border-color: var(--gold); }
+.free-input.is-new { border-color: var(--gold); background: color-mix(in srgb, var(--gold-soft) 55%, var(--surface)); }
+.new-tip { display: block; color: var(--gold); font-weight: 600; margin-top: .3rem; }
+.input-group > .free-input { flex: 1; min-width: 0; }

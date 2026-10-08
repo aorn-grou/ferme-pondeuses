@@ -22,8 +22,8 @@
         <div class="field"><label class="line-label">De la semaine</label><input class="input" name="week_from" inputmode="numeric" value="{{ r.week_from }}" data-week-from></div>
         <div class="field"><label class="line-label">À la semaine</label><input class="input" name="week_to" inputmode="numeric" value="{{ r.week_to }}" data-week-to></div>
         <div class="field"><label class="line-label">Formule</label>
-          <select class="input" name="formula_id"><option value="">— Choisir —</option>
-            {% for f in formulas %}<option value="{{ f.id }}" {% if r.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}{% if f.phase %} ({{ f.phase }}){% endif %}</option>{% endfor %}</select></div>
+          <select class="input" name="formula_id" data-free="formule" data-placeholder="Écrivez la formule…" data-new-tip="Nouvelle formule : elle sera créée (composition à compléter)."><option value="">— Choisir —</option>
+            {% for f in formulas %}<option value="{{ f.id }}" data-label="{{ f.name }}" {% if r.formula_id == f.id|string %}selected{% endif %}>{{ f.name }}{% if f.phase %} ({{ f.phase }}){% endif %}</option>{% endfor %}</select></div>
         <div class="field"><label class="line-label">g / poule / jour (objectif)</label><input class="input" name="grams_per_bird" inputmode="decimal" value="{{ r.grams_per_bird }}" placeholder="facultatif"></div>
         <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer">{{ icon('trash', 18) }}</button>
       </div>

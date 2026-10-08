@@ -14,7 +14,7 @@ from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.4.2"
+VERSION = "0.5.0"
 
 
 def _secret_key(instance_dir):
@@ -94,6 +94,9 @@ def create_app(test_config=None):
             if (user["must_change_password"] or not user["setup_done"]) and request.endpoint not in allowed:
                 return redirect(url_for("auth.first_setup"))
             backups.auto_backup_if_due()
+            from .free_entry import resolve_free_entries
+
+            resolve_free_entries()
         return None
 
     @app.after_request

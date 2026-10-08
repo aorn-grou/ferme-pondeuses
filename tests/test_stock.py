@@ -432,3 +432,46 @@ class TestSaisieLibre(StockBase):
         from app.db import upgrade_brand
         upgrade_brand(conn)
         self.assertEqual(self.one("SELECT value FROM settings WHERE key = 'company_name'")[0], "Androfia Farm")
+
+
+class TestSaisieLibrePartout(StockBase):
+    def test_purchase_with_new_material_and_account(self):
+        res = self.post("/matieres/achats/nouveau", {
+            "date": "2026-10-08", "supplier_name": "Rabe Grains",
+            "material_id": ["__new__:Grain de sorgho|sac", "__new__:grain de SORGHO|sac"],
+            "quantity": ["10", "5"], "unit_price": ["30000", "30000"],
+            "pay_mode": "tout", "account_id": "__new__:Caisse annexe"})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:1500])
+        mat = self.one("SELECT * FROM materials WHERE name = 'Grain de sorgho'")
+        self.assertEqual(mat["unit"], "sac")
+        self.assertEqual(self.one("SELECT COUNT(*) FROM materials WHERE name = 'Grain de sorgho' COLLATE NOCASE")[0], 1)
+        self.assertAlmostEqual(self.stock(mat["id"]), 15)
+        acc = self.one("SELECT id FROM accounts WHERE name = 'Caisse annexe'")
+        self.assertIsNotNone(acc)
+        self.assertAlmostEqual(self.one("SELECT SUM(amount) FROM cash_movements WHERE account_id = ?", (acc[0],))[0], -450000)
+
+    def test_existing_name_is_reused(self):
+        mais = self.material("Maïs grain")
+        self.post("/matieres/mouvement", {"kind": "stock_initial", "material_id": "__new__:maïs GRAIN|kg",
+                                          "quantity": "50", "date": "2026-10-08", "unit_cost": "1000"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM materials")[0], 1)
+        self.assertAlmostEqual(self.stock(mais), 50)
+
+    def test_formula_free_entry(self):
+        # provende achetée toute faite : la formule est créée
+        self.post("/provenderie/mouvement", {"kind": "entree", "formula_id": "__new__:Provende du commerce",
+                                             "quantity": "100", "date": "2026-10-08", "unit_cost": "2000"})
+        self.assertIsNotNone(self.one("SELECT id FROM formulas WHERE name = 'Provende du commerce'"))
+        # fabrication d'une formule inconnue : refusée avec explication, rien n'est créé
+        res = self.post("/provenderie/fabrication/nouvelle", {"formula_id": "__new__:Formule fantôme",
+                                                              "quantity": "100", "date": "2026-10-08"},
+                        follow_redirects=True)
+        self.assertIn("composition", res.get_data(as_text=True))
+        self.assertIsNone(self.one("SELECT id FROM formulas WHERE name = 'Formule fantôme'"))
+
+    def test_reader_cannot_create(self):
+        eleveur = TestPermissionsAndReset.make_user(self, "rakoto", "elevage")
+        res = self.post("/matieres/mouvement", {"kind": "stock_initial", "material_id": "__new__:Intrus|kg",
+                                                "quantity": "1", "date": "2026-10-08"}, client=eleveur)
+        self.assertEqual(res.status_code, 403)
+        self.assertIsNone(self.one("SELECT id FROM materials WHERE name = 'Intrus'"))
