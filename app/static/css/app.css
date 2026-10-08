@@ -742,3 +742,6 @@ tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transpare
 .last-move { display: block; font-size: .78rem; margin-top: .15rem; white-space: nowrap; }
 .last-move.neg { color: var(--danger); }
 .last-move.pos { color: var(--ok); }
+
+.input-addon.qty-unit { cursor: text; background: var(--surface); border-color: var(--gold); font-weight: 600; }
+.input-addon.qty-unit:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 25%, transparent); }

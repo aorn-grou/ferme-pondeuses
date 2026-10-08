@@ -33,9 +33,9 @@
       {% endfor %}
     </div>
     <button type="button" class="btn ghost" data-add-line>{{ icon('plus', 18) }} Ajouter un ingrédient</button>
-    <datalist id="liste-unites-formule">{% for u in ['kg', 'g', 'tonne', 'L', 'mL', 'sac', 'sachet', 'dose'] %}<option value="{{ u }}">{% endfor %}</datalist>
+    <datalist id="liste-unites-formule">{% for u in ['kg', 'g', 'tonne', 'L', 'mL', 'sac', 'sachet', 'dose', 'flacon', 'unité'] %}<option value="{{ u }}">{% endfor %}</datalist>
     <script type="application/json" id="units-table">{{ units_table|tojson }}</script>
-    <p class="hint">Écrivez chaque quantité dans l'unité qui vous arrange (g, kg, L…) : le logiciel convertit tout seul pour le stock.</p>
+    <p class="hint">✏️ <strong>L'unité se change librement</strong> : cliquez dans la case jaune à droite de la quantité et écrivez g, kg, L, sac… Le logiciel convertit tout seul pour le stock.</p>
     <div class="grid two top-gap">
       <div class="field"><label for="base_qty">Ce mélange donne (kg de provende)</label><input class="input" id="base_qty" name="base_qty" inputmode="decimal" value="{{ values.base_qty|qty if values.base_qty else '' }}" data-base-qty>
         <p class="hint">Rempli automatiquement avec le total des ingrédients. Modifiez-le seulement s'il y a une perte au mélange.</p></div>

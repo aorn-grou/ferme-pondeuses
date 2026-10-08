@@ -655,3 +655,32 @@
   };
   n.addEventListener("input", sync); kg.addEventListener("input", sync);
 })();
+
+/* Cases d'unité (formules, achats) : au clic elles se vident pour montrer TOUTES les unités
+   proposées ; on peut aussi écrire n'importe quelle unité. Rien tapé = on garde l'ancienne. */
+(function () {
+  const sel = "[data-qty-unit], [data-unit-input]";
+  // dès qu'on écrit soi-même une unité, le logiciel ne la remplace plus (phase de capture : avant tout calcul)
+  document.addEventListener("input", (e) => {
+    const input = e.target.closest && e.target.closest(sel);
+    if (input) { input.dataset.auto = ""; input.dataset.typed = "1"; }
+  }, true);
+  document.addEventListener("focusin", (e) => {
+    const input = e.target.closest(sel);
+    if (!input || input.readOnly) return;
+    input.dataset.saved = input.value;
+    input.dataset.typed = "";
+    if (input.value) { input.placeholder = input.value; input.value = ""; }
+  });
+  document.addEventListener("input", (e) => {
+    const input = e.target.closest(sel);
+    if (input) input.dataset.typed = "1";
+  });
+  document.addEventListener("focusout", (e) => {
+    const input = e.target.closest(sel);
+    if (!input || input.readOnly) return;
+    if (!input.dataset.typed && !input.value) input.value = input.dataset.saved || "";
+    input.placeholder = input.matches("[data-qty-unit]") ? "kg" : "unité";
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+})();
