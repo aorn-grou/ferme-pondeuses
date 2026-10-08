@@ -11,6 +11,8 @@ from .stock import (
 )
 from .utils import date_fr, fmt_money, fmt_qty, log_activity
 
+from .discussion import notify  # noqa: E402
+
 bp = Blueprint("provenderie", __name__, url_prefix="/provenderie")
 
 PHASES = ["Démarrage", "Croissance", "Pré-ponte", "Ponte", "Ponte 2", "Autre"]
@@ -562,6 +564,8 @@ def production_delete(production_id):
             recompute_material(conn, material_id)
         recompute_formula(conn, item["formula_id"])
     log_activity("Fabrication annulée", f"n°{production_id} — {fmt_qty(item['quantity'], 'kg')}")
+    notify("", None, f"↩️ Fabrication n°{production_id} annulée ({fmt_qty(item['quantity'], 'kg')}) : "
+           "les matières sont revenues en stock.")
     flash("Fabrication annulée : les matières sont revenues en stock.", "success")
     return redirect(url_for("provenderie.productions"))
 
@@ -612,6 +616,10 @@ def movement():
                 )
                 recompute_formula(conn, formula["id"])
             log_activity(FEED_KINDS[form["kind"]], f"{formula['name']} : {fmt_qty(signed, 'kg')}")
+            if form["kind"] in ("perte", "inventaire"):
+                label = "⚠️ Perte de provende" if form["kind"] == "perte" else "📋 Écart d'inventaire de provende"
+                notify("formula", formula["id"], f"{label} : {formula['name']} {'+' if signed > 0 else ''}"
+                       f"{fmt_qty(signed, 'kg')}" + (f" — motif : {form['notes']}" if form["notes"] else ""))
             flash(f"{FEED_KINDS[form['kind']]} enregistrée : {formula['name']} {'+' if signed > 0 else ''}{fmt_qty(signed, 'kg')}.",
                   "success")
             return redirect(url_for("provenderie.feed_history", formula_id=formula["id"]))
@@ -662,6 +670,8 @@ def feed_move_edit(move_id):
         recompute_formula(conn, move["formula_id"])
     formula = _formula(move["formula_id"])
     log_activity("Mouvement de provende corrigé", f"{formula['name']} : {fmt_qty(move['quantity'], 'kg')} → {fmt_qty(signed, 'kg')}")
+    notify("formula", formula["id"], f"✏️ Correction provende {formula['name']} : "
+           f"{fmt_qty(move['quantity'], 'kg')} → {fmt_qty(signed, 'kg')}")
     flash("Correction enregistrée.", "success")
     return back
 
@@ -681,5 +691,7 @@ def feed_move_delete(move_id):
             conn.execute("DELETE FROM feed_moves WHERE id = ?", (move_id,))
             recompute_formula(conn, move["formula_id"])
         log_activity("Mouvement de provende annulé", f"n°{move_id}")
+        _f = _formula(move["formula_id"])
+        notify("formula", move["formula_id"], f"↩️ Mouvement de provende annulé : {_f['name']} {fmt_qty(move['quantity'], 'kg')}")
         flash("Mouvement annulé.", "success")
     return redirect(url_for("provenderie.feed_history", formula_id=move["formula_id"]))

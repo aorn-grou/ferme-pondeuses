@@ -20,6 +20,16 @@ REF_TYPES = {
 NAME_TABLES = {"material": "materials", "supplier": "suppliers", "formula": "formulas"}
 
 
+def notify(ref_type, ref_id, body):
+    """Signalement automatique dans la Discussion (écart d'inventaire, perte, correction…),
+    pour que les associés voient tout de suite ce qui a changé."""
+    try:
+        execute("INSERT INTO messages (user_id, body, ref_type, ref_id, auto, created_at) VALUES (?, ?, ?, ?, 1, ?)",
+                (g.user["id"] if g.get("user") else None, body[:MAX_LENGTH], ref_type or "", ref_id, now_utc()))
+    except Exception:  # un signalement ne doit jamais bloquer l'enregistrement
+        pass
+
+
 def ref_info(ref_type, ref_id):
     """Libellé et lien d'une saisie commentée, ou None si on ne peut pas la voir."""
     spec = REF_TYPES.get(ref_type)

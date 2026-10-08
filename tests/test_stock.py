@@ -475,3 +475,19 @@ class TestSaisieLibrePartout(StockBase):
                                                 "quantity": "1", "date": "2026-10-08"}, client=eleveur)
         self.assertEqual(res.status_code, 403)
         self.assertIsNone(self.one("SELECT id FROM materials WHERE name = 'Intrus'"))
+
+
+class TestSignalements(StockBase):
+    def test_inventory_and_loss_notify_partners(self):
+        son = self.material("Son de riz", qty="400", cost="450")
+        self.post("/matieres/inventaire", {"date": "2026-10-08", f"count_{son}": "399"})
+        msg = self.one("SELECT * FROM messages WHERE auto = 1 AND ref_type = 'material' AND ref_id = ?", (son,))
+        self.assertIsNotNone(msg)
+        self.assertIn("Écart d'inventaire", msg["body"])
+        self.assertIn("399", msg["body"])
+        self.post("/matieres/mouvement", {"kind": "perte", "material_id": str(son), "quantity": "9",
+                                          "date": "2026-10-08", "notes": "sacs mouillés"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM messages WHERE auto = 1")[0], 2)
+        page = self.client.get("/discussion/").get_data(as_text=True)
+        self.assertIn("Signalement automatique", page)
+        self.assertIn("sacs mouillés", page)

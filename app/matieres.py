@@ -9,6 +9,8 @@ from .stock import (
 )
 from .utils import date_fr, fmt_money, fmt_qty, log_activity
 
+from .discussion import notify  # noqa: E402
+
 bp = Blueprint("matieres", __name__, url_prefix="/matieres")
 
 UNITS = ["kg", "g", "tonne", "sac", "L", "mL", "unité", "pièce", "dose", "flacon", "boîte", "sachet", "carton", "plateau"]
@@ -323,6 +325,9 @@ def movement():
                 )
                 recompute_material(conn, item["id"])
             log_activity(MOVE_KINDS[form["kind"]], f"{item['name']} : {fmt_qty(signed, item['unit'])}")
+            if form["kind"] == "perte":
+                notify("material", item["id"], f"⚠️ Perte déclarée : {item['name']} {fmt_qty(signed, item['unit'])} "
+                       f"(≈ {fmt_money(abs(signed) * unit_cost)})" + (f" — motif : {form['notes']}" if form["notes"] else ""))
             flash(f"{MOVE_KINDS[form['kind']]} enregistrée : {item['name']} {fmt_qty(signed, item['unit'])}.", "success")
             return redirect(url_for("matieres.material", material_id=item["id"]))
     return render_template("matieres/movement.html", form=form, materials=materials)
@@ -344,6 +349,10 @@ def movement_delete(move_id):
         conn.execute("DELETE FROM stock_moves WHERE id = ?", (move_id,))
         recompute_material(conn, move["material_id"])
     log_activity("Mouvement de stock annulé", f"n°{move_id}")
+    _mat = query("SELECT name, unit FROM materials WHERE id = ?", (move["material_id"],), one=True)
+    if _mat:
+        notify("material", move["material_id"], f"↩️ Mouvement annulé : {_mat['name']} "
+               f"{'+' if move['quantity'] > 0 else ''}{fmt_qty(move['quantity'], _mat['unit'])} du {date_fr(move['date'])}")
     flash("Mouvement annulé.", "success")
     return redirect(url_for("matieres.material", material_id=move["material_id"]))
 
@@ -390,6 +399,9 @@ def movement_edit(move_id):
         recompute_material(conn, item["id"])
     log_activity("Mouvement de stock corrigé", f"{item['name']} ({MOVE_KINDS.get(move['kind'], move['kind'])}) : "
                  + ("; ".join(changes) or "remarque modifiée"))
+    if changes:
+        notify("material", item["id"], f"✏️ Correction sur {item['name']} ({MOVE_KINDS.get(move['kind'], move['kind'])}) : "
+               + "; ".join(changes))
     flash("Correction enregistrée : " + ("; ".join(changes) or "remarque modifiée") + ".", "success")
     return back
 
@@ -430,6 +442,10 @@ def inventory():
                 recompute_material(conn, m["id"])
         details = ", ".join(f"{m['name']} {'+' if d > 0 else ''}{fmt_qty(d, m['unit'])}" for m, d in changes)
         log_activity("Inventaire des matières", details)
+        for m, d in changes:
+            notify("material", m["id"], f"📋 Écart d'inventaire : {m['name']} — logiciel {fmt_qty(m['stock'], m['unit'])}, "
+                   f"compté {fmt_qty(m['stock'] + d, m['unit'])} → écart {'+' if d > 0 else ''}{fmt_qty(d, m['unit'])} "
+                   f"(≈ {'+' if d > 0 else '-'}{fmt_money(abs(d) * m['avg_cost'])})")
         flash(f"Inventaire enregistré : {len(changes)} correction(s). {details}", "success")
         return redirect(url_for("matieres.index"))
     return render_template("matieres/inventory.html", materials=materials, today=today())
@@ -590,6 +606,8 @@ def payment_edit(payment_id):
                 (date, account["id"], -amount, f"Règlement {supplier['name']}", payment_id, g.user["id"], now_utc()),
             )
         log_activity("Règlement fournisseur corrigé", f"{supplier['name']} : {fmt_money(payment['amount'])} → {fmt_money(amount)}")
+        notify("supplier", supplier["id"], f"✏️ Règlement corrigé chez {supplier['name']} : "
+               f"{fmt_money(payment['amount'])} → {fmt_money(amount)}")
         flash("Règlement corrigé.", "success")
     return back
 
@@ -604,6 +622,7 @@ def payment_delete(payment_id):
         conn.execute("DELETE FROM cash_movements WHERE ref_type = 'supplier_payment' AND ref_id = ?", (payment_id,))
         conn.execute("DELETE FROM supplier_payments WHERE id = ?", (payment_id,))
     log_activity("Règlement fournisseur annulé", fmt_money(payment["amount"]))
+    notify("supplier", payment["supplier_id"], f"↩️ Règlement annulé : {fmt_money(payment['amount'])} du {date_fr(payment['date'])}")
     flash("Règlement annulé.", "success")
     return redirect(url_for("matieres.supplier", supplier_id=payment["supplier_id"]))
 
@@ -839,6 +858,8 @@ def purchase_edit(purchase_id):
                 for material_id in set(old_qty) | set(new_qty):
                     recompute_material(conn, material_id)
             log_activity("Achat corrigé", f"n°{purchase_id} : " + ("; ".join(changes) or "aucun changement de chiffre"))
+            if changes:
+                notify("purchase", purchase_id, f"✏️ Achat n°{purchase_id} corrigé : " + "; ".join(changes))
             flash("Achat corrigé. Stock, prix moyen, caisse et dette fournisseur ont été recalculés.", "success")
             return redirect(url_for("matieres.purchase", purchase_id=purchase_id))
     return render_template("matieres/purchase_form.html", form=form, lines=lines or [{"material_id": "", "quantity": "",
@@ -891,5 +912,7 @@ def purchase_delete(purchase_id):
         for material_id in per_material:
             recompute_material(conn, material_id)
     log_activity("Achat annulé", f"n°{purchase_id} — {fmt_money(item['total'])}")
+    notify("", None, f"↩️ Achat n°{purchase_id} du {date_fr(item['date'])} annulé ({fmt_money(item['total'])}) : "
+           "stock et caisse corrigés.")
     flash("Achat annulé : le stock et la caisse ont été corrigés.", "success")
     return redirect(url_for("matieres.purchases"))

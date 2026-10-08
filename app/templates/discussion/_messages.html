@@ -4,6 +4,15 @@
   {% set day = m.created_at|localdt('%d/%m/%Y') %}
   {% if day != ns.day %}<div class="msg-day" data-day="{{ day }}"><span>{{ day }}</span></div>{% set ns.day = day %}{% endif %}
   {% set mine = m.user_id == current_user.id %}
+  {% if m.auto %}
+  <article class="msg auto {{ 'unread' if (not mine and m.id > previous_seen) }}" data-msg-id="{{ m.id }}">
+    <div class="msg-bubble">
+      <div class="msg-meta">{{ icon('bell', 14) }} <strong>Signalement automatique</strong> · {{ 'par moi' if mine else 'par ' ~ (m.full_name or m.username or 'utilisateur supprimé') }} · {{ m.created_at|localdt('%H:%M') }}</div>
+      <p class="msg-body">{{ m.body }}</p>
+      {% if m.ref and m.ref.url %}<a class="msg-ref" href="{{ m.ref.url }}">Voir : {{ m.ref.label }} →</a>{% endif %}
+    </div>
+  </article>
+  {% else %}
   <article class="msg {{ 'mine' if mine }} {{ 'unread' if (not mine and m.id > previous_seen) }}" data-msg-id="{{ m.id }}">
     {% if not mine %}<span class="avatar sm">{{ (m.full_name or m.username or '?')[:1]|upper }}</span>{% endif %}
     <div class="msg-bubble">
@@ -15,4 +24,5 @@
       {% endif %}
     </div>
   </article>
+  {% endif %}
 {% endfor %}
