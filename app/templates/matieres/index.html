@@ -30,7 +30,7 @@
     <tbody>
     {% for m in materials %}
       <tr class="clickable" data-href="{{ url_for('matieres.material', material_id=m.id) }}">
-        <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=m.id) }}"><strong>{{ m.name }}</strong></a></td>
+        <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=m.id) }}"><strong>{{ m.name }}</strong></a>{% if m.notes %}<small class="muted block" title="{{ m.notes }}">📝 {{ m.notes|truncate(60) }}</small>{% endif %}</td>
         <td data-label="Catégorie">{{ m.category or '—' }}</td>
         <td data-label="Stock" class="right"><strong>{{ m.stock|qty(m.unit) }}</strong></td>
         <td data-label="Prix moyen" class="right">{{ m.avg_cost|money }} / {{ m.unit }}</td>

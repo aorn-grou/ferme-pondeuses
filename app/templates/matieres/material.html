@@ -15,6 +15,14 @@
   <div class="stat"><span class="stat-label">Valeur du stock</span><strong class="stat-value small">{{ ((stock if stock > 0 else 0) * item.avg_cost)|money }}</strong></div>
 </div>
 
+{% if item.notes %}
+<section class="card top-gap note-card">
+  <h2>📝 Remarques</h2>
+  <p class="pre-line">{{ item.notes }}</p>
+  {% if can('matieres', 2) and item.active %}<p class="hint"><a href="{{ url_for('matieres.material_edit', material_id=item.id) }}">Modifier la remarque</a></p>{% endif %}
+</section>
+{% endif %}
+
 {% if can('matieres', 2) and item.active %}
 <div class="quick-actions top-gap">
   <a class="btn ghost sm" href="{{ url_for('matieres.movement', matiere=item.id, type='perte') }}">{{ icon('trash', 16) }} Déclarer une perte</a>
