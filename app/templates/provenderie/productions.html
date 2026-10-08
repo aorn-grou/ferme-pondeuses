@@ -20,13 +20,14 @@
 </div>
 <div class="card flush top-gap">
   <table class="table responsive">
-    <thead><tr><th>Date</th><th>Provende</th><th class="right">Quantité</th><th class="right">Coût total</th><th class="right">Coût / kg</th><th>Par</th></tr></thead>
+    <thead><tr><th>Date</th><th>Provende</th><th class="right">Quantité</th><th class="right">Coût total</th><th class="right">Coût / kg</th><th>Par</th><th class="right">Détail</th></tr></thead>
     <tbody>
     {% for p in rows %}
-      <tr><td data-label="Date" class="nowrap">{{ p.date|date_fr }}</td><td data-label="Provende"><a href="{{ url_for('provenderie.production', production_id=p.id) }}"><strong>{{ p.formula }}</strong></a></td>
+      <tr class="clickable" data-href="{{ url_for('provenderie.production', production_id=p.id) }}"><td data-label="Date" class="nowrap">{{ p.date|date_fr }}</td><td data-label="Provende"><a href="{{ url_for('provenderie.production', production_id=p.id) }}"><strong>{{ p.formula }}</strong></a></td>
       <td data-label="Quantité" class="right">{{ p.quantity|qty('kg') }}</td><td data-label="Coût total" class="right">{{ p.cost_total|money }}</td>
-      <td data-label="Coût / kg" class="right">{{ p.cost_per_kg|money }}</td><td data-label="Par">{{ p.username or '—' }}</td></tr>
-    {% else %}<tr><td colspan="6" class="center muted">Aucune fabrication.</td></tr>{% endfor %}
+      <td data-label="Coût / kg" class="right">{{ p.cost_per_kg|money }}</td><td data-label="Par">{{ p.username or '—' }}</td>
+      <td data-label="Détail" class="right"><a class="btn ghost sm" href="{{ url_for('provenderie.production', production_id=p.id) }}">📦 Stocks avant → après</a></td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Aucune fabrication.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>
