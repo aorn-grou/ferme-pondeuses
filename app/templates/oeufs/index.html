@@ -13,6 +13,14 @@
   {% if not rows %}
   <p class="muted">Aucun lot en cours à cette date. <a href="{{ url_for('lots.lot_new') }}">Enregistrer un lot</a></p>
   {% else %}
+  <div class="calc-banner">
+    <span>🧮 <strong>Comment lire ce tableau :</strong> écrivez les <strong>plateaux pleins ({{ tray }} œufs)</strong> + les <strong>œufs en plus</strong> + les <strong>cassés</strong>. Le logiciel calcule tout seul :</span>
+    <span class="calc-steps"><strong>Taux de ponte</strong> = (plateaux × {{ tray }} + œufs + cassés) ÷ poules × 100 &nbsp;·&nbsp; ex. (14 × {{ tray }} + 20 + 2) ÷ 500 × 100 = <strong>88,4 %</strong></span>
+    <span class="egg-legend"><b class="text-ok">88,4 % en vert</b> = ponte normale · <b class="text-danger">en rouge</b> = baisse de plus de 10 points (à expliquer dans « Remarque ») ·
+      <b class="text-ok">↑ +5 pts</b> / <b class="text-danger">↓ −26 pts</b> = comparaison avec la moyenne des 7 jours d'avant (s'affiche dès qu'il y a des jours précédents) ·
+      🥚 en ponte / 🐣 ponte prévue = d'après la semaine de début de ponte du lot</span>
+    <small>Une ligne vide n'est pas enregistrée. Réenregistrer le même jour <strong>corrige</strong> la saisie. Vos associés reçoivent un message dans la Discussion à chaque enregistrement.</small>
+  </div>
   <form method="post" class="stack">
     {{ csrf() }}<input type="hidden" name="date" value="{{ date }}">
     <table class="table responsive egg-table">
@@ -33,7 +41,6 @@
       </tbody>
     </table>
     <datalist id="causes-ponte">{% for x in ['Chaleur', 'Stress / bruit', 'Maladie', 'Changement de provende', "Manque d'eau", 'Mue', 'Œufs volés', 'Premiers œufs', 'Autre'] %}<option value="{{ x }}">{% endfor %}</datalist>
-    <p class="hint">Écrivez les plateaux pleins ({{ tray }} œufs) et les œufs en plus, ou seulement le nombre d'œufs dans « + Œufs ». Une ligne vide n'est pas enregistrée. Réenregistrer le même jour <strong>corrige</strong> la saisie. En rouge : baisse nette par rapport à la semaine d'avant.</p>
     {% if can('oeufs', 2) %}<div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le ramassage</button></div>{% endif %}
   </form>
   {% endif %}

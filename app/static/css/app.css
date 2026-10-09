@@ -942,3 +942,4 @@ a.kpi:hover { text-decoration: none; transform: translateY(-2px); }
 tr.row-muted td { opacity: .72; }
 .sw-inline { display: inline-block; width: 12px; height: 10px; border-radius: 3px; vertical-align: middle; }
 .sw-inline.gold { background: #e0b64a; } .sw-inline.green { background: #2e7d32; height: 3px; }
+.egg-legend { font-size: .9rem; line-height: 1.7; }
