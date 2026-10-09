@@ -214,6 +214,16 @@ SCHEMA = {
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
+    "egg_collections": [  # ramassage des œufs : une ligne par lot et par jour
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("lot_id", "INTEGER NOT NULL"),
+        ("date", "TEXT NOT NULL"),
+        ("good", "INTEGER NOT NULL DEFAULT 0"),    # bons œufs
+        ("broken", "INTEGER NOT NULL DEFAULT 0"),  # cassés / fêlés
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
     "lot_events": [  # morts, réformes, ventes, ajouts, corrections de comptage
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
         ("lot_id", "INTEGER NOT NULL"),
@@ -275,7 +285,7 @@ SCHEMA = {
 TRANSACTION_TABLES = [
     "purchases", "purchase_lines", "supplier_payments", "stock_moves",
     "productions", "production_lines", "feed_moves", "cash_movements",
-    "lots", "lot_events", "feedings",
+    "lots", "lot_events", "feedings", "egg_collections",
 ]
 
 DEFAULT_ACCOUNTS = [

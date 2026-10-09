@@ -82,6 +82,10 @@ def gaps(since=None, until=None):
                 "url": url_for("lots.lot", lot_id=e["lot_id"]) + "#effectif", "module": "lots",
             })
         items.extend(mortality_alerts(since, until))
+    if can("oeufs"):
+        from .eggs import drop_alerts
+
+        items.extend(drop_alerts(since, until))
     items.sort(key=lambda i: (i["date"], i.get("id", 0)), reverse=True)
     for item in items:
         item["explained"] = _explained(item["why"])
@@ -153,7 +157,7 @@ def index():
                            loss=sum(i["value"] for i in items if i["value"] < 0))
 
 
-TABLES = {"stock_moves": "matieres", "feed_moves": "provenderie", "lot_events": "lots"}
+TABLES = {"stock_moves": "matieres", "feed_moves": "provenderie", "lot_events": "lots", "egg_collections": "oeufs"}
 
 
 @bp.route("/expliquer", methods=["POST"])
@@ -174,9 +178,11 @@ def explain():
         log_activity("Explication d'écart ajoutée", f"{table} n°{row_id} : {text}")
         ref = {"stock_moves": ("material", row["material_id"] if "material_id" in row.keys() else None),
                "feed_moves": ("formula", row["formula_id"] if "formula_id" in row.keys() else None),
-               "lot_events": ("lot", row["lot_id"] if "lot_id" in row.keys() else None)}[table]
+               "lot_events": ("lot", row["lot_id"] if "lot_id" in row.keys() else None),
+               "egg_collections": ("lot", row["lot_id"] if "lot_id" in row.keys() else None)}[table]
+        qty = row["quantity"] if "quantity" in row.keys() else (row["good"] + row["broken"])
         notify(ref[0], ref[1], f"📝 Explication ajoutée pour l'écart du {date_fr(row['date'])} "
-               f"({fmt_qty(row['quantity'])}) : « {text} »")
+               f"({fmt_qty(qty)}) : « {text} »")
         flash("Explication enregistrée. Vos associés sont prévenus.", "success")
     back = request.form.get("next") or url_for("controles.index")
     if not back.startswith("/") or back.startswith("//"):

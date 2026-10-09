@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Œufs{% endblock %}
+{% block content %}
+{% call page_head('Œufs', "Ramassage par lot et par jour. Le taux de ponte, les hausses et les baisses se calculent tout seuls.", 'egg') %}
+  <a class="btn ghost" href="{{ url_for('lots.index') }}">← Lots</a>
+{% endcall %}
+
+{# ---------- Ramassage du jour ---------- #}
+<section class="card">
+  <div class="card-head"><h2>{{ icon('egg', 20) }} Ramassage {{ "d'aujourd'hui" if is_today else "du " ~ (date|date_fr) }}</h2>
+    <form method="get" class="inline-form"><label for="date">Date</label><input class="input" type="date" id="date" name="date" value="{{ date }}" max="{{ today_iso }}" onchange="this.form.submit()"></form></div>
+  {% if not rows %}
+  <p class="muted">Aucun lot en cours à cette date. <a href="{{ url_for('lots.lot_new') }}">Enregistrer un lot</a></p>
+  {% else %}
+  <form method="post" class="stack">
+    {{ csrf() }}<input type="hidden" name="date" value="{{ date }}">
+    <table class="table responsive egg-table">
+      <thead><tr><th>Lot</th><th class="right">Poules</th><th>Plateaux ({{ tray }})</th><th>+ Œufs</th><th>Cassés</th><th class="right">Taux de ponte</th><th>Remarque</th></tr></thead>
+      <tbody>
+      {% for r in rows %}{% set c = r.c %}
+        <tr data-egg-row data-hens="{{ r.hens }}" data-avg="{{ r.avg_before or '' }}" class="{{ 'row-muted' if r.laying.phase != 'ponte' and not c }}">
+          <td data-label="Lot"><a href="{{ url_for('lots.lot', lot_id=r.lot.id) }}#ponte"><strong>{{ r.lot.name }}</strong></a><input type="hidden" name="lot_id" value="{{ r.lot.id }}">
+            <small class="muted block">semaine {{ r.week }} · {% if r.laying.phase == 'ponte' %}🥚 en ponte{% else %}🐣 ponte prévue S{{ r.laying.week }}{% endif %}</small></td>
+          <td data-label="Poules" class="right">{{ r.hens|num }}</td>
+          <td data-label="Plateaux ({{ tray }})"><input class="input sm" name="trays" inputmode="decimal" value="{{ (c.good // tray) if c and c.good >= tray else '' }}" placeholder="0" data-trays></td>
+          <td data-label="+ Œufs"><input class="input sm" name="eggs" inputmode="numeric" value="{{ (c.good % tray if c.good >= tray else c.good) if c else '' }}" placeholder="0" data-eggs></td>
+          <td data-label="Cassés"><input class="input sm" name="broken" inputmode="numeric" value="{{ c.broken if c and c.broken else '' }}" placeholder="0" data-broken></td>
+          <td data-label="Taux de ponte" class="right"><strong data-rate>—</strong><small class="muted block" data-total></small></td>
+          <td data-label="Remarque"><input class="input sm" name="notes" maxlength="150" value="{{ c.notes if c else '' }}" placeholder="ex. chaleur, stress…" list="causes-ponte" data-combo></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <datalist id="causes-ponte">{% for x in ['Chaleur', 'Stress / bruit', 'Maladie', 'Changement de provende', "Manque d'eau", 'Mue', 'Œufs volés', 'Premiers œufs', 'Autre'] %}<option value="{{ x }}">{% endfor %}</datalist>
+    <p class="hint">Écrivez les plateaux pleins ({{ tray }} œufs) et les œufs en plus, ou seulement le nombre d'œufs dans « + Œufs ». Une ligne vide n'est pas enregistrée. Réenregistrer le même jour <strong>corrige</strong> la saisie. En rouge : baisse nette par rapport à la semaine d'avant.</p>
+    {% if can('oeufs', 2) %}<div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le ramassage</button></div>{% endif %}
+  </form>
+  {% endif %}
+</section>
+
+{# ---------- Courbes ---------- #}
+{% if chart %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Taux de ponte de chaque lot (%)</h2>
+    <span class="legend-inline">{% for s in chart.rates.series %}<span><i class="sw" style="background: {{ ['#2e7d32', '#c9971c', '#1f6fa8', '#a33b8f', '#c0352b', '#0f8a80', '#6b4fbb', '#7a5c2e'][loop.index0 % 8] }}"></i> {{ s.name }}</span>{% endfor %}</span></div>
+  <div class="chart-box" data-chart-type="multi" aria-label="Taux de ponte par lot" data-chart='{{ chart.rates|tojson }}'></div>
+  <p class="hint">Taux de ponte = œufs pondus ÷ poules présentes × 100. ▲ meilleur jour · ▼ plus mauvais jour de chaque lot. Les traits pointillés 🥚 = début de ponte prévu d'un lot.</p>
+</section>
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('egg', 20) }} Œufs ramassés par jour, toute la ferme</h2><span class="tag tag-gold">30 jours : {{ chart.month|num }} œufs</span></div>
+  <div class="chart-box sm" data-chart-type="line" data-chart='{{ chart.eggs|tojson }}'></div>
+</section>
+{% endif %}
+
+{# ---------- Chiffres par lot ---------- #}
+{% if stats %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('layers', 20) }} Ponte de chaque lot</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Lot</th><th class="right">Dernier jour</th><th class="right">Moyenne 7 j</th><th class="right">Évolution</th><th class="right">▲ Meilleur</th><th class="right">▼ Plus bas</th><th class="right">Œufs au total</th><th class="right">Valeur</th></tr></thead>
+    <tbody>{% for x in stats %}{% set st = x.st %}
+      <tr><td data-label="Lot"><a href="{{ url_for('lots.lot', lot_id=x.lot.id) }}#ponte"><strong>{{ x.lot.name }}</strong></a></td>
+        <td data-label="Dernier jour" class="right">{% if st.last %}<strong>{{ st.last.rate|round(1) }} %</strong><small class="muted block">{{ st.last.laid|num }} œufs · {{ st.last.date|date_fr }}</small>{% else %}—{% endif %}</td>
+        <td data-label="Moyenne 7 j" class="right">{{ (st.avg7|round(1) ~ ' %') if st.avg7 is not none else '—' }}</td>
+        <td data-label="Évolution" class="right">{% if st.trend is not none %}<strong class="{{ 'text-ok' if st.trend >= 0 else 'text-danger' }}">{{ '↑ +' if st.trend >= 0 else '↓ ' }}{{ st.trend|round(1) }} pts</strong><small class="muted block">vs semaine d'avant</small>{% else %}<small class="muted">pas assez de jours</small>{% endif %}</td>
+        <td data-label="▲ Meilleur" class="right text-ok">{{ st.peak.rate|round(1) }} %<small class="muted block">{{ st.peak.date|date_fr }}</small></td>
+        <td data-label="▼ Plus bas" class="right text-danger">{{ st.trough.rate|round(1) }} %<small class="muted block">{{ st.trough.date|date_fr }}</small></td>
+        <td data-label="Œufs au total" class="right"><strong>{{ st.laid|num }}</strong><small class="muted block">{{ st.broken|num }} cassé(s) · {{ st.broken_pct|round(1) }} %</small></td>
+        <td data-label="Valeur" class="right">{{ st.value|money }}<small class="muted block">à {{ x.lot.egg_price|money }} l'œuf</small></td></tr>
+    {% endfor %}</tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>
+<script>
+document.querySelectorAll("[data-egg-row]").forEach((row) => {
+  const hens = parseFloat(row.dataset.hens) || 0, avg = parseFloat(row.dataset.avg);
+  const num = (el) => parseFloat(String(el.value || "").replace(/\s/g, "").replace(",", ".")) || 0;
+  const t = row.querySelector("[data-trays]"), e = row.querySelector("[data-eggs]"), b = row.querySelector("[data-broken]");
+  const out = row.querySelector("[data-rate]"), tot = row.querySelector("[data-total]");
+  const up = () => {
+    const laid = Math.round(num(t) * {{ tray }} + num(e) + num(b));
+    if (!laid) { out.textContent = "—"; tot.textContent = ""; out.className = ""; return; }
+    const rate = hens ? laid / hens * 100 : 0;
+    out.textContent = rate.toFixed(1).replace(".", ",") + " %";
+    let txt = laid.toLocaleString("fr-FR") + " œufs";
+    if (!isNaN(avg)) { const d = rate - avg; txt += " · " + (d >= 0 ? "↑ +" : "↓ ") + d.toFixed(1).replace(".", ",") + " pts"; }
+    tot.textContent = txt;
+    out.className = !isNaN(avg) && rate < avg - 10 ? "text-danger" : (rate > 100 ? "text-danger" : "text-ok");
+  };
+  [t, e, b].forEach((i) => i.addEventListener("input", up)); up();
+});
+</script>
+{% endblock %}

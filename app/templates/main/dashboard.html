@@ -35,7 +35,7 @@
 {% if d.controls %}{% set C = d.controls %}
 <a class="ctl-banner top-gap {{ 'bad' if C.unexplained or C.loss < 0 else 'good' }}" href="{{ url_for('controles.index') }}">
   <span class="ctl-banner-title">{{ icon('alert', 18) }} Écarts &amp; contrôles · 30 jours</span>
-  {% for key, t in C.by.items() if key != 'oeufs' %}
+  {% for key, t in C.by.items() if key != 'oeufs' or t.count %}
   <span class="ctl-pill {{ 'bad' if t.loss < 0 or t.unexplained }}">{{ t.emoji }} {{ t.label }} : <strong>{{ t.loss|money if t.loss else 'aucune perte' }}</strong>{% if t.unexplained %} · {{ t.unexplained }} sans explication{% endif %}</span>
   {% endfor %}
   <span class="ctl-go">Voir le détail →</span>
@@ -79,11 +79,26 @@
     <div class="kpi-val">{{ L.future_kg|round(0)|qty('kg') }}</div><div class="kpi-lab">Provende à prévoir · {{ L.future_cost|money }}<br><small>poules × g/jour × jours restants, tous les lots</small></div>
   </a>
   {% endif %}
-  <div class="kpi kpi-soon">
-    <div class="kpi-top"><span class="kpi-ic ic-gray">{{ icon('egg', 18) }}</span><span class="tag tag-gray">bientôt</span></div>
-    <div class="kpi-val">— œufs</div><div class="kpi-lab">Ponte, coût d'un œuf, bénéfice</div>
-  </div>
+  {% if d.eggs %}{% set E = d.eggs %}
+  <a class="kpi" href="{{ url_for('oeufs.index') }}">
+    <div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('egg', 18) }}</span>
+      {% if E.rate7 is not none %}<span class="tag tag-green">ponte {{ E.rate7|round(1) }} % (7 j)</span>{% else %}<span class="tag tag-gray">à saisir</span>{% endif %}</div>
+    <div class="kpi-val">{{ E.today|num }} œufs</div><div class="kpi-lab">Aujourd'hui · 7 jours : {{ E.week|num }}
+      {% if E.prev_week %}<b class="{{ 'text-ok' if E.week >= E.prev_week else 'text-danger' }}">{{ '↑' if E.week >= E.prev_week else '↓' }} {{ ((E.week - E.prev_week) / E.prev_week * 100)|round(0)|int }} %</b>{% endif %}</div>
+    {% if E.spark %}<div class="kpi-spark" data-chart-type="spark" data-chart='{{ {"values": E.spark, "color": "#c9971c"}|tojson }}'></div>{% endif %}
+  </a>
+  {% endif %}
 </div>
+
+{# ---------- Ponte ---------- #}
+{% if d.eggs and d.eggs.chart %}{% set EC = d.eggs.chart %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('egg', 20) }} Taux de ponte de chaque lot (%)</h2>
+    <span class="legend-inline">{% for s in EC.rates.series %}<span><i class="sw" style="background: {{ ['#2e7d32', '#c9971c', '#1f6fa8', '#a33b8f', '#c0352b', '#0f8a80', '#6b4fbb', '#7a5c2e'][loop.index0 % 8] }}"></i> {{ s.name }}</span>{% endfor %}</span></div>
+  <div class="chart-box" data-chart-type="multi" aria-label="Taux de ponte par lot" data-chart='{{ EC.rates|tojson }}'></div>
+  <p class="hint">Œufs pondus ÷ poules présentes × 100. ▲ meilleur jour · ▼ plus bas de chaque lot · 🥚 début de ponte prévu. <a href="{{ url_for('oeufs.index') }}">Détail et saisie →</a></p>
+</section>
+{% endif %}
 
 {# ---------- Courbes ---------- #}
 {% if F %}
@@ -170,6 +185,7 @@
       <div><span>🌾 Mangé</span><strong class="text-green">{{ s.eaten_kg|qty('kg') }}</strong><small>{{ s.eaten_cost|money }}</small></div>
       {% if s.forecast %}<div><span>🔮 Reste à manger</span><strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small>{{ s.forecast.cost|money }}</small></div>{% endif %}
     </div>
+    {% if it.eggs and it.eggs.last %}<div class="calc-line egg-line">🥚 {{ it.eggs.last.rate|round(1) }} % · {{ it.eggs.last.laid|num }} œufs le {{ it.eggs.last.date|date_fr }}{% if it.eggs.trend is not none %} · <b class="{{ 'text-ok' if it.eggs.trend >= 0 else 'text-danger' }}">{{ '↑ +' if it.eggs.trend >= 0 else '↓ ' }}{{ it.eggs.trend|round(1) }} pts</b>{% endif %}</div>{% endif %}
     {% if s.forecast and s.forecast.days %}<div class="calc-line">{{ s.forecast.days|num }} jours restants · {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour aujourd'hui{% if s.forecast.by_formula|length > 1 %}, plus ensuite{% endif %}</div>{% endif %}
     <div class="life-bar with-mark"><span style="width: {{ s.progress|round(0) }}%"></span><i class="lay-mark" style="left: {{ s.laying.pos|round(1) }}%" title="Début de ponte : semaine {{ s.laying.week }}"></i></div>
     <div class="lay-pill sm {{ s.laying.phase }}">🥚 {% if s.laying.phase == 'ponte' %}En ponte depuis S{{ s.laying.week }}{% else %}Ponte S{{ s.laying.week }} · dans {{ s.laying.left }} sem. ({{ s.laying.date|date_fr }}){% endif %}</div>

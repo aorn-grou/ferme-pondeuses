@@ -14,7 +14,7 @@ from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.11.0"
+VERSION = "0.12.0"
 
 
 def _secret_key(instance_dir):
@@ -52,7 +52,7 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
-    from . import auth, backups, controls, discussion, lots, main, matieres, provenderie, settings, users
+    from . import auth, backups, controls, discussion, eggs, lots, main, matieres, provenderie, settings, users
 
     app.register_blueprint(discussion.bp)
 
@@ -60,6 +60,7 @@ def create_app(test_config=None):
     app.register_blueprint(provenderie.bp)
     app.register_blueprint(lots.bp)
     app.register_blueprint(controls.bp)
+    app.register_blueprint(eggs.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
     app.register_blueprint(users.bp)

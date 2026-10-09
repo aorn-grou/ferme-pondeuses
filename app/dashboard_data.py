@@ -58,7 +58,18 @@ def _plan(cards):
         m = months[k]
         detail = " · ".join(f"{n} {round(v):,}".replace(",", " ") + " kg" for n, v in m["lots"].items())
         tips.append(f"{round(m['cost']):,}".replace(",", " ") + f" Ar<br><small>{detail}</small>")
+    from .lots import date_of_week
+
+    marks = {}
+    for card in cards:
+        lot = card["lot"]
+        if card["s"].get("laying", {}).get("phase") == "élevage":
+            k = date_of_week(lot, lot["laying_week"] or 18).isoformat()[:7]
+            if k in months:
+                lab = f"{MONTHS[int(k[5:7]) - 1]} {k[2:4]}"
+                marks[lab] = (marks.get(lab, "🥚") + " " + lot["name"]).strip()
     chart = {"labels": labels, "bars": [round(months[k]["kg"], 1) for k in keys], "line": [None] * len(keys),
+             "marks": [{"at": a, "text": t + " pond"} for a, t in marks.items()],
              "unit": "kg", "barLabel": "À manger", "barColor": "#c9971c", "tips": tips,
              "now": labels[0] if labels else "", "nowLabel": "Ce mois"}
     return {"rows": rows, "chart": chart}
@@ -93,6 +104,25 @@ def build():
             "future_cost": sum(c["s"].get("forecast", {}).get("cost", 0) for c in cards),
             "plan": _plan(cards),
         }
+
+    # --- Œufs ---------------------------------------------------------------
+    if can("oeufs") and out.get("lots"):
+        from .eggs import farm_chart, lot_egg_stats
+
+        lots_active = [c["lot"] for c in out["lots"]["cards"]]
+        ch = farm_chart(lots_active)
+        rates7 = [st["avg7"] for st in (lot_egg_stats(l) for l in lots_active) if st["avg7"] is not None]
+        tday = today()
+        today_rows = query("SELECT COALESCE(SUM(good + broken), 0) AS n FROM egg_collections WHERE date = ?", (tday,), one=True)["n"]
+        out["eggs"] = {"chart": ch, "today": today_rows,
+                       "week": query("SELECT COALESCE(SUM(good + broken), 0) AS n FROM egg_collections WHERE date >= ?",
+                                     (_days(7)[0],), one=True)["n"],
+                       "prev_week": query("SELECT COALESCE(SUM(good + broken), 0) AS n FROM egg_collections WHERE date >= ? AND date < ?",
+                                          (_days(14)[0], _days(7)[0]), one=True)["n"],
+                       "rate7": (sum(rates7) / len(rates7)) if rates7 else None,
+                       "spark": ch["eggs"]["values"][-28:] if ch else []}
+        for card in out["lots"]["cards"]:
+            card["eggs"] = lot_egg_stats(card["lot"])
 
     # --- Provende ------------------------------------------------------------
     if can("provenderie") or can("alimentation"):

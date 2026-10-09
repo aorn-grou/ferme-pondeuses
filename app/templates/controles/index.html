@@ -9,8 +9,7 @@
   <a class="ctl-card {{ 'has-loss' if t.loss < 0 else '' }} {{ 'active' if domain == key }}" href="{{ url_for('controles.index', domaine='' if domain == key else key, periode=period, du=du, au=au) }}">
     <div class="ctl-top"><span class="ctl-emoji">{{ t.emoji }}</span>{% if t.unexplained %}<span class="tag tag-red">{{ t.unexplained }} sans explication</span>{% elif t.count %}<span class="tag tag-green">tout expliqué</span>{% endif %}</div>
     <strong>{{ t.label }}</strong>
-    {% if key == 'oeufs' %}<small class="muted">avec le module Œufs (bientôt)</small>
-    {% else %}<div class="ctl-val {{ 'text-danger' if t.loss < 0 }}">{{ t.loss|money if t.loss else '0 Ar' }}</div><small class="muted">{{ t.count }} écart(s) sur la période</small>{% endif %}
+    <div class="ctl-val {{ 'text-danger' if t.loss < 0 }}">{{ t.loss|money if t.loss else '0 Ar' }}</div><small class="muted">{{ t.count }} écart(s) sur la période</small>
   </a>
   {% endfor %}
 </div>
@@ -39,8 +38,8 @@
     {% for i in items %}
       <tr class="{{ 'row-alert' if not i.explained }}">
         <td data-label="Date" class="nowrap">{{ i.date|date_fr }}</td>
-        <td data-label="Quoi">{{ i.domain == 'matiere' and '📦' or (i.domain == 'provende' and '🌾' or '🐔') }} <a href="{{ i.url }}"><strong>{{ i.name }}</strong></a><small class="muted block">{{ i.what }}</small></td>
-        <td data-label="Avant → après" class="right nowrap">{% if i.before is not none %}{{ i.before|qty }} → {{ i.after|qty }}{% else %}—{% endif %}</td>
+        <td data-label="Quoi">{{ {'matiere': '📦', 'provende': '🌾', 'oeufs': '🥚'}.get(i.domain, '🐔') }} <a href="{{ i.url }}"><strong>{{ i.name }}</strong></a><small class="muted block">{{ i.what }}</small></td>
+        <td data-label="Avant → après" class="right nowrap">{% if i.before is not none %}{{ i.before|qty }}{{ ' %' if i.pct }} → {{ i.after|qty }}{{ ' %' if i.pct }}{% if i.pct %}<small class="muted block">taux de ponte (moy. 7 j → ce jour)</small>{% endif %}{% else %}—{% endif %}</td>
         <td data-label="Écart" class="right"><strong class="{{ 'text-danger' if i.qty < 0 else 'text-ok' }}">{{ '+' if i.qty > 0 }}{{ i.qty|qty(i.unit) }}</strong></td>
         <td data-label="Valeur" class="right {{ 'text-danger' if i.value < 0 else 'text-ok' }}">{{ '+' if i.value > 0 }}{{ i.value|money }}</td>
         <td data-label="Explication">
@@ -60,6 +59,6 @@
     </tbody>
   </table>
 </section>
-<datalist id="causes-all">{% for c in ['Vol / disparition', 'Erreur de saisie', 'Erreur de comptage', 'Perte / casse', 'Humidité / pourriture', 'Rats / animaux', 'Maladie', 'Chaleur', 'Prédateur', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist>
-<p class="hint top-gap">Comment ça marche : chaque inventaire, perte, disparition ou comptage de poules est enregistré ici avec qui l'a fait. Une mortalité anormale (plus de 3 fois la moyenne du lot, au moins 3 morts) est aussi signalée. Les associés sont prévenus dans la Discussion.</p>
+<datalist id="causes-all">{% for c in ['Vol / disparition', 'Erreur de saisie', 'Erreur de comptage', 'Perte / casse', 'Humidité / pourriture', 'Rats / animaux', 'Maladie', 'Chaleur', 'Prédateur', 'Stress / bruit', 'Changement de provende', 'Manque d\'eau', 'Œufs volés', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist>
+<p class="hint top-gap">Comment ça marche : chaque inventaire, perte, disparition ou comptage de poules est enregistré ici avec qui l'a fait. Une mortalité anormale (plus de 3 fois la moyenne du lot, au moins 3 morts) et une baisse de ponte (taux de ponte 10 points sous la moyenne des 7 jours précédents) sont aussi signalées. Les associés sont prévenus dans la Discussion.</p>
 {% endblock %}

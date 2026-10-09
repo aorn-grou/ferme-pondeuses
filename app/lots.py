@@ -164,8 +164,10 @@ def weekly_series(lot, cons, fc):
         labels.append(f"S{w}")
         eaten.append(round(past.get(w, 0), 1) if w <= lot_week(lot) else None)
         planned.append(round(future[w], 1) if w in future else None)
+    lw = lot["laying_week"] or 18
+    marks = [{"at": f"S{lw}", "text": f"🥚 Début de ponte (S{lw})"}] if f"S{lw}" in labels else []
     return {"labels": labels, "bars": eaten, "line": planned, "now": f"S{lot_week(lot)}", "unit": "kg",
-            "barLabel": "Mangé", "lineLabel": "Prévision"}
+            "barLabel": "Mangé", "lineLabel": "Prévision", "marks": marks}
 
 
 def laying_info(lot, week=None):
@@ -257,7 +259,21 @@ def lot(lot_id):
                         LEFT JOIN formulas f ON f.id = fd.formula_id LEFT JOIN users u ON u.id = fd.created_by
                         WHERE fd.lot_id = ? ORDER BY fd.date DESC, fd.id DESC LIMIT 120""", (lot_id,))
     chart = weekly_series(item, cons, summary["forecast"]) if "forecast" in summary else None
+    from .eggs import lot_chart, lot_egg_stats
+
+    eggs = lot_egg_stats(item)
+    lay_date = summary["laying"]["date"]
+    feed_since_lay = sum(r["quantity"] * r["unit_cost"] for r in cons["rows"] if r["date"] >= lay_date)
+    first_egg = eggs["rows"][0]["date"] if eggs["rows"] else None
+    if first_egg and first_egg < lay_date:  # les œufs sont arrivés plus tôt que prévu
+        feed_since_lay = sum(r["quantity"] * r["unit_cost"] for r in cons["rows"] if r["date"] >= first_egg)
+    money = {"costs": summary["chick_cost"] + summary["eaten_cost"], "eggs_value": eggs["value"],
+             "feed_per_egg": (feed_since_lay / eggs["laid"]) if eggs["laid"] else None,
+             "cost_per_egg": ((summary["chick_cost"] + summary["eaten_cost"]) / eggs["laid"]) if eggs["laid"] else None}
+    money["result"] = money["eggs_value"] - money["costs"]
+    egg_chart = lot_chart(item)
     return render_template("lots/lot.html", item=item, s=summary, cons=cons, events=events, feedings=feedings,
+                           eggs=eggs, money=money, egg_chart=egg_chart,
                            kinds=EVENT_KINDS, chart=json.dumps(chart) if chart else None,
                            formulas=_formulas(), today=today(), programs=program_rows(item["program_id"]))
 

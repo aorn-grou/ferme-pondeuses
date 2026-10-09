@@ -930,3 +930,15 @@ a.kpi:hover { text-decoration: none; transform: translateY(-2px); }
 .lay-pill.sm { font-size: .78rem; margin: .35rem 0 .15rem; padding: .2rem .55rem; color: var(--text-2, #5d6a5f); }
 .hero-band .lay-pill { background: rgba(255,255,255,.14); color: #f6e7b8; }
 .calc-split { font-size: .92rem; padding: .35rem 0 .1rem; border-top: 1px dashed rgba(201,151,28,.4); margin-top: .2rem; }
+
+/* Œufs */
+.egg-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+.egg-kpis > div { padding: .7rem .8rem; border-radius: 12px; background: var(--surface-2, #faf6ea); border: 1px solid var(--border); display: flex; flex-direction: column; gap: .1rem; }
+.egg-kpis span { font-size: .8rem; color: var(--text-2, #5d6a5f); }
+.egg-kpis strong { font-size: 1.35rem; }
+.egg-kpis small { font-size: .78rem; color: var(--text-2, #5d6a5f); }
+.egg-table .input.sm { max-width: 110px; }
+.egg-table td[data-label="Remarque"] .input.sm { max-width: 220px; }
+tr.row-muted td { opacity: .72; }
+.sw-inline { display: inline-block; width: 12px; height: 10px; border-radius: 3px; vertical-align: middle; }
+.sw-inline.gold { background: #e0b64a; } .sw-inline.green { background: #2e7d32; height: 3px; }

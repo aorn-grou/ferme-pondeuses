@@ -43,7 +43,10 @@
   <div class="stat"><span class="stat-icon">{{ icon('clock') }}</span><span class="stat-label">Reste à manger (prévision)</span><strong class="stat-value small text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small class="muted">{% if s.forecast.by_formula|length == 1 %}<strong>{{ s.forecast.days|num }} j × {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour</strong>{% else %}<strong>{{ s.forecast.days|num }} jours</strong>, de {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour aujourd'hui à plus selon l'âge{% endif %}<br>{{ s.forecast.cost|money }} · jusqu'au {{ s.forecast.end_date|date_fr }}</small></div>
   {% endif %}
   <div class="stat"><span class="stat-icon">{{ icon('wallet') }}</span><span class="stat-label">Achat des poussins</span><strong class="stat-value small">{{ s.chick_cost|money }}</strong><small class="muted">{{ item.chick_price|money }} / poussin{% if item.supplier %} · {{ item.supplier }}{% endif %}</small></div>
-  <div class="stat"><span class="stat-icon">{{ icon('egg') }}</span><span class="stat-label">Rentabilité</span><strong class="stat-value small muted">bientôt</strong><small class="muted">avec le module Œufs et Ventes</small></div>
+  <a class="stat" href="#ponte"><span class="stat-icon">{{ icon('egg') }}</span><span class="stat-label">Bénéfice estimé à ce jour</span>
+    {% if eggs.laid %}<strong class="stat-value small {{ 'text-ok' if money.result >= 0 else 'text-danger' }}">{{ '+' if money.result > 0 }}{{ money.result|money }}</strong>
+    <small class="muted">œufs {{ money.eggs_value|money }} − dépenses {{ money.costs|money }}</small>
+    {% else %}<strong class="stat-value small muted">pas encore d'œufs</strong><small class="muted">dépenses : {{ money.costs|money }} (poussins + provende)</small>{% endif %}</a>
 </div>
 
 {% if s.suggest and can('alimentation', 2) %}
@@ -70,6 +73,27 @@
   </form>
 </section>
 {% endif %}
+
+<section class="card top-gap" id="ponte">
+  <div class="card-head"><h2>{{ icon('egg', 20) }} Ponte de ce lot</h2>
+    {% if can('oeufs', 2) and item.status == 'actif' %}<a class="btn primary sm" href="{{ url_for('oeufs.index') }}">{{ icon('plus', 16) }} Saisir le ramassage</a>{% endif %}</div>
+  {% if eggs.laid %}
+  <div class="egg-kpis">
+    <div><span>Dernier jour</span><strong>{{ eggs.last.rate|round(1) }} %</strong><small>{{ eggs.last.laid|num }} œufs · {{ eggs.last.date|date_fr }}</small></div>
+    <div><span>Moyenne 7 jours</span><strong>{{ (eggs.avg7|round(1) ~ ' %') if eggs.avg7 is not none else '—' }}</strong>
+      <small>{% if eggs.trend is not none %}<b class="{{ 'text-ok' if eggs.trend >= 0 else 'text-danger' }}">{{ '↑ +' if eggs.trend >= 0 else '↓ ' }}{{ eggs.trend|round(1) }} pts</b> vs semaine d'avant{% else %}moyenne générale {{ eggs.avg_rate|round(1) }} %{% endif %}</small></div>
+    <div><span>▲ Meilleur jour</span><strong class="text-ok">{{ eggs.peak.rate|round(1) }} %</strong><small>{{ eggs.peak.laid|num }} œufs · {{ eggs.peak.date|date_fr }}</small></div>
+    <div><span>▼ Plus bas</span><strong class="text-danger">{{ eggs.trough.rate|round(1) }} %</strong><small>{{ eggs.trough.laid|num }} œufs · {{ eggs.trough.date|date_fr }}</small></div>
+    <div><span>Œufs au total</span><strong>{{ eggs.laid|num }}</strong><small>{{ eggs.per_hen|round(1) }} par poule · {{ eggs.broken|num }} cassé(s)</small></div>
+    <div><span>Coût d'un œuf</span><strong>{{ money.feed_per_egg|money if money.feed_per_egg is not none else '—' }}</strong><small>provende seule · tout compris {{ money.cost_per_egg|money }}</small></div>
+  </div>
+  {% if egg_chart %}<div class="chart-box top-gap-sm" data-chart-type="combo" aria-label="Œufs par jour et taux de ponte" data-chart='{{ egg_chart|tojson }}'></div>
+  <p class="hint"><span class="sw-inline gold"></span> barres = œufs par jour (échelle de gauche) · <span class="sw-inline green"></span> courbe = taux de ponte % (échelle de droite), pointillés = moyenne. ▲ meilleur jour, ▼ plus bas.</p>{% endif %}
+  {% else %}
+  <p class="muted">{% if s.laying.phase == 'ponte' %}Ce lot devrait pondre depuis la semaine {{ s.laying.week }} : saisissez le ramassage pour voir le taux de ponte.{% else %}🐣 Ce lot est en élevage : ponte prévue <strong>semaine {{ s.laying.week }}</strong> (le {{ s.laying.date|date_fr }}). Si les premiers œufs arrivent avant, saisissez-les simplement : le logiciel les comptera.{% endif %}</p>
+  {% endif %}
+  <p class="hint">Bénéfice estimé = œufs × {{ item.egg_price|money }} − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}). Les vraies ventes et les autres dépenses viendront avec les modules Ventes et Dépenses.</p>
+</section>
 
 {% if chart %}
 <section class="card top-gap">
@@ -169,5 +193,5 @@
 {% with ref_type='lot', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
 {% endblock %}
 {% block scripts %}
-{% if chart %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endif %}
+<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>
 {% endblock %}

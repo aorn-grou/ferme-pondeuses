@@ -121,3 +121,43 @@ class TestControles(TestLots):
         self.assertEqual(self.one("SELECT notes FROM stock_moves WHERE id = ?", (mv,))[0], "Erreur de pesée")
         # le tableau de bord montre le bandeau
         self.assertIn("Écarts &amp; contrôles", self.client.get("/").get_data(as_text=True))
+
+
+class TestOeufs(TestLots):
+    def test_collection_rate_correction_and_drop(self):
+        dem, ponte, prog = self.setup_feed()
+        arrival = (date.today() - timedelta(days=150)).isoformat()
+        self.new_lot(prog, arrival, count="200", laying_week="18", egg_price="500", paid="0")
+        lot = self.one("SELECT * FROM lots")
+        self.assertEqual(lot["laying_week"], 18)
+        # 8 jours à 90 % (180 œufs = 6 plateaux) puis un jour à 50 %
+        for k in range(9, 1, -1):
+            d = (date.today() - timedelta(days=k)).isoformat()
+            res = self.post("/oeufs/", {"date": d, "lot_id": [str(lot["id"])], "trays": ["6"], "eggs": [""],
+                                        "broken": [""], "notes": [""]})
+            self.assertEqual(res.status_code, 302)
+        d = (date.today() - timedelta(days=1)).isoformat()
+        self.post("/oeufs/", {"date": d, "lot_id": [str(lot["id"])], "trays": ["3"], "eggs": [""], "broken": [""], "notes": [""]})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM egg_collections")[0], 9)
+        # correction du même jour : pas de doublon
+        self.post("/oeufs/", {"date": d, "lot_id": [str(lot["id"])], "trays": ["3"], "eggs": ["10"], "broken": ["2"],
+                              "notes": ["Chaleur"]})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM egg_collections")[0], 9)
+        row = self.one("SELECT * FROM egg_collections WHERE date = ?", (d,))
+        self.assertEqual((row["good"], row["broken"]), (100, 2))
+        # statistiques
+        from app.eggs import drop_alerts, lot_egg_stats
+        with self.app.test_request_context():
+            st = lot_egg_stats(self.one("SELECT * FROM lots"))
+            self.assertAlmostEqual(st["peak"]["rate"], 90)
+            self.assertAlmostEqual(st["trough"]["rate"], 51)
+            self.assertEqual(st["laid"], 8 * 180 + 102)
+            alerts = drop_alerts()
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["why"], "Chaleur")
+        # pages
+        for url in ["/oeufs/", f"/lots/{lot['id']}", "/", "/controles/"]:
+            res = self.client.get(url)
+            self.assertEqual(res.status_code, 200, url)
+        self.assertIn("Baisse de ponte", self.client.get("/controles/").get_data(as_text=True))
+        self.assertIn("Ponte de ce lot", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True))
