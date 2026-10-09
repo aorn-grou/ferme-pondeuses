@@ -15,7 +15,25 @@
   {% else %}
   <div class="calc-banner">
     <span>🧮 <strong>Comment lire ce tableau :</strong> écrivez les <strong>plateaux pleins ({{ tray }} œufs)</strong> + les <strong>œufs en plus</strong> + les <strong>cassés</strong>. Le logiciel calcule tout seul :</span>
-    <span class="calc-steps"><strong>Taux de ponte</strong> = (plateaux × {{ tray }} + œufs + cassés) ÷ poules × 100 &nbsp;·&nbsp; ex. (14 × {{ tray }} + 20 + 2) ÷ 500 × 100 = <strong>88,4 %</strong></span>
+    <details class="egg-explain" open>
+      <summary>📖 Explication simple du taux de ponte (cliquez pour fermer / ouvrir)</summary>
+      <div class="egg-steps">
+        <div><b>1ʳᵉ étape : compter tous les œufs pondus</b>
+          <ul><li>Un plateau = <strong>{{ tray }} œufs</strong>. Exemple : 14 plateaux → 14 × {{ tray }} = <strong>420 œufs</strong></li>
+            <li>+ les œufs qui ne remplissent pas un plateau : 420 + 20 = <strong>440</strong></li>
+            <li>+ les cassés (la poule les a bien pondus) : 440 + 2 = <strong>442 œufs pondus</strong></li></ul></div>
+        <div><b>2ᵉ étape : combien de poules sur 100 ont pondu ?</b>
+          <ul><li>Une poule pond au maximum <strong>1 œuf par jour</strong>. Avec 500 poules et 442 œufs : 442 poules ont pondu, 58 non.</li>
+            <li>442 ÷ 500 = 0,884 → × 100 = <strong>88,4 %</strong>, soit environ <strong>88 poules sur 100</strong> ont pondu.</li></ul></div>
+        <div><b>Ce que ça veut dire</b>
+          <ul><li><strong>100 %</strong> = toutes les poules ont pondu (le maximum)</li>
+            <li><strong class="text-ok">85 à 95 %</strong> = très bonne ponte (poules jeunes en forme)</li>
+            <li><strong class="text-danger">moins de 70 %</strong> (hors début et fin de vie du lot) = un problème : chaleur, maladie, provende, stress, vol d'œufs…</li>
+            <li>On utilise le % pour <strong>comparer des lots de tailles différentes</strong> : 300 œufs avec 500 poules = 60 % (mauvais), 300 œufs avec 320 poules = 94 % (excellent).</li></ul></div>
+      </div>
+      <p class="muted small">Vous n'avez rien à calculer : le logiciel le fait pendant que vous tapez.</p>
+    </details>
+
     <span class="egg-legend"><b class="text-ok">88,4 % en vert</b> = ponte normale · <b class="text-danger">en rouge</b> = baisse de plus de 10 points (à expliquer dans « Remarque ») ·
       <b class="text-ok">↑ +5 pts</b> / <b class="text-danger">↓ −26 pts</b> = comparaison avec la moyenne des 7 jours d'avant (s'affiche dès qu'il y a des jours précédents) ·
       🥚 en ponte / 🐣 ponte prévue = d'après la semaine de début de ponte du lot</span>

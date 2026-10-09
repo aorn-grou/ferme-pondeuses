@@ -943,3 +943,8 @@ tr.row-muted td { opacity: .72; }
 .sw-inline { display: inline-block; width: 12px; height: 10px; border-radius: 3px; vertical-align: middle; }
 .sw-inline.gold { background: #e0b64a; } .sw-inline.green { background: #2e7d32; height: 3px; }
 .egg-legend { font-size: .9rem; line-height: 1.7; }
+.egg-explain { margin: .2rem 0 .3rem; }
+.egg-explain summary { cursor: pointer; font-weight: 700; color: var(--primary, #1d6b35); padding: .25rem 0; }
+.egg-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .6rem; margin-top: .4rem; }
+.egg-steps > div { background: rgba(255,255,255,.55); border-radius: 10px; padding: .6rem .75rem; font-size: .92rem; }
+.egg-steps ul { margin: .35rem 0 0; padding-left: 1.1rem; line-height: 1.55; }
