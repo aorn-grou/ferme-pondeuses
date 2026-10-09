@@ -59,6 +59,8 @@
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('chart', 20) }} Provende mangée et à venir, par semaine</h2>
     <span class="legend-inline"><span><i class="sw sw-green"></i> Déjà mangé</span><span><i class="sw sw-gold-dash"></i> Prévision</span></span></div>
+  {% if s.forecast and s.forecast.days %}<div class="calc-banner"><span>🔮 Reste à manger : <strong>{{ s.forecast.days|num }} jours × {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour</strong>{% if s.forecast.by_formula|length > 1 or s.forecast.weekly_rate %} (selon l'âge{% if s.forecast.weekly_rate %} et la mortalité{% endif %}){% endif %} = <strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> · {{ s.forecast.cost|money }}</span>
+    <small>Sur le graphique, chaque semaine = 7 jours × {{ s.forecast.kg_day|round(1)|qty('kg') }} = {{ (s.forecast.kg_day * 7)|round(0)|qty('kg') }}. Les barres vertes apparaîtront quand vous donnerez la provende.</small></div>{% endif %}
   <div class="chart-box" aria-label="Provende mangée par semaine et prévision jusqu'à la réforme" data-chart='{{ chart }}'></div>
   {% if not s.forecast.has_program %}<p class="hint">Sans programme, la prévision ne peut pas être calculée : choisissez un programme dans « Modifier ».</p>{% endif %}
 </section>

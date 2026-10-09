@@ -915,3 +915,6 @@ a.kpi:hover { text-decoration: none; transform: translateY(-2px); }
 .calc-line { margin: .35rem 0 .2rem; padding: .3rem .55rem; border-radius: 8px; background: rgba(201, 151, 28, .12); color: var(--text-2, #5d6a5f); font-size: .8rem; }
 .calc-list { display: block; }
 @media (max-width: 760px) { .calc-list { text-align: right; } .calc-list .calc { margin-bottom: .2rem; } }
+.calc-banner { display: flex; flex-direction: column; gap: .2rem; margin: .2rem 0 .8rem; padding: .7rem .9rem; border-radius: 12px;
+  background: rgba(201, 151, 28, .12); border-left: 4px solid var(--gold, #c9971c); font-size: .98rem; }
+.calc-banner small { color: var(--text-2, #5d6a5f); }
