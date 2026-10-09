@@ -24,18 +24,18 @@
 </div>
 
 {% if s.forecast and s.forecast.days %}{% set parts = s.forecast.by_formula.items()|list %}{% set f0 = parts[0][1] %}
-<div class="calc-banner top-gap">
+<details class="calc-banner top-gap fold" open data-fold="lot-calc"><summary>🧮 Comment c'est calculé <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
   {% if parts|length == 1 %}
-  <span>🧮 <strong>Comment c'est calculé :</strong> {{ f0.birds|num }} poules × {{ f0.grams|round(0)|int }} g par poule = <strong>{{ f0.kg_day|round(1)|qty('kg') }} par jour</strong>
+  <span>{{ f0.birds|num }} poules × {{ f0.grams|round(0)|int }} g par poule = <strong>{{ f0.kg_day|round(1)|qty('kg') }} par jour</strong>
     × <strong>{{ s.forecast.days|num }} jours</strong> restants (semaine {{ s.week }} → semaine {{ s.forecast.end_week }}, réforme le {{ s.forecast.end_date|date_fr }})
     = <strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> à prévoir, soit <strong>{{ s.forecast.cost|money }}</strong>.</span>
   {% else %}
-  <span>🧮 <strong>Comment c'est calculé :</strong> les grammes changent avec l'âge, donc on calcule provende par provende (poules × grammes × jours), puis on additionne :</span>
+  <span>Les grammes changent avec l'âge, donc on calcule provende par provende (poules × grammes × jours), puis on additionne :</span>
   <span class="calc-steps">{% for name, f in parts %}<span class="nowrap">{{ name }} : {{ f.birds|num }} × {{ f.grams|round(0)|int }} g × {{ f.days|num }} j = <strong>{{ f.kg|round(0)|qty('kg') }}</strong></span>{% if not loop.last %} <b>+</b> {% endif %}{% endfor %}
     = <strong class="text-gold nowrap">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> en {{ s.forecast.days|num }} jours (jusqu'au {{ s.forecast.end_date|date_fr }}), soit <strong class="nowrap">{{ s.forecast.cost|money }}</strong>.</span>
   {% endif %}
   {% if s.forecast.before_kg %}<span class="calc-split">🐣 Avant la ponte (jusqu'à la semaine {{ s.laying.week - 1 }}) : <strong>{{ s.forecast.before_kg|round(0)|qty('kg') }}</strong> · {{ s.forecast.before_cost|money }} &nbsp;|&nbsp; 🥚 Pendant la ponte (semaine {{ s.laying.week }} → {{ s.forecast.end_week }}) : <strong>{{ (s.forecast.kg - s.forecast.before_kg)|round(0)|qty('kg') }}</strong> · {{ (s.forecast.cost - s.forecast.before_cost)|money }}</span>{% endif %}
-  <small>{% if s.forecast.weekly_rate %}La mortalité observée ({{ (s.forecast.weekly_rate * 100)|round(2) }} % par semaine) est déduite au fil des semaines. {% endif %}Le coût utilise le prix actuel de chaque provende. Détail semaine par semaine : tableau « Provende à prévoir » plus bas.</small></div>
+  <small>{% if s.forecast.weekly_rate %}La mortalité observée ({{ (s.forecast.weekly_rate * 100)|round(2) }} % par semaine) est déduite au fil des semaines. {% endif %}Le coût utilise le prix actuel de chaque provende. Détail semaine par semaine : tableau « Provende à prévoir » plus bas.</small></div></details>
 {% endif %}
 <div class="stats top-gap">
   <div class="stat"><span class="stat-icon">{{ icon('wheat') }}</span><span class="stat-label">Déjà mangé</span><strong class="stat-value small text-green">{{ s.eaten_kg|qty('kg') }}</strong><small class="muted">{{ s.eaten_cost|money }} · {{ s.per_bird|qty('kg') }} / poule</small></div>
@@ -99,8 +99,8 @@
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('chart', 20) }} Provende mangée et à venir, par semaine</h2>
     <span class="legend-inline"><span><i class="sw sw-green"></i> Déjà mangé</span><span><i class="sw sw-gold-dash"></i> Prévision</span></span></div>
-  {% if s.forecast and s.forecast.days %}<div class="calc-banner"><span>🔮 Reste à manger : <strong>{{ s.forecast.days|num }} jours × {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour</strong>{% if s.forecast.by_formula|length > 1 or s.forecast.weekly_rate %} (selon l'âge{% if s.forecast.weekly_rate %} et la mortalité{% endif %}){% endif %} = <strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> · {{ s.forecast.cost|money }}</span>
-    <small>Sur le graphique, chaque semaine = 7 jours × {{ s.forecast.kg_day|round(1)|qty('kg') }} = {{ (s.forecast.kg_day * 7)|round(0)|qty('kg') }}. Les barres vertes apparaîtront quand vous donnerez la provende.</small></div>{% endif %}
+  {% if s.forecast and s.forecast.days %}<details class="calc-banner fold" open data-fold="lot-chart"><summary>📖 Comment lire ce graphique <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body"><span>🔮 Reste à manger : <strong>{{ s.forecast.days|num }} jours × {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour</strong>{% if s.forecast.by_formula|length > 1 or s.forecast.weekly_rate %} (selon l'âge{% if s.forecast.weekly_rate %} et la mortalité{% endif %}){% endif %} = <strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> · {{ s.forecast.cost|money }}</span>
+    <small>Sur le graphique, chaque semaine = 7 jours × {{ s.forecast.kg_day|round(1)|qty('kg') }} = {{ (s.forecast.kg_day * 7)|round(0)|qty('kg') }}. Les barres vertes apparaîtront quand vous donnerez la provende.</small></div></details>{% endif %}
   <div class="chart-box" aria-label="Provende mangée par semaine et prévision jusqu'à la réforme" data-chart='{{ chart }}'></div>
   {% if not s.forecast.has_program %}<p class="hint">Sans programme, la prévision ne peut pas être calculée : choisissez un programme dans « Modifier ».</p>{% endif %}
 </section>

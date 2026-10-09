@@ -13,8 +13,8 @@
   {% if not rows %}
   <p class="muted">Aucun lot en cours à cette date. <a href="{{ url_for('lots.lot_new') }}">Enregistrer un lot</a></p>
   {% else %}
-  <div class="calc-banner">
-    <span>🧮 <strong>Comment lire ce tableau :</strong> écrivez les <strong>plateaux pleins ({{ tray }} œufs)</strong> + les <strong>œufs en plus</strong> + les <strong>cassés</strong>. Le logiciel calcule tout seul :</span>
+  <details class="calc-banner fold" open data-fold="egg-table"><summary>🧮 Comment lire ce tableau <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>Écrivez les <strong>plateaux pleins ({{ tray }} œufs)</strong> + les <strong>œufs en plus</strong> + les <strong>cassés</strong>. Le logiciel calcule tout seul :</span>
     <details class="egg-explain" open>
       <summary>📖 Explication simple du taux de ponte (cliquez pour fermer / ouvrir)</summary>
       <div class="egg-steps">
@@ -38,7 +38,7 @@
       <b class="text-ok">↑ +5 pts</b> / <b class="text-danger">↓ −26 pts</b> = comparaison avec la moyenne des 7 jours d'avant (s'affiche dès qu'il y a des jours précédents) ·
       🥚 en ponte / 🐣 ponte prévue = d'après la semaine de début de ponte du lot</span>
     <small>Une ligne vide n'est pas enregistrée. Réenregistrer le même jour <strong>corrige</strong> la saisie. Vos associés reçoivent un message dans la Discussion à chaque enregistrement.</small>
-  </div>
+  </div></details>
   <form method="post" class="stack">
     {{ csrf() }}<input type="hidden" name="date" value="{{ date }}">
     <table class="table responsive egg-table">
@@ -69,17 +69,17 @@
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('chart', 20) }} Taux de ponte de chaque lot (%)</h2>
     <span class="legend-inline">{% for s in chart.rates.series %}<span><i class="sw" style="background: {{ ['#2e7d32', '#c9971c', '#1f6fa8', '#a33b8f', '#c0352b', '#0f8a80', '#6b4fbb', '#7a5c2e'][loop.index0 % 8] }}"></i> {{ s.name }}</span>{% endfor %}</span></div>
-  <div class="calc-banner"><span>📖 <strong>Comment lire ce graphique :</strong> chaque ligne de couleur = un lot. Plus la ligne est <strong>haute</strong>, plus les poules de ce lot ont pondu ce jour-là (100 % = toutes).</span>
+  <details class="calc-banner fold" open data-fold="egg-rates"><summary>📖 Comment lire ce graphique <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body"><span>Chaque ligne de couleur = un lot. Plus la ligne est <strong>haute</strong>, plus les poules de ce lot ont pondu ce jour-là (100 % = toutes).</span>
     {% for x in chart.lots_sum %}<span class="calc-steps">• <strong>{{ x.name }}</strong> : dernier jour <strong>{{ x.last[0]|round(1) }} %</strong> ({{ x.last[1] }}) · ▲ meilleur <strong class="text-ok">{{ x.hi[0]|round(1) }} %</strong> le {{ x.hi[1] }} · ▼ plus bas <strong class="text-danger">{{ x.lo[0]|round(1) }} %</strong> le {{ x.lo[1] }}</span>{% endfor %}
-    <small>Passez la souris (ou touchez) sur le graphique pour voir le chiffre de chaque jour.</small></div>
+    <small>Passez la souris (ou touchez) sur le graphique pour voir le chiffre de chaque jour.</small></div></details>
   <div class="chart-box" data-chart-type="multi" aria-label="Taux de ponte par lot" data-chart='{{ chart.rates|tojson }}'></div>
   <p class="hint">Taux de ponte = œufs pondus ÷ poules présentes × 100. ▲ meilleur jour · ▼ plus mauvais jour de chaque lot. Les traits pointillés 🥚 = début de ponte prévu d'un lot.</p>
 </section>
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('egg', 20) }} Œufs ramassés par jour, toute la ferme</h2><span class="tag tag-gold">30 jours : {{ chart.month|num }} œufs</span></div>
   {% if chart.summary %}{% set Y = chart.summary %}
-  <div class="calc-banner"><span>📖 <strong>Comment lire ce graphique :</strong> chaque point = le <strong>nombre d'œufs ramassés ce jour-là</strong>, tous les lots ensemble. La ligne <strong>monte</strong> = plus d'œufs, elle <strong>descend</strong> = moins d'œufs.</span>
-    <span class="calc-steps">▲ <strong class="text-ok">{{ Y.hi|num }} œufs</strong> = meilleur jour ({{ Y.hi_day }}) · ▼ <strong class="text-danger">{{ Y.lo|num }} œufs</strong> = plus mauvais jour ({{ Y.lo_day }}) · <span class="text-gold">- - -</span> pointillés = moyenne : <strong>{{ Y.avg|round(0)|int }} œufs par jour</strong> sur {{ Y.days }} jour(s) saisi(s)</span></div>
+  <details class="calc-banner fold" open data-fold="egg-total"><summary>📖 Comment lire ce graphique <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body"><span>Chaque point = le <strong>nombre d'œufs ramassés ce jour-là</strong>, tous les lots ensemble. La ligne <strong>monte</strong> = plus d'œufs, elle <strong>descend</strong> = moins d'œufs.</span>
+    <span class="calc-steps">▲ <strong class="text-ok">{{ Y.hi|num }} œufs</strong> = meilleur jour ({{ Y.hi_day }}) · ▼ <strong class="text-danger">{{ Y.lo|num }} œufs</strong> = plus mauvais jour ({{ Y.lo_day }}) · <span class="text-gold">- - -</span> pointillés = moyenne : <strong>{{ Y.avg|round(0)|int }} œufs par jour</strong> sur {{ Y.days }} jour(s) saisi(s)</span></div></details>
   {% endif %}
   <div class="chart-box sm" data-chart-type="line" data-chart='{{ chart.eggs|tojson }}'></div>
 </section>

@@ -123,8 +123,8 @@
   <div class="card-head"><h2>{{ icon('clock', 20) }} Provende à venir, mois par mois, jusqu'aux réformes</h2>
     <span class="tag tag-gold">{{ L.future_kg|round(0)|qty('kg') }} · {{ L.future_cost|money }}</span></div>
 {% set ex1 = (P.rows|sort(attribute='kg', reverse=True))[0] %}{% set p0 = ex1.parts[0] %}
-  <div class="calc-banner"><span>🧮 <strong>Comment c'est calculé :</strong> pour chaque lot, <strong>poules × grammes du programme (selon l'âge) × jours restants</strong> jusqu'à la réforme, puis on additionne tous les lots.</span>
-    <small>Exemple {{ ex1.name }} : {{ p0.birds|num }} poules × {{ p0.grams|round(0)|int }} g = {{ p0.kg_day|round(1)|qty('kg') }} par jour × {{ p0.days|num }} jours = {{ p0.kg|round(0)|qty('kg') }}{% if ex1.parts|length > 1 %} (+ les autres provendes du lot){% endif %}. Total des {{ P.rows|length }} lot(s) : <strong>{{ L.future_kg|round(0)|qty('kg') }}</strong> = {{ L.future_cost|money }}.</small></div>
+  <details class="calc-banner fold" open data-fold="dash-plan"><summary>🧮 Comment c'est calculé <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body"><span>Pour chaque lot, <strong>poules × grammes du programme (selon l'âge) × jours restants</strong> jusqu'à la réforme, puis on additionne tous les lots.</span>
+    <small>Exemple {{ ex1.name }} : {{ p0.birds|num }} poules × {{ p0.grams|round(0)|int }} g = {{ p0.kg_day|round(1)|qty('kg') }} par jour × {{ p0.days|num }} jours = {{ p0.kg|round(0)|qty('kg') }}{% if ex1.parts|length > 1 %} (+ les autres provendes du lot){% endif %}. Total des {{ P.rows|length }} lot(s) : <strong>{{ L.future_kg|round(0)|qty('kg') }}</strong> = {{ L.future_cost|money }}.</small></div></details>
   <div class="chart-box" aria-label="Provende à prévoir par mois" data-chart='{{ P.chart|tojson }}'></div>
   <p class="hint">Chaque barre = la provende que tous les lots mangeront ce mois-là, selon leur âge et leur programme. Passez la souris ou touchez une barre pour le détail.</p>
   <table class="table responsive top-gap-sm">

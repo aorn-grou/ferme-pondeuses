@@ -756,3 +756,10 @@
   document.addEventListener("click", (e) => { if (e.target.closest("[data-add-line], [data-fill-weeks]")) setTimeout(update, 0); });
   update();
 })();
+
+/* Explications repliables : le logiciel se souvient si vous les avez fermées */
+document.querySelectorAll("details[data-fold]").forEach((d) => {
+  const key = "fold:" + d.dataset.fold;
+  try { if (localStorage.getItem(key) === "0") d.open = false; } catch (e) { /* stockage indisponible */ }
+  d.addEventListener("toggle", () => { try { localStorage.setItem(key, d.open ? "1" : "0"); } catch (e) { /* rien */ } });
+});
