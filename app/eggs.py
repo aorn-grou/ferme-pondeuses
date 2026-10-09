@@ -137,12 +137,24 @@ def farm_chart(lots, days=60):
             series.append({"name": lot["name"], "values": values, "extra": extra})
     if first_used is None:
         return None
-    cut = max(0, min(first_used, days - 14))  # on ne montre pas des semaines vides au début
+    cut = first_used  # on commence au premier jour saisi : pas de jours vides au début
     for s in series:
         s["values"], s["extra"] = s["values"][cut:], s["extra"][cut:]
     labels, totals = labels[cut:], totals[cut:]
     marks = [m for m in marks if m["at"] in labels]
-    return {"rates": {"labels": labels, "series": series, "unit": "%", "max": 100, "marks": marks},
+    filled = [(v, labels[i]) for i, v in enumerate(totals) if v > 0]
+    summary = None
+    if filled:
+        hi, lo = max(filled), min(filled)
+        summary = {"hi": hi[0], "hi_day": hi[1], "lo": lo[0], "lo_day": lo[1],
+                   "avg": sum(v for v, _ in filled) / len(filled), "days": len(filled)}
+    lots_sum = []
+    for s in series:
+        vals = [(v, labels[i]) for i, v in enumerate(s["values"]) if v is not None]
+        if vals:
+            lots_sum.append({"name": s["name"], "hi": max(vals), "lo": min(vals), "last": vals[-1]})
+    return {"summary": summary, "lots_sum": lots_sum,
+            "rates": {"labels": labels, "series": series, "unit": "%", "max": 100, "marks": marks},
             "eggs": {"labels": labels, "values": totals, "unit": "œufs", "color": "#c9971c"},
             "today": totals[-1], "month": sum(totals[-30:])}
 
