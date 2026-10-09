@@ -958,3 +958,9 @@ details.calc-banner.fold[open] > summary::before { transform: rotate(90deg); }
 details.calc-banner.fold > summary small { font-weight: 400; color: var(--text-2, #5d6a5f); }
 details.calc-banner.fold .fold-body { display: flex; flex-direction: column; gap: .2rem; margin-top: .45rem; }
 details.calc-banner.fold:not([open]) { padding-top: .5rem; padding-bottom: .5rem; }
+/* Ventes */
+.stock-pill { padding: .55rem .75rem; border-radius: 10px; background: rgba(201,151,28,.13); font-weight: 700; line-height: 1.35; }
+.stock-pill small { font-weight: 400; color: var(--text-2, #5d6a5f); }
+.stock-pill.due { background: rgba(192,53,43,.12); color: #a32d2d; }
+.field.span-2 { grid-column: span 2; }
+@media (max-width: 760px) { .field.span-2 { grid-column: auto; } }

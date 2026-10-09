@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Stock d'œufs{% endblock %}
+{% block content %}
+{% call page_head("Stock d'œufs", "Ce qui entre (ramassage) et ce qui sort (ventes, casse, pertes). Un comptage réel montre tout de suite s'il manque des œufs.", 'egg') %}
+  {% if can('ventes', 2) %}<a class="btn primary" href="{{ url_for('ventes.sale_new') }}">{{ icon('plus', 18) }} Nouvelle vente</a>{% endif %}
+{% endcall %}
+{% with active='stock' %}{% include "ventes/_tabs.html" %}{% endwith %}
+
+<section class="hero-band">
+  <div><div class="hero-sub">{{ icon('egg', 16) }} Stock d'œufs selon le logiciel</div>
+    <div class="hero-line"><span class="hero-num">{{ stock|num }}</span><span>œufs · {{ stock // tray }} plateau(x) + {{ stock % tray }}</span></div>
+    <div class="hero-sub">= bons œufs ramassés − œufs vendus ± corrections (les cassés au ramassage ne sont pas comptés)</div></div>
+</section>
+
+<details class="calc-banner fold top-gap" open data-fold="egg-stock"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>✅ <strong>Ramassage</strong> (menu Œufs) → le stock <strong>monte</strong> · 💰 <strong>Vente</strong> → le stock <strong>descend</strong>.</span>
+  <span>📋 <strong>Inventaire</strong> : comptez les œufs réellement présents et écrivez-les ici. Le logiciel compare avec son stock : s'il manque des œufs, l'écart apparaît en rouge dans <strong>Écarts & contrôles</strong> et doit être expliqué (casse, vol, erreur…).</span>
+  <span>🧺 <strong>Casse / perte / œufs consommés</strong> : à déclarer ici pour que le stock reste juste.</span></div></details>
+
+{% if can('ventes', 2) %}
+<section class="card top-gap">
+  <h2>{{ icon('list', 20) }} Inventaire ou correction du stock</h2>
+  <form method="post" class="grid four top" data-inv-form data-stock="{{ stock }}">
+    {{ csrf() }}
+    <div class="field"><label>Quoi ?</label><select class="input" name="kind" data-kind>{% for k, v in kinds.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+    <div class="field"><label data-qty-label>Œufs comptés : plateaux ({{ tray }})</label><input class="input" name="trays" inputmode="decimal" placeholder="0" data-trays></div>
+    <div class="field"><label>+ Œufs</label><input class="input" name="eggs" inputmode="numeric" placeholder="0" data-eggs></div>
+    <div class="field"><label>Date</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}"></div>
+    <div class="field span-2"><label>Explication</label><input class="input" name="notes" maxlength="150" list="causes-stock" placeholder="ex. casse au transport, vol…" data-combo>
+      <datalist id="causes-stock">{% for c in ['Casse au transport', 'Casse au stockage', 'Vol / disparition', 'Œufs consommés à la ferme', 'Œufs donnés', 'Erreur de saisie', 'Œufs pourris', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist></div>
+    <div class="field"><label>Résultat</label><div class="stock-pill" data-inv-result>—</div></div>
+    <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Stock d'œufs · 30 jours</h2></div>
+  <div class="chart-box sm" data-chart-type="line" data-chart='{{ chart|tojson }}'></div>
+  <p class="hint">Stock à la fin de chaque jour. ▲ plus haut · ▼ plus bas · pointillés = moyenne.</p>
+</section>
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Historique : avant → après</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Quoi</th><th class="right">Avant</th><th class="right">Mouvement</th><th class="right">Après</th><th>Remarque</th><th>Par</th><th></th></tr></thead>
+    <tbody>{% for r in ledger %}
+      <tr class="{{ 'row-alert' if r.kind in ('inventaire', 'perte', 'casse') and r.qty < 0 and not r.notes }}">
+        <td data-label="Date" class="nowrap">{{ r.date|date_fr }}</td>
+        <td data-label="Quoi">{% if r.url %}<a href="{{ r.url }}">{{ r.label }}</a>{% else %}{{ r.label }}{% endif %}</td>
+        <td data-label="Avant" class="right">{{ r.before|num }}</td>
+        <td data-label="Mouvement" class="right"><strong class="{{ 'text-ok' if r.qty > 0 else 'text-danger' }}">{{ '+' if r.qty > 0 }}{{ r.qty|num }}</strong></td>
+        <td data-label="Après" class="right"><strong>{{ r.after|num }}</strong></td>
+        <td data-label="Remarque">{{ r.notes or ('⚠️ sans explication' if r.kind in ('inventaire', 'perte', 'casse') and r.qty < 0 else '—') }}</td>
+        <td data-label="Par">{{ r.by or '—' }}</td>
+        <td class="right">{% if r.move and can_correct('ventes', r.move) %}<form method="post" action="{{ url_for('ventes.move_delete', move_id=r.id) }}" data-confirm="Annuler cette correction ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 16) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="8" class="center muted">Aucun mouvement. Saisissez le ramassage dans le menu Œufs.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>
+<script>
+(() => {
+  const f = document.querySelector("[data-inv-form]"); if (!f) return;
+  const stock = parseInt(f.dataset.stock) || 0, TRAY = {{ tray }};
+  const num = (el) => parseFloat(String(el.value || "").replace(/\s/g, "").replace(",", ".")) || 0;
+  const up = () => {
+    const kind = f.querySelector("[data-kind]").value, n = Math.round(num(f.querySelector("[data-trays]")) * TRAY + num(f.querySelector("[data-eggs]")));
+    f.querySelector("[data-qty-label]").textContent = (kind === "inventaire" ? "Œufs comptés" : "Nombre d'œufs") + " : plateaux (" + TRAY + ")";
+    const out = f.querySelector("[data-inv-result]");
+    if (!n && kind !== "inventaire") { out.textContent = "—"; out.className = "stock-pill"; return; }
+    let after = kind === "inventaire" ? n : (kind === "ajout" ? stock + n : stock - n), diff = after - stock;
+    out.textContent = `${stock} → ${after} œufs (${diff > 0 ? "+" : ""}${diff})` + (kind === "inventaire" && diff === 0 ? " · conforme ✅" : "");
+    out.className = "stock-pill" + (diff < 0 ? " due" : "");
+  };
+  f.addEventListener("input", up); f.addEventListener("change", up); up();
+})();
+</script>
+{% endblock %}

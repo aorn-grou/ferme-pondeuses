@@ -161,3 +161,62 @@ class TestOeufs(TestLots):
             self.assertEqual(res.status_code, 200, url)
         self.assertIn("Baisse de ponte", self.client.get("/controles/").get_data(as_text=True))
         self.assertIn("Ponte de ce lot", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True))
+
+
+class TestVentes(StockBase):
+    def test_sales_stock_credit_inventory(self):
+        TestLots.setup_feed(self)
+        prog = self.one("SELECT id FROM feed_programs")[0]
+        arrival = (date.today() - timedelta(days=150)).isoformat()
+        TestLots.new_lot(self, prog, arrival, count="200", egg_price="500", paid="0")
+        lot = self.one("SELECT * FROM lots")
+        d = (date.today() - timedelta(days=1)).isoformat()
+        self.post("/oeufs/", {"date": d, "lot_id": [str(lot["id"])], "trays": ["6"], "eggs": ["0"], "broken": ["3"], "notes": [""]})
+        from app.sales import egg_stock, client_balance
+        with self.app.test_request_context():
+            self.assertEqual(egg_stock(), 180)
+        # vente de 4 plateaux à 15 000 Ar le plateau, client nouveau, 30 000 payé
+        res = self.post("/ventes/nouvelle", {"date": date.today().isoformat(), "client_id": "__new__:Épicerie Rasoa",
+                                             "product": "Œufs", "trays": "4", "eggs": "", "price": "15000",
+                                             "price_unit": "plateau", "paid": "30000", "account_id": str(self.account()),
+                                             "lot_id": "", "notes": ""})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:2000])
+        sale = self.one("SELECT * FROM sales")
+        self.assertEqual(sale["quantity"], 120)
+        self.assertAlmostEqual(sale["total"], 60000)
+        client = self.one("SELECT * FROM clients")
+        self.assertEqual(client["name"], "Épicerie Rasoa")
+        with self.app.test_request_context():
+            self.assertEqual(egg_stock(), 60)
+            self.assertAlmostEqual(client_balance(client["id"])["due"], 30000)
+        # trop d'œufs : refusé avec explication
+        res = self.post("/ventes/nouvelle", {"date": date.today().isoformat(), "client_id": "", "product": "Œufs",
+                                             "trays": "3", "eggs": "", "price": "500", "price_unit": "oeuf", "paid": "",
+                                             "account_id": str(self.account()), "lot_id": "", "notes": ""}, follow_redirects=True)
+        self.assertIn("Il n&#39;y a que", res.get_data(as_text=True))
+        # paiement du reste
+        self.post(f"/ventes/{sale['id']}/encaisser", {"amount": "30000", "date": date.today().isoformat(),
+                                                      "account_id": str(self.account())})
+        with self.app.test_request_context():
+            self.assertAlmostEqual(client_balance(client["id"])["due"], 0)
+        self.assertAlmostEqual(self.one("SELECT SUM(amount) FROM cash_movements WHERE kind = 'vente'")[0], 60000)
+        # autre produit : ne touche pas le stock d'œufs
+        self.post("/ventes/nouvelle", {"date": date.today().isoformat(), "client_id": "", "product": "Fumier",
+                                       "qty": "2", "unit": "sac", "price": "5000", "price_unit": "unite", "paid": "",
+                                       "account_id": str(self.account()), "lot_id": "", "notes": ""})
+        with self.app.test_request_context():
+            self.assertEqual(egg_stock(), 60)
+        # inventaire : 55 œufs comptés → écart de −5
+        self.post("/ventes/stock", {"kind": "inventaire", "trays": "1", "eggs": "25", "date": date.today().isoformat(), "notes": ""})
+        with self.app.test_request_context():
+            self.assertEqual(egg_stock(), 55)
+        page = self.client.get("/controles/").get_data(as_text=True)
+        self.assertIn("Stock d&#39;œufs", page)
+        # lot : ventes réelles
+        self.assertIn("Bénéfice réel", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True))
+        # annulation : les œufs reviennent
+        self.post(f"/ventes/{sale['id']}/annuler", {})
+        with self.app.test_request_context():
+            self.assertEqual(egg_stock(), 175)
+        for url in ["/ventes/", "/ventes/stock", "/ventes/clients", f"/ventes/clients/{client['id']}", "/"]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)

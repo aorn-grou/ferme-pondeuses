@@ -271,6 +271,10 @@ def lot(lot_id):
              "feed_per_egg": (feed_since_lay / eggs["laid"]) if eggs["laid"] else None,
              "cost_per_egg": ((summary["chick_cost"] + summary["eaten_cost"]) / eggs["laid"]) if eggs["laid"] else None}
     money["result"] = money["eggs_value"] - money["costs"]
+    from .sales import lot_revenue
+
+    money["sales"] = lot_revenue(item)
+    money["real"] = money["sales"]["total"] - money["costs"]
     egg_chart = lot_chart(item)
     return render_template("lots/lot.html", item=item, s=summary, cons=cons, events=events, feedings=feedings,
                            eggs=eggs, money=money, egg_chart=egg_chart,

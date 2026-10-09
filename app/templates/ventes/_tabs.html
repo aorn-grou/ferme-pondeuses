@@ -1,0 +1,6 @@
+{% from "_macros.html" import icon %}
+<nav class="tabs" aria-label="Sections">
+  <a class="tab {% if active == 'ventes' %}active{% endif %}" href="{{ url_for('ventes.index') }}">{{ icon('cart', 18) }} Ventes</a>
+  <a class="tab {% if active == 'stock' %}active{% endif %}" href="{{ url_for('ventes.stock') }}">{{ icon('egg', 18) }} Stock d'œufs</a>
+  <a class="tab {% if active == 'clients' %}active{% endif %}" href="{{ url_for('ventes.clients') }}">{{ icon('users', 18) }} Clients &amp; crédits</a>
+</nav>

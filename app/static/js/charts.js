@@ -117,7 +117,7 @@
       el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: muted }, svg).textContent = fmt(v) + (data.unit === "%" ? " %" : "");
     }
     const every = Math.ceil(n / Math.max(3, Math.floor(iw / 62)));
-    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i >= every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
+    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i > every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
     drawMarks(svg, data.marks, data.labels, x, m.t, ih);
     data.series.forEach((s, k) => {
       const col = s.color || PALETTE[k % PALETTE.length];
@@ -148,10 +148,12 @@
   function combo(box, data) {
     box.innerHTML = "";
     const W = Math.max(320, box.clientWidth || 600), H = box.clientHeight || 260;
-    const m = { l: 50, r: 46, t: 22, b: 26 }, n = data.labels.length;
+    const n = data.labels.length;
     if (!n) return;
     const bars = data.bars.map((v) => v || 0), line = data.line;
     const maxB = niceMax(Math.max(1, ...bars)), maxL = data.lineMax || niceMax(Math.max(1, ...line.filter((v) => v != null)));
+    const rLab = (fmt(maxL) + (data.lineUnit === "%" ? " %" : "")).length;
+    const m = { l: 50, r: Math.max(46, 12 + rLab * 6.6), t: 22, b: 26 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b, step = iw / n;
     const x = (i) => m.l + step * i + step / 2, yB = (v) => m.t + ih - (v / maxB) * ih, yL = (v) => m.t + ih - (v / maxL) * ih;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img" }, box);
@@ -164,7 +166,7 @@
       el("text", { x: W - m.r + 6, y: yy + 4, "font-size": 11, fill: cL }, svg).textContent = fmt((maxL / 4) * k) + (data.lineUnit === "%" ? " %" : "");
     }
     const every = Math.ceil(n / Math.max(3, Math.floor(iw / 54)));
-    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i >= every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
+    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i > every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
     const bw = Math.max(2, Math.min(18, step * 0.62));
     bars.forEach((v, i) => { if (v > 0) el("rect", { x: x(i) - bw / 2, y: yB(v), width: bw, height: Math.max(1, m.t + ih - yB(v)), rx: 2, fill: cB }, svg); });
     drawMarks(svg, data.marks, data.labels, x, m.t, ih);
@@ -205,7 +207,7 @@
       el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: muted }, svg).textContent = fmt(v);
     }
     const every = Math.ceil(n / Math.max(3, Math.floor(iw / 62)));
-    data.labels.forEach((lab, i) => { if ((i % every === 0 && (n - 1 - i >= every / 2 || i === n - 1)) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
+    data.labels.forEach((lab, i) => { if ((i % every === 0 && (n - 1 - i > every / 2 || i === n - 1)) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
     const pts = vals.map((v, i) => [x(i), y(v)]);
     const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
     el("path", { d: d + ` L${pts[n - 1][0]} ${m.t + ih} L${pts[0][0]} ${m.t + ih} Z`, fill: col, "fill-opacity": 0.13 }, svg);

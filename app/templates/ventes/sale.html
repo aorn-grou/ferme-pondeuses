@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Vente n°{{ item.id }}{% endblock %}
+{% block content %}
+{% call page_head('Vente n°' ~ item.id, (item.date|date_fr) ~ (' · ' ~ item.client if item.client else ' · client de passage'), 'cart') %}
+  <a class="btn ghost" href="{{ url_for('ventes.index') }}">← Ventes</a>
+  {% if can('ventes', 2) %}<a class="btn primary" href="{{ url_for('ventes.sale_new') }}">{{ icon('plus', 18) }} Nouvelle vente</a>{% endif %}
+{% endcall %}
+<div class="stats">
+  <div class="stat"><span class="stat-icon">{{ icon('egg') }}</span><span class="stat-label">Quoi</span><strong class="stat-value small">{% if item.is_eggs %}{{ fmt_eggs(item.quantity) }}{% else %}{{ item.product }}{% endif %}</strong>
+    <small class="muted">{% if item.is_eggs %}{{ item.unit_price|money }} l'œuf · {{ (item.unit_price * 30)|money }} le plateau{% else %}{{ item.input_qty }} × {{ item.unit_price|money }}{% endif %}</small></div>
+  <div class="stat"><span class="stat-icon">{{ icon('cart') }}</span><span class="stat-label">Total</span><strong class="stat-value small">{{ item.total|money }}</strong>{% if item.lot %}<small class="muted">œufs du {{ item.lot }}</small>{% endif %}</div>
+  <div class="stat"><span class="stat-icon">{{ icon('wallet') }}</span><span class="stat-label">Payé</span><strong class="stat-value small text-ok">{{ item.paid_total|money }}</strong><small class="muted">{{ item.paid|money }} le jour de la vente{% if account %} → {{ account.name }}{% endif %}</small></div>
+  <div class="stat {{ 'has-alert' if item.due > 0.5 }}"><span class="stat-icon">{{ icon('alert') }}</span><span class="stat-label">Reste à recevoir</span><strong class="stat-value small {{ 'text-danger' if item.due > 0.5 else 'text-ok' }}">{{ item.due|money if item.due > 0.5 else 'rien ✅' }}</strong></div>
+</div>
+{% if item.notes %}<section class="card note-card top-gap"><h2>📝 Remarque</h2><p>{{ item.notes }}</p></section>{% endif %}
+
+{% if item.due > 0.5 and can('ventes', 2) %}
+<section class="card top-gap">
+  <h2>{{ icon('wallet', 20) }} Encaisser un paiement</h2>
+  <form method="post" action="{{ url_for('ventes.payment_new', sale_id=item.id) }}" class="grid four">
+    {{ csrf() }}
+    <div class="field"><label>Montant (Ar)</label><input class="input" name="amount" inputmode="decimal" value="{{ item.due|int }}" required></div>
+    <div class="field"><label>Date</label><input class="input" type="date" name="date" value="{{ today }}" required></div>
+    <div class="field"><label>L'argent va dans</label><select class="input" name="account_id" data-free="compte">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 18) }} Encaisser</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Paiements</h2></div>
+  <table class="table responsive"><thead><tr><th>Date</th><th>Montant</th><th>Compte</th><th>Par</th></tr></thead>
+    <tbody><tr><td data-label="Date">{{ item.date|date_fr }}</td><td data-label="Montant">{{ item.paid|money }} <small class="muted">(à la vente)</small></td><td data-label="Compte">{{ account.name if account else '—' }}</td><td data-label="Par">{{ item.username or '—' }}</td></tr>
+    {% for p in payments %}<tr><td data-label="Date">{{ p.date|date_fr }}</td><td data-label="Montant">{{ p.amount|money }}</td><td data-label="Compte">{{ p.account or '—' }}</td><td data-label="Par">{{ p.username or '—' }}</td></tr>{% endfor %}</tbody></table>
+</section>
+
+{% if can_correct('ventes', raw) %}
+<section class="card top-gap"><h2>Annuler cette vente</h2><p class="muted">En cas d'erreur : {% if item.is_eggs %}les œufs reviennent en stock et {% endif %}l'argent est retiré de la caisse. Vos associés sont prévenus.</p>
+  <form method="post" action="{{ url_for('ventes.sale_delete', sale_id=item.id) }}" data-confirm="Annuler la vente n°{{ item.id }} ?">{{ csrf() }}<button class="btn danger-ghost" type="submit">{{ icon('trash', 18) }} Annuler la vente</button></form></section>
+{% endif %}
+{% with ref_type='sale', ref_id=item.id %}{% include "discussion/_comments.html" %}{% endwith %}
+{% endblock %}

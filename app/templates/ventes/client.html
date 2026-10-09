@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block content %}
+{% call page_head(c.name, 'Client' ~ (' · ' ~ c.phone if c.phone else ''), 'users') %}
+  <a class="btn ghost" href="{{ url_for('ventes.clients') }}">← Clients</a>
+{% endcall %}
+<div class="stats">
+  <div class="stat"><span class="stat-label">Achats</span><strong class="stat-value small">{{ bal.bought|money }}</strong><small class="muted">{{ bal.count }} vente(s)</small></div>
+  <div class="stat"><span class="stat-label">Payé</span><strong class="stat-value small text-ok">{{ bal.paid|money }}</strong></div>
+  <div class="stat"><span class="stat-label">Doit encore</span><strong class="stat-value small {{ 'text-danger' if bal.due > 0.5 else 'text-ok' }}">{{ bal.due|money if bal.due > 0.5 else 'rien ✅' }}</strong></div>
+</div>
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('cart', 20) }} Ventes</h2></div>
+  <table class="table responsive"><thead><tr><th>Date</th><th>N°</th><th>Quoi</th><th class="right">Total</th><th class="right">Reste</th></tr></thead>
+    <tbody>{% for r in rows %}<tr class="clickable" data-href="{{ url_for('ventes.sale', sale_id=r.id) }}"><td data-label="Date">{{ r.date|date_fr }}</td><td data-label="N°"><a href="{{ url_for('ventes.sale', sale_id=r.id) }}">n°{{ r.id }}</a></td>
+      <td data-label="Quoi">{% if r.is_eggs %}🥚 {{ fmt_eggs(r.quantity) }}{% else %}{{ r.product }} · {{ r.input_qty }}{% endif %}</td><td data-label="Total" class="right">{{ r.total|money }}</td>
+      <td data-label="Reste" class="right">{% if r.due > 0.5 %}<span class="badge badge-danger">{{ r.due|money }}</span>{% else %}<span class="badge badge-ok">payé</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="5" class="center muted">Aucune vente.</td></tr>{% endfor %}</tbody></table>
+</section>
+{% if can('ventes', 2) %}
+<section class="card top-gap"><h2>Fiche du client</h2>
+  <form method="post" class="grid three">{{ csrf() }}
+    <div class="field"><label>Nom</label><input class="input" name="name" value="{{ c.name }}" required></div>
+    <div class="field"><label>Téléphone</label><input class="input" name="phone" value="{{ c.phone or '' }}" placeholder="ex. 034 00 000 00"></div>
+    <div class="field"><label>Remarque</label><input class="input" name="notes" value="{{ c.notes or '' }}" placeholder="ex. épicerie du marché"></div>
+    <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+  </form></section>
+{% endif %}
+{% with ref_type='client', ref_id=c.id %}{% include "discussion/_comments.html" %}{% endwith %}
+{% endblock %}

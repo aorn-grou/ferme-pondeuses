@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+{% call page_head('Clients & crédits', "Ce que chaque client a acheté, payé, et ce qu'il doit encore.", 'users') %}
+  {% if can('ventes', 2) %}<a class="btn primary" href="{{ url_for('ventes.sale_new') }}">{{ icon('plus', 18) }} Nouvelle vente</a>{% endif %}
+{% endcall %}
+{% with active='clients' %}{% include "ventes/_tabs.html" %}{% endwith %}
+{% if total_due > 0.5 %}<div class="alert-chip critical">{{ icon('alert', 16) }} <strong>{{ total_due|money }}</strong> <span>à recevoir des clients au total.</span></div>{% endif %}
+<section class="card flush top-gap">
+  <table class="table responsive"><thead><tr><th>Client</th><th class="right">Achats</th><th class="right">Payé</th><th class="right">Doit</th><th>Dernier achat</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr class="clickable {{ 'row-alert' if r.due > 0.5 }}" data-href="{{ url_for('ventes.client', client_id=r.c.id) }}">
+        <td data-label="Client"><a href="{{ url_for('ventes.client', client_id=r.c.id) }}"><strong>{{ r.c.name }}</strong></a>{% if r.c.phone %}<small class="muted block">{{ r.c.phone }}</small>{% endif %}</td>
+        <td data-label="Achats" class="right">{{ r.bought|money }}<small class="muted block">{{ r.count }} vente(s)</small></td>
+        <td data-label="Payé" class="right">{{ r.paid|money }}</td>
+        <td data-label="Doit" class="right">{% if r.due > 0.5 %}<strong class="text-danger">{{ r.due|money }}</strong>{% else %}<span class="badge badge-ok">rien</span>{% endif %}</td>
+        <td data-label="Dernier achat">{{ r.last|date_fr if r.last else '—' }}</td></tr>
+    {% else %}<tr><td colspan="5" class="center muted">Pas encore de client. Ils sont créés tout seuls quand vous écrivez leur nom dans une vente.</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Ventes{% endblock %}
+{% block content %}
+{% call page_head('Ventes & clients', "Chaque vente fait baisser le stock d'œufs et entrer l'argent dans la caisse. Payé, en partie ou à crédit : tout est suivi.", 'cart') %}
+  {% if can('ventes', 2) %}<a class="btn primary" href="{{ url_for('ventes.sale_new') }}">{{ icon('plus', 18) }} Nouvelle vente</a>{% endif %}
+{% endcall %}
+{% with active='ventes' %}{% include "ventes/_tabs.html" %}{% endwith %}
+
+<div class="kpis">
+  <a class="kpi" href="{{ url_for('ventes.stock') }}"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('egg', 18) }}</span><span class="tag tag-gold">en stock</span></div>
+    <div class="kpi-val">{{ kpi.stock|num }} œufs</div><div class="kpi-lab">{{ (kpi.stock // 30)|num }} plateau(x) + {{ kpi.stock % 30 }} · Stock d'œufs</div></a>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('cart', 18) }}</span><span class="tag tag-green">ce mois</span></div>
+    <div class="kpi-val">{{ kpi.ca|money }}</div><div class="kpi-lab">Ventes du mois · {{ kpi.eggs|num }} œufs vendus</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('wallet', 18) }}</span><span class="tag tag-green">encaissé</span></div>
+    <div class="kpi-val">{{ kpi.cashed|money }}</div><div class="kpi-lab">Argent reçu ce mois</div></div>
+  <a class="kpi" href="{{ url_for('ventes.clients') }}"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('alert', 18) }}</span>{% if kpi.due %}<span class="tag tag-red">à recevoir</span>{% else %}<span class="tag tag-green">aucun crédit</span>{% endif %}</div>
+    <div class="kpi-val">{{ kpi.due|money }}</div><div class="kpi-lab">Crédits des clients (tous)</div></a>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('egg', 18) }}</span><span class="tag tag-gold">prix moyen</span></div>
+    <div class="kpi-val">{{ (kpi.price|money) if kpi.price else '—' }}</div><div class="kpi-lab">par œuf ce mois{% if kpi.price %} · {{ (kpi.price * 30)|money }} le plateau{% endif %}</div></div>
+</div>
+
+{% if chart %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Ventes par jour · 30 jours</h2></div>
+  <div class="chart-box" data-chart-type="combo" data-chart='{{ chart|tojson }}'></div>
+  <p class="hint"><span class="sw-inline gold"></span> barres = œufs vendus (gauche) · <span class="sw-inline green"></span> courbe = montant de la journée en Ar (droite). ▲ meilleur jour · ▼ plus faible.</p>
+</section>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} Ventes</h2>
+    <form method="get" class="inline-form"><select class="input sm" name="periode" onchange="this.form.submit()">
+      {% for k, v in [('7', '7 jours'), ('30', '30 jours'), ('90', '3 mois'), ('365', '1 an'), ('tout', 'Tout')] %}<option value="{{ k }}" {% if period == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></form></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Quoi</th><th class="right">Total</th><th class="right">Payé</th><th class="right">Reste</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr class="clickable" data-href="{{ url_for('ventes.sale', sale_id=r.id) }}">
+        <td data-label="Date" class="nowrap">{{ r.date|date_fr }}</td>
+        <td data-label="N°"><a href="{{ url_for('ventes.sale', sale_id=r.id) }}">n°{{ r.id }}</a></td>
+        <td data-label="Client">{{ r.client or '—' }}</td>
+        <td data-label="Quoi">{% if r.is_eggs %}🥚 {{ fmt_eggs(r.quantity) }}{% else %}{{ r.product }} · {{ r.input_qty }}{% endif %}{% if r.lot %}<small class="muted block">{{ r.lot }}</small>{% endif %}</td>
+        <td data-label="Total" class="right"><strong>{{ r.total|money }}</strong></td>
+        <td data-label="Payé" class="right">{{ r.paid_total|money }}</td>
+        <td data-label="Reste" class="right">{% if r.due > 0.5 %}<span class="badge badge-danger">{{ r.due|money }}</span>{% else %}<span class="badge badge-ok">payé</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Aucune vente sur cette période.{% if can('ventes', 2) %} <a href="{{ url_for('ventes.sale_new') }}">Enregistrer une vente</a>{% endif %}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endblock %}

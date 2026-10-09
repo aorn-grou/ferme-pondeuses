@@ -162,7 +162,7 @@ class TestUsers(Base):
         self.assertIn("Lots de poules", page)          # module de son rôle
         self.assertNotIn("Paramètres", page)            # pas d'administration
         self.assertEqual(other.get("/utilisateurs/").status_code, 403)
-        self.assertEqual(other.get("/module/ventes").status_code, 403)
+        self.assertEqual(other.get("/ventes/").status_code, 403)
         self.assertEqual(other.get("/lots/").status_code, 200)
         self.assertEqual(other.get("/oeufs/").status_code, 200)
 
@@ -177,7 +177,7 @@ class TestUsers(Base):
         other = self.app.test_client()
         self.login("rakoto", "Ferme-1234", client=other)
         self.post("/premiere-connexion", {"password": "Akoho-2026", "confirm": "Akoho-2026", "question": "Question numéro un ?", "answer": "oui"}, client=other)
-        self.assertEqual(other.get("/module/ventes").status_code, 200)
+        self.assertEqual(other.get("/ventes/").status_code, 200)
         self.assertEqual(other.get("/lots/").status_code, 403)
         self.assertEqual(other.get("/oeufs/").status_code, 403)
 
@@ -242,7 +242,7 @@ class TestUsers(Base):
         for url in ["/", "/utilisateurs/", "/utilisateurs/?voir=tous", "/utilisateurs/nouveau", f"/utilisateurs/{uid}",
                     "/parametres/", "/parametres/?onglet=apparence", "/parametres/?onglet=email",
                     "/parametres/?onglet=securite", "/sauvegardes/", "/journal", "/journal?utilisateur=super-adm&du=2020-01-01",
-                    "/mon-profil", "/oeufs/", "/module/sanitaire", "/module/ventes", "/lots/", "/lots/alimentation"]:
+                    "/mon-profil", "/oeufs/", "/module/sanitaire", "/ventes/", "/ventes/stock", "/ventes/clients", "/ventes/nouvelle", "/lots/", "/lots/alimentation"]:
             res = self.client.get(url)
             self.assertEqual(res.status_code, 200, url)
         self.assertEqual(self.client.get("/module/inconnu").status_code, 404)

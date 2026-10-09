@@ -43,10 +43,13 @@
   <div class="stat"><span class="stat-icon">{{ icon('clock') }}</span><span class="stat-label">Reste à manger (prévision)</span><strong class="stat-value small text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small class="muted">{% if s.forecast.by_formula|length == 1 %}<strong>{{ s.forecast.days|num }} j × {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour</strong>{% else %}<strong>{{ s.forecast.days|num }} jours</strong>, de {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour aujourd'hui à plus selon l'âge{% endif %}<br>{{ s.forecast.cost|money }} · jusqu'au {{ s.forecast.end_date|date_fr }}</small></div>
   {% endif %}
   <div class="stat"><span class="stat-icon">{{ icon('wallet') }}</span><span class="stat-label">Achat des poussins</span><strong class="stat-value small">{{ s.chick_cost|money }}</strong><small class="muted">{{ item.chick_price|money }} / poussin{% if item.supplier %} · {{ item.supplier }}{% endif %}</small></div>
-  <a class="stat" href="#ponte"><span class="stat-icon">{{ icon('egg') }}</span><span class="stat-label">Bénéfice estimé à ce jour</span>
-    {% if eggs.laid %}<strong class="stat-value small {{ 'text-ok' if money.result >= 0 else 'text-danger' }}">{{ '+' if money.result > 0 }}{{ money.result|money }}</strong>
-    <small class="muted">œufs {{ money.eggs_value|money }} − dépenses {{ money.costs|money }}</small>
-    {% else %}<strong class="stat-value small muted">pas encore d'œufs</strong><small class="muted">dépenses : {{ money.costs|money }} (poussins + provende)</small>{% endif %}</a>
+  <a class="stat" href="#ponte"><span class="stat-icon">{{ icon('egg') }}</span>
+    {% if money.sales.total %}<span class="stat-label">Bénéfice réel à ce jour</span>
+    <strong class="stat-value small {{ 'text-ok' if money.real >= 0 else 'text-danger' }}">{{ '+' if money.real > 0 }}{{ money.real|money }}</strong>
+    <small class="muted">ventes {{ money.sales.total|money }} − dépenses {{ money.costs|money }}</small>
+    {% elif eggs.laid %}<span class="stat-label">Bénéfice estimé à ce jour</span><strong class="stat-value small {{ 'text-ok' if money.result >= 0 else 'text-danger' }}">{{ '+' if money.result > 0 }}{{ money.result|money }}</strong>
+    <small class="muted">œufs {{ money.eggs_value|money }} − dépenses {{ money.costs|money }} (pas encore de ventes)</small>
+    {% else %}<span class="stat-label">Rentabilité</span><strong class="stat-value small muted">pas encore d'œufs</strong><small class="muted">dépenses : {{ money.costs|money }} (poussins + provende)</small>{% endif %}</a>
 </div>
 
 {% if s.suggest and can('alimentation', 2) %}
@@ -92,7 +95,12 @@
   {% else %}
   <p class="muted">{% if s.laying.phase == 'ponte' %}Ce lot devrait pondre depuis la semaine {{ s.laying.week }} : saisissez le ramassage pour voir le taux de ponte.{% else %}🐣 Ce lot est en élevage : ponte prévue <strong>semaine {{ s.laying.week }}</strong> (le {{ s.laying.date|date_fr }}). Si les premiers œufs arrivent avant, saisissez-les simplement : le logiciel les comptera.{% endif %}</p>
   {% endif %}
-  <p class="hint">Bénéfice estimé = œufs × {{ item.egg_price|money }} − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}). Les vraies ventes et les autres dépenses viendront avec les modules Ventes et Dépenses.</p>
+  {% if money.sales.total %}
+  <p class="hint">💰 <strong>Ventes de ce lot : {{ money.sales.total|money }}</strong> = ventes marquées « {{ item.name }} » {{ money.sales.direct|money }} + sa part des ventes sans lot {{ money.sales.shared|money }} ({{ money.sales.share|round(1) }} % des bons œufs de la ferme viennent de ce lot).
+    Bénéfice réel = ventes − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}). Les autres dépenses viendront avec le module Dépenses.</p>
+  {% else %}
+  <p class="hint">Bénéfice estimé = œufs × {{ item.egg_price|money }} − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}). Dès qu'il y a des ventes, le vrai bénéfice remplace l'estimation.</p>
+  {% endif %}
 </section>
 
 {% if chart %}

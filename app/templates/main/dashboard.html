@@ -20,6 +20,8 @@
     {% if can('alimentation', 2) and L and L.count %}<a class="btn gold" href="{{ url_for('lots.feeding_day') }}">{{ icon('wheat', 18) }} Provende du jour</a>{% endif %}
     {% if can('provenderie', 2) %}<a class="btn hero-btn" href="{{ url_for('provenderie.production_new') }}">{{ icon('factory', 18) }} Fabriquer</a>{% endif %}
     {% if can('matieres', 2) %}<a class="btn hero-btn" href="{{ url_for('matieres.purchase_new') }}">{{ icon('cart', 18) }} Nouvel achat</a>{% endif %}
+    {% if can('oeufs', 2) %}<a class="btn hero-btn" href="{{ url_for('oeufs.index') }}">{{ icon('egg', 18) }} Ramassage</a>{% endif %}
+    {% if can('ventes', 2) %}<a class="btn hero-btn" href="{{ url_for('ventes.sale_new') }}">{{ icon('cart', 18) }} Vente</a>{% endif %}
     {% if can('lots', 2) %}<a class="btn hero-btn" href="{{ url_for('lots.lot_new') }}">{{ icon('plus', 18) }} Nouveau lot</a>{% endif %}
   </div>
 </section>
@@ -77,6 +79,14 @@
   <a class="kpi" href="{{ url_for('lots.index') }}">
     <div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('clock', 18) }}</span><span class="tag tag-gold">jusqu'aux réformes</span></div>
     <div class="kpi-val">{{ L.future_kg|round(0)|qty('kg') }}</div><div class="kpi-lab">Provende à prévoir · {{ L.future_cost|money }}<br><small>poules × g/jour × jours restants, tous les lots</small></div>
+  </a>
+  {% endif %}
+  {% if d.sales %}{% set SA = d.sales %}
+  <a class="kpi" href="{{ url_for('ventes.index') }}">
+    <div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('cart', 18) }}</span>
+      {% if SA.due > 0.5 %}<span class="tag tag-red">à recevoir {{ SA.due|money }}</span>{% else %}<span class="tag tag-green">aucun crédit</span>{% endif %}</div>
+    <div class="kpi-val">{{ SA.month|money }}</div><div class="kpi-lab">Ventes ce mois · {{ SA.count }} vente(s) · stock {{ SA.stock|num }} œufs</div>
+    <div class="kpi-spark" data-chart-type="spark" data-chart='{{ {"values": SA.weeks, "color": "#2e7d32"}|tojson }}'></div>
   </a>
   {% endif %}
   {% if d.eggs %}{% set E = d.eggs %}
@@ -203,7 +213,7 @@
     <div class="money-list">
       {% for a in d.accounts %}<div class="money-row"><span>{{ a.name }}</span><strong class="{{ 'text-danger' if a.balance < 0 else 'text-green' }}">{{ a.balance|money }}</strong></div>{% endfor %}
     </div>
-    <p class="hint">Pour l'instant : sorties pour achats et poussins. Les apports, ventes et retraits viendront avec le module Caisse.</p>
+    <p class="hint">Sorties : achats et poussins · entrées : ventes. Les apports et retraits des propriétaires viendront avec le module Caisse.</p>
   </section>
   {% endif %}
   <section class="card">

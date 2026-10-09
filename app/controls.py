@@ -86,6 +86,10 @@ def gaps(since=None, until=None):
         from .eggs import drop_alerts
 
         items.extend(drop_alerts(since, until))
+    if can("ventes"):
+        from .sales import egg_move_gaps
+
+        items.extend(egg_move_gaps(since, until))
     items.sort(key=lambda i: (i["date"], i.get("id", 0)), reverse=True)
     for item in items:
         item["explained"] = _explained(item["why"])
@@ -157,7 +161,7 @@ def index():
                            loss=sum(i["value"] for i in items if i["value"] < 0))
 
 
-TABLES = {"stock_moves": "matieres", "feed_moves": "provenderie", "lot_events": "lots", "egg_collections": "oeufs"}
+TABLES = {"stock_moves": "matieres", "feed_moves": "provenderie", "lot_events": "lots", "egg_collections": "oeufs", "egg_moves": "ventes"}
 
 
 @bp.route("/expliquer", methods=["POST"])
@@ -179,7 +183,8 @@ def explain():
         ref = {"stock_moves": ("material", row["material_id"] if "material_id" in row.keys() else None),
                "feed_moves": ("formula", row["formula_id"] if "formula_id" in row.keys() else None),
                "lot_events": ("lot", row["lot_id"] if "lot_id" in row.keys() else None),
-               "egg_collections": ("lot", row["lot_id"] if "lot_id" in row.keys() else None)}[table]
+               "egg_collections": ("lot", row["lot_id"] if "lot_id" in row.keys() else None),
+               "egg_moves": ("", None)}[table]
         qty = row["quantity"] if "quantity" in row.keys() else (row["good"] + row["broken"])
         notify(ref[0], ref[1], f"📝 Explication ajoutée pour l'écart du {date_fr(row['date'])} "
                f"({fmt_qty(qty)}) : « {text} »")

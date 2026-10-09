@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Nouvelle vente{% endblock %}
+{% block content %}
+{% call page_head('Nouvelle vente', "Tout s'écrit librement : un nouveau client est créé tout seul. Le total se calcule pendant que vous tapez.", 'cart') %}
+  <a class="btn ghost" href="{{ url_for('ventes.index') }}">← Ventes</a>
+{% endcall %}
+<form method="post" class="stack" data-sale-form>
+  {{ csrf() }}
+  <section class="card">
+    <h2>{{ icon('cart', 20) }} La vente</h2>
+    <div class="grid three">
+      <div class="field"><label for="date">Date *</label><input class="input" type="date" id="date" name="date" value="{{ values.date }}" max="{{ values.date if values.date > '' else '' }}" required></div>
+      <div class="field"><label for="client_id">Client</label>
+        <select class="input" id="client_id" name="client_id" data-free="client" data-placeholder="Écrivez le nom du client…" data-new-tip="Nouveau client : il sera créé.">
+          <option value="">— Client de passage —</option>
+          {% for c in clients %}<option value="{{ c.id }}" {% if values.client_id|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+        <p class="hint">Laissez vide pour un client de passage.</p></div>
+      <div class="field"><label for="product">Quoi ?</label><input class="input" id="product" name="product" value="{{ values.product }}" list="dl-products" data-combo data-product>
+        <datalist id="dl-products">{% for p in (['Œufs', 'Poules de réforme', 'Fumier', 'Plateaux vides'] + products)|unique %}<option value="{{ p }}">{% endfor %}</datalist>
+        <p class="hint">« Œufs » fait baisser le stock d'œufs. Autre chose : écrivez librement.</p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>{{ icon('egg', 20) }} Quantité et prix</h2>
+    <div class="grid four top" data-egg-fields>
+      <div class="field"><label for="trays">Plateaux ({{ tray }} œufs)</label><input class="input" id="trays" name="trays" inputmode="decimal" value="{{ values.trays }}" placeholder="0" data-trays></div>
+      <div class="field"><label for="eggs">+ Œufs</label><input class="input" id="eggs" name="eggs" inputmode="numeric" value="{{ values.eggs }}" placeholder="0" data-eggs></div>
+      <div class="field"><label>Stock disponible</label><div class="stock-pill">🥚 {{ stock|num }} œufs<br><small>{{ stock // tray }} plateau(x) + {{ stock % tray }}</small></div></div>
+    </div>
+    <div class="grid four top" data-other-fields hidden>
+      <div class="field"><label for="qty">Quantité</label><input class="input" id="qty" name="qty" inputmode="decimal" value="{{ values.qty }}" placeholder="ex. 10" data-qty></div>
+      <div class="field"><label for="unit">Unité</label><input class="input" id="unit" name="unit" value="{{ values.unit }}" list="dl-units" placeholder="ex. sac, poule, kg" data-combo>
+        <datalist id="dl-units">{% for u in ['poule', 'sac', 'kg', 'unité', 'charrette'] %}<option value="{{ u }}">{% endfor %}</datalist></div>
+    </div>
+    <div class="grid four top">
+      <div class="field"><label for="price">Prix (Ar)</label><input class="input" id="price" name="price" inputmode="decimal" value="{{ values.price }}" placeholder="ex. 15000" data-price></div>
+      <div class="field"><label for="price_unit">Le prix est</label>
+        <select class="input" id="price_unit" name="price_unit" data-price-unit>
+          <option value="plateau" {% if values.price_unit == 'plateau' %}selected{% endif %} data-egg>par plateau ({{ tray }} œufs)</option>
+          <option value="oeuf" {% if values.price_unit == 'oeuf' %}selected{% endif %} data-egg>par œuf</option>
+          <option value="unite" {% if values.price_unit == 'unite' %}selected{% endif %}>par unité</option></select></div>
+      <div class="totals"><div class="grand"><span>Total</span><strong data-sale-total>0 Ar</strong></div><small class="muted" data-sale-detail></small></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>{{ icon('wallet', 20) }} Paiement</h2>
+    <div class="grid three top">
+      <div class="field"><label for="paid">Payé maintenant (Ar)</label><input class="input" id="paid" name="paid" inputmode="decimal" value="{{ values.paid if values.paid is not none else '' }}" placeholder="= total" data-paid>
+        <p class="hint">Vide = tout est payé. <strong>0</strong> = à crédit. Un montant = payé en partie, le reste est suivi.</p></div>
+      <div class="field"><label for="account_id">L'argent va dans</label>
+        <select class="input" id="account_id" name="account_id" data-free="compte" data-new-tip="Nouveau compte : il sera créé.">
+          <option value="">— Choisir —</option>
+          {% for a in accounts %}<option value="{{ a.id }}" {% if values.account_id|string == a.id|string or (not values.account_id and loop.first) %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Reste à recevoir</label><div class="stock-pill" data-due>—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="grid two top">
+      <div class="field"><label for="lot_id">Œufs de quel lot ? (facultatif)</label>
+        <select class="input" id="lot_id" name="lot_id"><option value="">— Tous les lots (partagé selon la ponte) —</option>
+          {% for l in lots %}<option value="{{ l.id }}" {% if values.lot_id|string == l.id|string %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select>
+        <p class="hint">Sert à calculer le bénéfice de chaque lot. Si vous ne savez pas, laissez vide : la vente est partagée entre les lots selon leurs œufs.</p></div>
+      <div class="field"><label for="notes">Remarque</label><textarea class="input" id="notes" name="notes" rows="2" placeholder="ex. livré au marché, gros œufs…">{{ values.notes }}</textarea></div>
+    </div>
+  </section>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la vente</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const f = document.querySelector("[data-sale-form]"), TRAY = {{ tray }};
+  const num = (el) => parseFloat(String((el && el.value) || "").replace(/\s/g, "").replace(",", ".")) || 0;
+  const money = (v) => Math.round(v).toLocaleString("fr-FR") + " Ar";
+  const prod = f.querySelector("[data-product]"), eggF = f.querySelector("[data-egg-fields]"), othF = f.querySelector("[data-other-fields]");
+  const pu = f.querySelector("[data-price-unit]");
+  const isEgg = () => { const v = (prod.value || "").trim().toLowerCase(); return v === "" || v.startsWith("œuf") || v.startsWith("oeuf"); };
+  const up = () => {
+    const egg = isEgg();
+    eggF.hidden = !egg; othF.hidden = egg;
+    [...pu.options].forEach((o) => { if (o.dataset.egg !== undefined) o.hidden = !egg; else o.hidden = egg; });
+    if (egg && pu.value === "unite") pu.value = "plateau";
+    if (!egg && pu.value !== "unite") pu.value = "unite";
+    let qty, unitPrice, detail;
+    const price = num(f.querySelector("[data-price]"));
+    if (egg) {
+      qty = num(f.querySelector("[data-trays]")) * TRAY + num(f.querySelector("[data-eggs]"));
+      unitPrice = pu.value === "plateau" ? price / TRAY : price;
+      detail = qty ? `${Math.round(qty)} œufs × ${unitPrice.toLocaleString("fr-FR", {maximumFractionDigits: 1})} Ar` : "";
+    } else {
+      qty = num(f.querySelector("[data-qty]")); unitPrice = price;
+      detail = qty ? `${qty} × ${money(price)}` : "";
+    }
+    const total = qty * unitPrice;
+    f.querySelector("[data-sale-total]").textContent = money(total);
+    f.querySelector("[data-sale-detail]").textContent = detail;
+    const paidEl = f.querySelector("[data-paid]");
+    const paid = paidEl.value.trim() === "" ? total : num(paidEl);
+    const due = Math.max(0, total - paid);
+    const d = f.querySelector("[data-due]");
+    d.textContent = total ? (due > 0.5 ? money(due) + " (crédit)" : "rien, tout est payé ✅") : "—";
+    d.className = "stock-pill" + (due > 0.5 ? " due" : "");
+  };
+  f.addEventListener("input", up); f.addEventListener("change", up); up();
+})();
+</script>
+{% endblock %}

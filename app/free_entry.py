@@ -13,7 +13,7 @@ from .security import EDIT, can
 from .utils import log_activity
 
 PREFIX = "__new__:"
-BLUEPRINTS = {"matieres", "provenderie", "lots"}
+BLUEPRINTS = {"matieres", "provenderie", "lots", "ventes"}
 # Fabriquer une provende demande sa composition : pas de création automatique ici
 NO_FORMULA_CREATION = {"provenderie.production_new", "provenderie.production_edit"}
 
@@ -74,7 +74,17 @@ def _supplier(name):
     return new_id
 
 
+def _client(name):
+    row = query("SELECT id FROM clients WHERE name = ? COLLATE NOCASE", (name,), one=True)
+    if row:
+        return row["id"]
+    new_id = execute("INSERT INTO clients (name, created_at) VALUES (?, ?)", (name, now_utc()))
+    log_activity("Client ajouté (saisie libre)", name)
+    return new_id
+
+
 RESOLVERS = {
+    "client_id": lambda name, extra: _client(name),
     "material_id": lambda name, extra: _material(name, extra),
     "account_id": lambda name, extra: _account(name),
     "formula_id": lambda name, extra: _formula(name),

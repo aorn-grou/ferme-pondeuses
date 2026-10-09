@@ -22,7 +22,7 @@ MODULES = [
     ("sanitaire", "Suivi sanitaire", "shield", "Élevage", "Vaccinations avec alertes, soins, mortalité.", False),
     ("oeufs", "Œufs", "egg", "Élevage", "Ramassage par lot et par jour, taux de ponte, hausses et baisses.", True),
     ("reformes", "Poules de réforme", "tag", "Ventes", "Poules non rentables à vendre.", False),
-    ("ventes", "Ventes & clients", "cart", "Ventes", "Ventes d'œufs et de poules, clients, crédits, factures.", False),
+    ("ventes", "Ventes & clients", "cart", "Ventes", "Ventes d'œufs, stock d'œufs, clients, crédits.", True),
     ("depenses", "Dépenses", "receipt", "Finances", "Dépenses par catégorie, rattachées aux lots.", False),
     ("caisse", "Caisse & propriétaires", "wallet", "Finances", "Caisses, apports et retraits des propriétaires, clôture.", False),
     ("personnel", "Personnel & salaires", "users", "Finances", "Employés, présences, avances et salaires.", False),
@@ -49,6 +49,7 @@ MODULE_ENDPOINTS = {
     "controles": "controles.index",
     "alimentation": "lots.feeding_day",
     "oeufs": "oeufs.index",
+    "ventes": "ventes.index",
 }
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
 MENU_GROUPS = ["Pilotage", "Production", "Élevage", "Ventes", "Finances", "Administration"]

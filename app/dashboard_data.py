@@ -124,6 +124,15 @@ def build():
         for card in out["lots"]["cards"]:
             card["eggs"] = lot_egg_stats(card["lot"])
 
+    # --- Ventes -------------------------------------------------------------
+    if can("ventes"):
+        from .sales import egg_stock, sales_rows, total_due
+
+        m_rows = sales_rows(since=today()[:7] + "-01")
+        out["sales"] = {"month": sum(r["total"] for r in m_rows), "count": len(m_rows), "due": total_due(),
+                        "stock": egg_stock(),
+                        "weeks": _weeks(_series("SELECT date AS d, SUM(total) AS v FROM sales WHERE date >= ? GROUP BY date", days56))}
+
     # --- Provende ------------------------------------------------------------
     if can("provenderie") or can("alimentation"):
         given = _series("SELECT date AS d, SUM(quantity) AS v FROM feedings WHERE date >= ? GROUP BY date", days30)

@@ -224,6 +224,50 @@ SCHEMA = {
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
+    "clients": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("phone", "TEXT DEFAULT ''"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "sales": [  # ventes : œufs (diminuent le stock d'œufs) ou autre chose (fumier, poules…)
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("client_id", "INTEGER"),
+        ("product", "TEXT NOT NULL DEFAULT 'Œufs'"),
+        ("is_eggs", "INTEGER NOT NULL DEFAULT 1"),
+        ("quantity", "REAL NOT NULL DEFAULT 0"),     # en œufs pour les œufs
+        ("unit", "TEXT DEFAULT 'œuf'"),
+        ("input_qty", "TEXT DEFAULT ''"),            # ce qui a été écrit (ex. « 3 plateaux + 10 »)
+        ("unit_price", "REAL NOT NULL DEFAULT 0"),   # prix d'un œuf (ou d'une unité)
+        ("total", "REAL NOT NULL DEFAULT 0"),
+        ("paid", "REAL NOT NULL DEFAULT 0"),         # payé au moment de la vente
+        ("account_id", "INTEGER"),
+        ("lot_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "sale_payments": [  # encaissements plus tard (ventes à crédit)
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("sale_id", "INTEGER NOT NULL"),
+        ("date", "TEXT NOT NULL"),
+        ("amount", "REAL NOT NULL DEFAULT 0"),
+        ("account_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "egg_moves": [  # corrections du stock d'œufs : inventaire, casse, perte, œufs consommés…
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("kind", "TEXT NOT NULL"),
+        ("quantity", "INTEGER NOT NULL DEFAULT 0"),  # signé
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
     "lot_events": [  # morts, réformes, ventes, ajouts, corrections de comptage
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
         ("lot_id", "INTEGER NOT NULL"),
@@ -285,7 +329,7 @@ SCHEMA = {
 TRANSACTION_TABLES = [
     "purchases", "purchase_lines", "supplier_payments", "stock_moves",
     "productions", "production_lines", "feed_moves", "cash_movements",
-    "lots", "lot_events", "feedings", "egg_collections",
+    "lots", "lot_events", "feedings", "egg_collections", "clients", "sales", "sale_payments", "egg_moves",
 ]
 
 DEFAULT_ACCOUNTS = [
