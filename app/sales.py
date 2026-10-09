@@ -399,6 +399,9 @@ def stock():
         if kind not in MOVE_KINDS or not valid_date(date) or date > today():
             flash("Choix ou date invalide.", "error")
             return redirect(url_for("ventes.stock"))
+        if not any((request.form.get(k) or "").strip() for k in ("trays", "eggs")):
+            flash("Écrivez le nombre d'œufs comptés (plateaux et/ou œufs). Pour un stock vide, écrivez 0.", "error")
+            return redirect(url_for("ventes.stock"))
         before = egg_stock(date)
         if kind == "inventaire":
             qty = n - before

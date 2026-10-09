@@ -70,7 +70,8 @@
     const kind = f.querySelector("[data-kind]").value, n = Math.round(num(f.querySelector("[data-trays]")) * TRAY + num(f.querySelector("[data-eggs]")));
     f.querySelector("[data-qty-label]").textContent = (kind === "inventaire" ? "Œufs comptés" : "Nombre d'œufs") + " : plateaux (" + TRAY + ")";
     const out = f.querySelector("[data-inv-result]");
-    if (!n && kind !== "inventaire") { out.textContent = "—"; out.className = "stock-pill"; return; }
+    const empty = !f.querySelector("[data-trays]").value.trim() && !f.querySelector("[data-eggs]").value.trim();
+    if (empty || (!n && kind !== "inventaire")) { out.textContent = "—"; out.className = "stock-pill"; return; }
     let after = kind === "inventaire" ? n : (kind === "ajout" ? stock + n : stock - n), diff = after - stock;
     out.textContent = `${stock} → ${after} œufs (${diff > 0 ? "+" : ""}${diff})` + (kind === "inventaire" && diff === 0 ? " · conforme ✅" : "");
     out.className = "stock-pill" + (diff < 0 ? " due" : "");
