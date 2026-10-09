@@ -110,6 +110,7 @@ def forecast(lot):
     weeks_lived = max(1, start - 1 - (lot["age_days_at_arrival"] or 0) // 7)
     weekly_rate = min(0.02, (deaths / max(1, lot["initial_count"])) / weeks_lived) if deaths > 0 else 0
     weeks, total_kg, total_cost, total_days, by_formula = [], 0.0, 0.0, 0, {}
+    before_kg = before_cost = 0.0
     last_grams = 0
     for w in range(start, end + 1):
         row = program_for_week(rows, w)
@@ -124,6 +125,9 @@ def forecast(lot):
         price = (row["avg_cost"] if row else 0) or 0
         cost = kg * price
         name = row["formula"] if row else "—"
+        if w < (lot["laying_week"] or 18):
+            before_kg += kg
+            before_cost += cost
         weeks.append({"week": w, "birds": round(birds), "grams": grams, "kg": kg, "cost": cost, "days": days,
                       "start": first_day.isoformat(), "formula": name})
         total_kg += kg
@@ -139,6 +143,7 @@ def forecast(lot):
     for item in by_formula.values():  # quantité par jour moyenne sur la période (mortalité comprise)
         item["kg_day_avg"] = item["kg"] / item["days"] if item["days"] else 0
     return {"weeks": weeks, "kg": total_kg, "cost": total_cost, "by_formula": by_formula, "days": total_days,
+            "before_kg": before_kg, "before_cost": before_cost,
             "kg_day": weeks[0]["kg"] / weeks[0]["days"] if weeks and weeks[0]["days"] else 0,
             "end_date": date_of_week(lot, end + 1).isoformat(), "end_week": end, "weekly_rate": weekly_rate,
             "has_program": bool(rows)}
@@ -163,6 +168,23 @@ def weekly_series(lot, cons, fc):
             "barLabel": "Mangé", "lineLabel": "Prévision"}
 
 
+def laying_info(lot, week=None):
+    """Où en est le lot par rapport au début de la ponte (semaine variable, choisie pour chaque lot)."""
+    week = week or lot_week(lot)
+    lw = lot["laying_week"] or 18
+    reform = max(lw + 1, lot["reform_week"] or 72)
+    start = date_of_week(lot, lw)
+    info = {"week": lw, "date": start.isoformat(), "reform": reform,
+            "pos": min(100, max(0, (lw - 1) / reform * 100))}
+    if week < lw:
+        info.update(phase="élevage", label="Élevage", left=lw - week,
+                    text=f"Ponte prévue semaine {lw}, dans {lw - week} semaine(s)")
+    else:
+        info.update(phase="ponte", label="En ponte", since=week - lw + 1,
+                    text=f"En ponte depuis la semaine {lw} ({week - lw + 1} semaine(s))")
+    return info
+
+
 def lot_summary(lot):
     birds = effectif(lot["id"])
     cons = consumption(lot["id"])
@@ -177,6 +199,7 @@ def lot_summary(lot):
         "progress": min(100, week / max(1, lot["reform_week"] or 72) * 100),
         "chick_cost": lot["initial_count"] * lot["chick_price"] + lot["other_costs"],
     }
+    summary["laying"] = laying_info(lot, week)
     if lot["status"] == "actif":
         summary["suggest"] = suggestion(lot)
         summary["forecast"] = forecast(lot)
@@ -258,6 +281,7 @@ def _form_values(existing=None):
         "account_id": f.get("account_id") or None,
         "program_id": f.get("program_id") or None,
         "reform_week": int(parse_num(f.get("reform_week"), 72) or 72),
+        "laying_week": int(parse_num(f.get("laying_week"), 18) or 18),
         "egg_price": parse_num(f.get("egg_price"), 0) or 0,
         "notes": f.get("notes", "").strip(),
     }
@@ -277,6 +301,8 @@ def _errors(v, lot_id=None):
         errors.append("Les prix ne peuvent pas être négatifs.")
     if v["reform_week"] < 1:
         errors.append("La semaine de réforme doit être supérieure à 0.")
+    if v["laying_week"] < 1 or v["laying_week"] >= v["reform_week"]:
+        errors.append("La semaine de début de ponte doit être avant la semaine de réforme.")
     return errors
 
 
@@ -286,11 +312,11 @@ def lot_new():
     count = query("SELECT COUNT(*) AS n FROM lots", one=True)["n"]
     values = {"name": f"Lot {chr(65 + count % 26)}", "arrival_date": today(), "age_days_at_arrival": 0,
               "initial_count": "", "breed": "", "building": "", "supplier": "", "chick_price": "", "other_costs": "",
-              "paid": None, "account_id": None, "program_id": None, "reform_week": 72, "egg_price": "", "notes": ""}
+              "paid": None, "account_id": None, "program_id": None, "reform_week": 72, "laying_week": 18, "egg_price": "", "notes": ""}
     # le logiciel propose les réglages du dernier lot (tout reste modifiable)
     last = query("SELECT * FROM lots ORDER BY id DESC LIMIT 1", one=True)
     if last:
-        for key in ("breed", "building", "supplier", "chick_price", "reform_week", "egg_price"):
+        for key in ("breed", "building", "supplier", "chick_price", "reform_week", "laying_week", "egg_price"):
             v = last[key]
             if v not in (None, "", 0):
                 values[key] = int(v) if isinstance(v, float) and v.is_integer() else v
@@ -318,12 +344,12 @@ def lot_new():
                 cur = conn.execute(
                     """INSERT INTO lots (name, arrival_date, age_days_at_arrival, initial_count, breed, building, supplier,
                        chick_price, other_costs, paid, account_id, program_id, reform_week, egg_price, notes,
-                       created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       created_by, created_at, laying_week) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (values["name"], values["arrival_date"], values["age_days_at_arrival"], values["initial_count"],
                      values["breed"], values["building"], values["supplier"], values["chick_price"],
                      values["other_costs"], paid, account["id"] if account and paid > 0 else None,
                      values["program_id"], values["reform_week"], values["egg_price"], values["notes"],
-                     g.user["id"], now_utc()))
+                     g.user["id"], now_utc(), values["laying_week"]))
                 lot_id = cur.lastrowid
                 if paid > 0:
                     conn.execute(
@@ -362,17 +388,18 @@ def lot_edit(lot_id):
         else:
             changes = []
             labels = {"name": "nom", "arrival_date": "arrivée", "initial_count": "nombre au départ",
-                      "program_id": "programme", "reform_week": "semaine de réforme", "chick_price": "prix du poussin"}
+                      "program_id": "programme", "laying_week": "début de ponte (semaine)",
+                      "reform_week": "semaine de réforme", "chick_price": "prix du poussin"}
             for key, label in labels.items():
                 if str(values[key] or "") != str(item[key] or ""):
                     changes.append(f"{label} {item[key] or '—'} → {values[key] or '—'}")
             execute("""UPDATE lots SET name = ?, arrival_date = ?, age_days_at_arrival = ?, initial_count = ?, breed = ?,
                        building = ?, supplier = ?, chick_price = ?, other_costs = ?, program_id = ?, reform_week = ?,
-                       egg_price = ?, notes = ? WHERE id = ?""",
+                       egg_price = ?, notes = ?, laying_week = ? WHERE id = ?""",
                     (values["name"], values["arrival_date"], values["age_days_at_arrival"], values["initial_count"],
                      values["breed"], values["building"], values["supplier"], values["chick_price"],
                      values["other_costs"], values["program_id"], values["reform_week"], values["egg_price"],
-                     values["notes"], lot_id))
+                     values["notes"], values["laying_week"], lot_id))
             log_activity("Lot modifié", f"{values['name']} : " + ("; ".join(changes) or "détails"))
             if changes:
                 notify("lot", lot_id, f"✏️ Lot « {values['name']} » modifié : " + "; ".join(changes))

@@ -206,6 +206,7 @@ SCHEMA = {
         ("account_id", "INTEGER"),
         ("program_id", "INTEGER"),
         ("reform_week", "INTEGER NOT NULL DEFAULT 72"),
+        ("laying_week", "INTEGER NOT NULL DEFAULT 18"),  # semaine où les poules commencent à pondre (variable)
         ("egg_price", "REAL NOT NULL DEFAULT 0"),
         ("status", "TEXT NOT NULL DEFAULT 'actif'"),
         ("end_date", "TEXT DEFAULT ''"),

@@ -920,3 +920,13 @@ a.kpi:hover { text-decoration: none; transform: translateY(-2px); }
 .calc-banner small { color: var(--text-2, #5d6a5f); }
 .calc-steps { line-height: 1.8; }
 .calc-steps b { color: var(--gold, #c9971c); padding: 0 .15rem; }
+
+/* Début de ponte (semaine variable) */
+.grid.four.top { align-items: start; }
+.life-bar.with-mark { position: relative; overflow: visible; }
+.lay-mark { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; border-radius: 2px; background: var(--gold, #c9971c); box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+.lay-pill { display: inline-block; margin-top: .45rem; padding: .3rem .65rem; border-radius: 999px; font-size: .85rem; background: rgba(201,151,28,.18); color: inherit; }
+.lay-pill.ponte { background: rgba(58,138,46,.18); }
+.lay-pill.sm { font-size: .78rem; margin: .35rem 0 .15rem; padding: .2rem .55rem; color: var(--text-2, #5d6a5f); }
+.hero-band .lay-pill { background: rgba(255,255,255,.14); color: #f6e7b8; }
+.calc-split { font-size: .92rem; padding: .35rem 0 .1rem; border-top: 1px dashed rgba(201,151,28,.4); margin-top: .2rem; }

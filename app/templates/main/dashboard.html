@@ -171,7 +171,8 @@
       {% if s.forecast %}<div><span>🔮 Reste à manger</span><strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small>{{ s.forecast.cost|money }}</small></div>{% endif %}
     </div>
     {% if s.forecast and s.forecast.days %}<div class="calc-line">{{ s.forecast.days|num }} jours restants · {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour aujourd'hui{% if s.forecast.by_formula|length > 1 %}, plus ensuite{% endif %}</div>{% endif %}
-    <div class="life-bar"><span style="width: {{ s.progress|round(0) }}%"></span></div>
+    <div class="life-bar with-mark"><span style="width: {{ s.progress|round(0) }}%"></span><i class="lay-mark" style="left: {{ s.laying.pos|round(1) }}%" title="Début de ponte : semaine {{ s.laying.week }}"></i></div>
+    <div class="lay-pill sm {{ s.laying.phase }}">🥚 {% if s.laying.phase == 'ponte' %}En ponte depuis S{{ s.laying.week }}{% else %}Ponte S{{ s.laying.week }} · dans {{ s.laying.left }} sem. ({{ s.laying.date|date_fr }}){% endif %}</div>
     <div class="muted small">Semaine {{ s.week }} / {{ l.reform_week }}{% if s.forecast %} · réforme le {{ s.forecast.end_date|date_fr }}{% endif %}</div>
   </a>
 {% endfor %}

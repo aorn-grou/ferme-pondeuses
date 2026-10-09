@@ -16,8 +16,10 @@
     <div class="hero-sub">Mortalité : <strong>{{ s.deaths|num }}</strong> ({{ s.mortality|round(1) }} %) · arrivé le {{ item.arrival_date|date_fr }}{% if item.breed %} · {{ item.breed }}{% endif %}</div>
   </div>
   <div class="hero-side">
-    <div class="life-bar light"><span style="width: {{ s.progress|round(0) }}%"></span></div>
+    {% set LY = s.laying %}
+    <div class="life-bar light with-mark"><span style="width: {{ s.progress|round(0) }}%"></span><i class="lay-mark" style="left: {{ LY.pos|round(1) }}%" title="Début de ponte : semaine {{ LY.week }}"></i></div>
     <small>Semaine {{ s.week }} sur {{ item.reform_week }} (réforme prévue)</small>
+    <div class="lay-pill {{ LY.phase }}">🥚 {% if LY.phase == 'ponte' %}<strong>En ponte</strong> depuis la semaine {{ LY.week }}{% else %}Ponte prévue <strong>semaine {{ LY.week }}</strong> · le {{ LY.date|date_fr }} · dans {{ LY.left }} sem.{% endif %}</div>
   </div>
 </div>
 
@@ -32,6 +34,7 @@
   <span class="calc-steps">{% for name, f in parts %}<span class="nowrap">{{ name }} : {{ f.birds|num }} × {{ f.grams|round(0)|int }} g × {{ f.days|num }} j = <strong>{{ f.kg|round(0)|qty('kg') }}</strong></span>{% if not loop.last %} <b>+</b> {% endif %}{% endfor %}
     = <strong class="text-gold nowrap">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> en {{ s.forecast.days|num }} jours (jusqu'au {{ s.forecast.end_date|date_fr }}), soit <strong class="nowrap">{{ s.forecast.cost|money }}</strong>.</span>
   {% endif %}
+  {% if s.forecast.before_kg %}<span class="calc-split">🐣 Avant la ponte (jusqu'à la semaine {{ s.laying.week - 1 }}) : <strong>{{ s.forecast.before_kg|round(0)|qty('kg') }}</strong> · {{ s.forecast.before_cost|money }} &nbsp;|&nbsp; 🥚 Pendant la ponte (semaine {{ s.laying.week }} → {{ s.forecast.end_week }}) : <strong>{{ (s.forecast.kg - s.forecast.before_kg)|round(0)|qty('kg') }}</strong> · {{ (s.forecast.cost - s.forecast.before_cost)|money }}</span>{% endif %}
   <small>{% if s.forecast.weekly_rate %}La mortalité observée ({{ (s.forecast.weekly_rate * 100)|round(2) }} % par semaine) est déduite au fil des semaines. {% endif %}Le coût utilise le prix actuel de chaque provende. Détail semaine par semaine : tableau « Provende à prévoir » plus bas.</small></div>
 {% endif %}
 <div class="stats top-gap">

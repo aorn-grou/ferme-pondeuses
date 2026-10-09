@@ -29,14 +29,16 @@
 
   <section class="card">
     <h2>{{ icon('wheat', 20) }} Provende et durée de vie</h2>
-    <div class="grid three">
+    <div class="grid four top">
       <div class="field"><label for="program_id">Programme de provende</label>
         <select class="input" id="program_id" name="program_id"><option value="">— Sans programme (je choisis chaque jour) —</option>
           {% for p in programs %}<option value="{{ p.id }}" {% if values.program_id|string == p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
         <p class="hint">Le programme propose la provende et les grammes par poule selon l'âge. {% if not programs %}<a href="{{ url_for('provenderie.program_new') }}">Créer un programme</a>{% endif %}</p></div>
+      <div class="field"><label for="laying_week">🥚 Début de ponte prévu à la semaine</label><input class="input" id="laying_week" name="laying_week" inputmode="numeric" value="{{ values.laying_week or 18 }}">
+        <p class="hint">Variable selon la souche et l'élevage (souvent 18 à 22). Corrigez-la quand les premiers œufs arrivent.</p></div>
       <div class="field"><label for="reform_week">Réforme prévue à la semaine</label><input class="input" id="reform_week" name="reform_week" inputmode="numeric" value="{{ values.reform_week }}">
         <p class="hint">Sert à calculer la provende à venir. Modifiable à tout moment.</p></div>
-      <div class="field"><label for="egg_price">Prix de vente d'un œuf (Ar)</label><input class="input" id="egg_price" name="egg_price" inputmode="decimal" value="{{ values.egg_price or '' }}" placeholder="ex. 500">
+      <div class="field"><label for="egg_price">Prix de vente d'un œuf (Ar)</label><input class="input" id="egg_price" name="egg_price" inputmode="decimal" value="{{ (values.egg_price|int if values.egg_price is number and values.egg_price == values.egg_price|int else values.egg_price) if values.egg_price else '' }}" placeholder="ex. 500">
         <p class="hint">Servira à calculer si le lot est rentable.</p></div>
     </div>
   </section>
@@ -46,8 +48,8 @@
     <div class="grid three">
       <div class="field"><label for="supplier">Fournisseur / couvoir</label><input class="input" id="supplier" name="supplier" value="{{ values.supplier }}" list="dl-supplier" placeholder="ex. Couvoir Rabe" data-combo>
         <datalist id="dl-supplier">{% for v in suggestions.supplier %}<option value="{{ v }}">{% endfor %}</datalist></div>
-      <div class="field"><label for="chick_price">Prix d'un poussin (Ar)</label><input class="input" id="chick_price" name="chick_price" inputmode="decimal" value="{{ values.chick_price or '' }}" placeholder="0" data-chick-price></div>
-      <div class="field"><label for="other_costs">Transport et autres frais (Ar)</label><input class="input" id="other_costs" name="other_costs" inputmode="decimal" value="{{ values.other_costs or '' }}" placeholder="0" data-chick-other></div>
+      <div class="field"><label for="chick_price">Prix d'un poussin (Ar)</label><input class="input" id="chick_price" name="chick_price" inputmode="decimal" value="{{ (values.chick_price|int if values.chick_price is number and values.chick_price == values.chick_price|int else values.chick_price) if values.chick_price else '' }}" placeholder="0" data-chick-price></div>
+      <div class="field"><label for="other_costs">Transport et autres frais (Ar)</label><input class="input" id="other_costs" name="other_costs" inputmode="decimal" value="{{ (values.other_costs|int if values.other_costs is number and values.other_costs == values.other_costs|int else values.other_costs) if values.other_costs else '' }}" placeholder="0" data-chick-other></div>
     </div>
     {% if not lot %}
     <div class="grid three">
