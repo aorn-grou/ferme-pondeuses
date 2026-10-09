@@ -21,10 +21,23 @@
   </div>
 </div>
 
+{% if s.forecast and s.forecast.days %}{% set parts = s.forecast.by_formula.items()|list %}{% set f0 = parts[0][1] %}
+<div class="calc-banner top-gap">
+  {% if parts|length == 1 %}
+  <span>🧮 <strong>Comment c'est calculé :</strong> {{ f0.birds|num }} poules × {{ f0.grams|round(0)|int }} g par poule = <strong>{{ f0.kg_day|round(1)|qty('kg') }} par jour</strong>
+    × <strong>{{ s.forecast.days|num }} jours</strong> restants (semaine {{ s.week }} → semaine {{ s.forecast.end_week }}, réforme le {{ s.forecast.end_date|date_fr }})
+    = <strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> à prévoir, soit <strong>{{ s.forecast.cost|money }}</strong>.</span>
+  {% else %}
+  <span>🧮 <strong>Comment c'est calculé :</strong> les grammes changent avec l'âge, donc on calcule provende par provende (poules × grammes × jours), puis on additionne :</span>
+  <span class="calc-steps">{% for name, f in parts %}<span class="nowrap">{{ name }} : {{ f.birds|num }} × {{ f.grams|round(0)|int }} g × {{ f.days|num }} j = <strong>{{ f.kg|round(0)|qty('kg') }}</strong></span>{% if not loop.last %} <b>+</b> {% endif %}{% endfor %}
+    = <strong class="text-gold nowrap">{{ s.forecast.kg|round(0)|qty('kg') }}</strong> en {{ s.forecast.days|num }} jours (jusqu'au {{ s.forecast.end_date|date_fr }}), soit <strong class="nowrap">{{ s.forecast.cost|money }}</strong>.</span>
+  {% endif %}
+  <small>{% if s.forecast.weekly_rate %}La mortalité observée ({{ (s.forecast.weekly_rate * 100)|round(2) }} % par semaine) est déduite au fil des semaines. {% endif %}Le coût utilise le prix actuel de chaque provende. Détail semaine par semaine : tableau « Provende à prévoir » plus bas.</small></div>
+{% endif %}
 <div class="stats top-gap">
   <div class="stat"><span class="stat-icon">{{ icon('wheat') }}</span><span class="stat-label">Déjà mangé</span><strong class="stat-value small text-green">{{ s.eaten_kg|qty('kg') }}</strong><small class="muted">{{ s.eaten_cost|money }} · {{ s.per_bird|qty('kg') }} / poule</small></div>
   {% if s.forecast %}
-  <div class="stat"><span class="stat-icon">{{ icon('clock') }}</span><span class="stat-label">Reste à manger (prévision)</span><strong class="stat-value small text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small class="muted">{{ s.forecast.days|num }} jours restants · {{ s.forecast.cost|money }} · jusqu'au {{ s.forecast.end_date|date_fr }}</small></div>
+  <div class="stat"><span class="stat-icon">{{ icon('clock') }}</span><span class="stat-label">Reste à manger (prévision)</span><strong class="stat-value small text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small class="muted">{% if s.forecast.by_formula|length == 1 %}<strong>{{ s.forecast.days|num }} j × {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour</strong>{% else %}<strong>{{ s.forecast.days|num }} jours</strong>, de {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour aujourd'hui à plus selon l'âge{% endif %}<br>{{ s.forecast.cost|money }} · jusqu'au {{ s.forecast.end_date|date_fr }}</small></div>
   {% endif %}
   <div class="stat"><span class="stat-icon">{{ icon('wallet') }}</span><span class="stat-label">Achat des poussins</span><strong class="stat-value small">{{ s.chick_cost|money }}</strong><small class="muted">{{ item.chick_price|money }} / poussin{% if item.supplier %} · {{ item.supplier }}{% endif %}</small></div>
   <div class="stat"><span class="stat-icon">{{ icon('egg') }}</span><span class="stat-label">Rentabilité</span><strong class="stat-value small muted">bientôt</strong><small class="muted">avec le module Œufs et Ventes</small></div>

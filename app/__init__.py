@@ -14,7 +14,7 @@ from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.10.3"
+VERSION = "0.10.4"
 
 
 def _secret_key(instance_dir):

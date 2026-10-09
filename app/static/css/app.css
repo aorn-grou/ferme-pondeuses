@@ -918,3 +918,5 @@ a.kpi:hover { text-decoration: none; transform: translateY(-2px); }
 .calc-banner { display: flex; flex-direction: column; gap: .2rem; margin: .2rem 0 .8rem; padding: .7rem .9rem; border-radius: 12px;
   background: rgba(201, 151, 28, .12); border-left: 4px solid var(--gold, #c9971c); font-size: .98rem; }
 .calc-banner small { color: var(--text-2, #5d6a5f); }
+.calc-steps { line-height: 1.8; }
+.calc-steps b { color: var(--gold, #c9971c); padding: 0 .15rem; }

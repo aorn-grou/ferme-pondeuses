@@ -76,7 +76,7 @@
   {% if L %}
   <a class="kpi" href="{{ url_for('lots.index') }}">
     <div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('clock', 18) }}</span><span class="tag tag-gold">jusqu'aux réformes</span></div>
-    <div class="kpi-val">{{ L.future_kg|round(0)|qty('kg') }}</div><div class="kpi-lab">Provende à prévoir · {{ L.future_cost|money }}</div>
+    <div class="kpi-val">{{ L.future_kg|round(0)|qty('kg') }}</div><div class="kpi-lab">Provende à prévoir · {{ L.future_cost|money }}<br><small>poules × g/jour × jours restants, tous les lots</small></div>
   </a>
   {% endif %}
   <div class="kpi kpi-soon">
@@ -107,6 +107,9 @@
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('clock', 20) }} Provende à venir, mois par mois, jusqu'aux réformes</h2>
     <span class="tag tag-gold">{{ L.future_kg|round(0)|qty('kg') }} · {{ L.future_cost|money }}</span></div>
+{% set ex1 = (P.rows|sort(attribute='kg', reverse=True))[0] %}{% set p0 = ex1.parts[0] %}
+  <div class="calc-banner"><span>🧮 <strong>Comment c'est calculé :</strong> pour chaque lot, <strong>poules × grammes du programme (selon l'âge) × jours restants</strong> jusqu'à la réforme, puis on additionne tous les lots.</span>
+    <small>Exemple {{ ex1.name }} : {{ p0.birds|num }} poules × {{ p0.grams|round(0)|int }} g = {{ p0.kg_day|round(1)|qty('kg') }} par jour × {{ p0.days|num }} jours = {{ p0.kg|round(0)|qty('kg') }}{% if ex1.parts|length > 1 %} (+ les autres provendes du lot){% endif %}. Total des {{ P.rows|length }} lot(s) : <strong>{{ L.future_kg|round(0)|qty('kg') }}</strong> = {{ L.future_cost|money }}.</small></div>
   <div class="chart-box" aria-label="Provende à prévoir par mois" data-chart='{{ P.chart|tojson }}'></div>
   <p class="hint">Chaque barre = la provende que tous les lots mangeront ce mois-là, selon leur âge et leur programme. Passez la souris ou touchez une barre pour le détail.</p>
   <table class="table responsive top-gap-sm">
@@ -114,7 +117,7 @@
     <tbody>{% for r in P.rows %}
       <tr><td data-label="Lot"><a href="{{ url_for('lots.lot', lot_id=r.id) }}"><strong>{{ r.name }}</strong></a> <small class="muted nowrap">· {{ r.birds|num }} poules</small></td>
         <td data-label="Âge"><span>Semaine {{ r.week }} <small class="muted nowrap">· réforme S{{ r.reform }} le {{ r.end_date|date_fr }}</small></span></td>
-        <td data-label="Le calcul"><div class="calc-list">{% for f in r.parts %}<div class="calc">{{ f.name }} : {{ f.days|num }} j × {{ f.kg_day_avg|round(1)|qty('kg') }}/jour = <strong>{{ f.kg|round(0)|qty('kg') }}</strong></div>{% endfor %}</div></td>
+        <td data-label="Le calcul"><div class="calc-list">{% for f in r.parts %}<div class="calc">{{ f.name }} : {{ f.days|num }} j × {{ f.kg_day_avg|round(1)|qty('kg') }}/jour = <strong class="nowrap">{{ f.kg|round(0)|qty('kg') }}</strong></div>{% endfor %}</div></td>
         <td data-label="Reste à manger" class="right"><strong class="text-gold">{{ r.kg|round(0)|qty('kg') }}</strong> <small class="muted nowrap">· {{ r.days|num }} jours</small></td>
         <td data-label="Coût" class="right">{{ r.cost|money }}</td></tr>{% endfor %}
       <tr class="total-row"><td colspan="3"><strong>Total tous les lots</strong></td><td class="right"><strong>{{ L.future_kg|round(0)|qty('kg') }}</strong></td><td class="right"><strong>{{ L.future_cost|money }}</strong></td></tr>
@@ -167,7 +170,7 @@
       <div><span>🌾 Mangé</span><strong class="text-green">{{ s.eaten_kg|qty('kg') }}</strong><small>{{ s.eaten_cost|money }}</small></div>
       {% if s.forecast %}<div><span>🔮 Reste à manger</span><strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small>{{ s.forecast.cost|money }}</small></div>{% endif %}
     </div>
-    {% if s.forecast and s.forecast.days %}<div class="calc-line">{{ s.forecast.days|num }} jours restants · {{ s.forecast.kg_day|qty('kg') }}/jour aujourd'hui</div>{% endif %}
+    {% if s.forecast and s.forecast.days %}<div class="calc-line">{{ s.forecast.days|num }} jours restants · {{ s.forecast.kg_day|round(1)|qty('kg') }}/jour aujourd'hui{% if s.forecast.by_formula|length > 1 %}, plus ensuite{% endif %}</div>{% endif %}
     <div class="life-bar"><span style="width: {{ s.progress|round(0) }}%"></span></div>
     <div class="muted small">Semaine {{ s.week }} / {{ l.reform_week }}{% if s.forecast %} · réforme le {{ s.forecast.end_date|date_fr }}{% endif %}</div>
   </a>
