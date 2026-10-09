@@ -57,7 +57,7 @@
     if (nowIdx >= 0) {
       el("line", { x1: x(nowIdx), x2: x(nowIdx), y1: m.t, y2: m.t + ih, stroke: gold, "stroke-dasharray": "4 4" }, svg);
       const t = el("text", { x: x(nowIdx), y: m.t - 6, "text-anchor": "middle", "font-size": 11, "font-weight": 700, fill: gold }, svg);
-      t.textContent = "Aujourd'hui";
+      t.textContent = data.nowLabel || "Aujourd'hui";
     }
     // info-bulle au survol / au toucher
     const tip = document.createElement("div");
@@ -73,10 +73,11 @@
       const parts = [`<strong>${data.labels[i]}</strong>`];
       if (data.bars[i] != null) parts.push(`${data.barLabel || "Réel"} : ${fmt(data.bars[i])} ${data.unit || ""}`);
       if (data.line[i] != null) parts.push(`${data.lineLabel || "Prévision"} : ${fmt(data.line[i])} ${data.unit || ""}`);
+      if (data.tips && data.tips[i]) parts.push(data.tips[i]);
       tip.innerHTML = parts.join("<br>");
       tip.hidden = false;
       const left = (x(i) / W) * r.width;
-      tip.style.left = Math.min(r.width - 150, Math.max(0, left - 70)) + "px";
+      tip.style.left = Math.min(r.width - 190, Math.max(0, left - 70)) + "px";
       tip.style.top = "0px";
     };
     hit.addEventListener("mousemove", show);
@@ -133,7 +134,7 @@
       const px = ((evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left) * (W / r.width);
       const i = indexAt(px);
       tip.innerHTML = html(i); tip.hidden = false;
-      tip.style.left = Math.min(r.width - 150, Math.max(0, (xOf(i) / W) * r.width - 70)) + "px"; tip.style.top = "0px";
+      tip.style.left = Math.min(r.width - 190, Math.max(0, (xOf(i) / W) * r.width - 70)) + "px"; tip.style.top = "0px";
     };
     svg.addEventListener("mousemove", move);
     svg.addEventListener("touchstart", move, { passive: true });

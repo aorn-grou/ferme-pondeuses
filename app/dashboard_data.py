@@ -25,6 +25,45 @@ def _label(d):
     return f"{d[8:10]}/{d[5:7]}"
 
 
+MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+
+
+def _plan(cards):
+    """Provende à venir de tous les lots, répartie par mois, avec le détail du calcul par lot."""
+    months, rows = {}, []
+    for card in cards:
+        fc = card["s"].get("forecast") or {}
+        if not fc.get("weeks") or not fc.get("kg"):
+            continue
+        lot = card["lot"]
+        for w in fc["weeks"]:
+            if not w["days"]:
+                continue
+            per_day, cost_day = w["kg"] / w["days"], w["cost"] / w["days"]
+            start = Date.fromisoformat(w["start"])
+            for i in range(w["days"]):
+                key = (start + timedelta(days=i)).isoformat()[:7]
+                m = months.setdefault(key, {"kg": 0.0, "cost": 0.0, "lots": {}})
+                m["kg"] += per_day
+                m["cost"] += cost_day
+                m["lots"][lot["name"]] = m["lots"].get(lot["name"], 0) + per_day
+        rows.append({"id": lot["id"], "name": lot["name"], "birds": card["s"]["birds"], "week": card["s"]["week"],
+                     "reform": fc["end_week"], "end_date": fc["end_date"], "days": fc["days"], "kg": fc["kg"],
+                     "cost": fc["cost"],
+                     "parts": [{"name": n, **f} for n, f in fc["by_formula"].items()]})
+    keys = sorted(months)
+    labels = [f"{MONTHS[int(k[5:7]) - 1]} {k[2:4]}" for k in keys]
+    tips = []
+    for k in keys:
+        m = months[k]
+        detail = " · ".join(f"{n} {round(v):,}".replace(",", " ") + " kg" for n, v in m["lots"].items())
+        tips.append(f"{round(m['cost']):,}".replace(",", " ") + f" Ar<br><small>{detail}</small>")
+    chart = {"labels": labels, "bars": [round(months[k]["kg"], 1) for k in keys], "line": [None] * len(keys),
+             "unit": "kg", "barLabel": "À manger", "barColor": "#c9971c", "tips": tips,
+             "now": labels[0] if labels else "", "nowLabel": "Ce mois"}
+    return {"rows": rows, "chart": chart}
+
+
 def build():
     days30 = _days(30)
     days56 = _days(56)
@@ -52,6 +91,7 @@ def build():
             "deaths_prev7": sum(deaths[-14:-7]),
             "future_kg": sum(c["s"].get("forecast", {}).get("kg", 0) for c in cards),
             "future_cost": sum(c["s"].get("forecast", {}).get("cost", 0) for c in cards),
+            "plan": _plan(cards),
         }
 
     # --- Provende ------------------------------------------------------------

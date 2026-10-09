@@ -109,27 +109,37 @@ def forecast(lot):
                     (lot["id"],), one=True)["q"]
     weeks_lived = max(1, start - 1 - (lot["age_days_at_arrival"] or 0) // 7)
     weekly_rate = min(0.02, (deaths / max(1, lot["initial_count"])) / weeks_lived) if deaths > 0 else 0
-    weeks, total_kg, total_cost, by_formula = [], 0.0, 0.0, {}
+    weeks, total_kg, total_cost, total_days, by_formula = [], 0.0, 0.0, 0, {}
     last_grams = 0
     for w in range(start, end + 1):
         row = program_for_week(rows, w)
         grams = (row["grams_per_bird"] if row else 0) or last_grams
         last_grams = grams
         days = 7
-        if w == start:  # semaine en cours : seulement les jours restants
+        first_day = date_of_week(lot, w)
+        if w == start:  # semaine en cours : seulement les jours restants (aujourd'hui compris)
             days = 7 - (lot_age_days(lot) % 7)
+            first_day = _d(today())
         kg = birds * grams * days / 1000
-        cost = kg * ((row["avg_cost"] if row else 0) or 0)
+        price = (row["avg_cost"] if row else 0) or 0
+        cost = kg * price
         name = row["formula"] if row else "—"
-        weeks.append({"week": w, "birds": round(birds), "grams": grams, "kg": kg, "formula": name})
+        weeks.append({"week": w, "birds": round(birds), "grams": grams, "kg": kg, "cost": cost, "days": days,
+                      "start": first_day.isoformat(), "formula": name})
         total_kg += kg
         total_cost += cost
-        item = by_formula.setdefault(name, {"kg": 0, "cost": 0, "from": w, "to": w})
+        total_days += days
+        item = by_formula.setdefault(name, {"kg": 0, "cost": 0, "from": w, "to": w, "days": 0, "grams": grams,
+                                            "kg_day": birds * grams / 1000, "birds": round(birds)})
         item["kg"] += kg
         item["cost"] += cost
+        item["days"] += days
         item["to"] = w
         birds *= (1 - weekly_rate)
-    return {"weeks": weeks, "kg": total_kg, "cost": total_cost, "by_formula": by_formula,
+    for item in by_formula.values():  # quantité par jour moyenne sur la période (mortalité comprise)
+        item["kg_day_avg"] = item["kg"] / item["days"] if item["days"] else 0
+    return {"weeks": weeks, "kg": total_kg, "cost": total_cost, "by_formula": by_formula, "days": total_days,
+            "kg_day": weeks[0]["kg"] / weeks[0]["days"] if weeks and weeks[0]["days"] else 0,
             "end_date": date_of_week(lot, end + 1).isoformat(), "end_week": end, "weekly_rate": weekly_rate,
             "has_program": bool(rows)}
 

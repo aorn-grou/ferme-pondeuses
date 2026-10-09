@@ -823,7 +823,7 @@ tr.row-short td { background: color-mix(in srgb, var(--danger-bg) 70%, transpare
 .sw-gold-dash { height: 0; width: 16px; border-top: 2px dashed var(--gold); border-radius: 0; }
 @media (max-width: 700px) { .hero-num { font-size: 2.2rem; } .chart-box { height: 220px; } }
 
-.chart-tip { position: absolute; z-index: 5; width: 150px; padding: .45rem .6rem; border-radius: 9px; font-size: .78rem; line-height: 1.4;
+.chart-tip { position: absolute; z-index: 5; width: 190px; padding: .45rem .6rem; border-radius: 9px; font-size: .78rem; line-height: 1.4;
   background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); pointer-events: none; }
 
 /* ==========================================================================
@@ -909,3 +909,9 @@ a.kpi:hover { text-decoration: none; transform: translateY(-2px); }
 .ctl-pill.bad { background: var(--danger-bg); color: var(--danger); }
 .ctl-go { margin-left: auto; font-weight: 700; color: var(--primary); font-size: .88rem; }
 .days-hint { display: block; color: var(--gold); font-weight: 700; margin-top: .2rem; }
+
+/* Détail des calculs de prévision */
+.calc { font-size: .9rem; line-height: 1.5; }
+.calc-line { margin: .35rem 0 .2rem; padding: .3rem .55rem; border-radius: 8px; background: rgba(201, 151, 28, .12); color: var(--text-2, #5d6a5f); font-size: .8rem; }
+.calc-list { display: block; }
+@media (max-width: 760px) { .calc-list { text-align: right; } .calc-list .calc { margin-bottom: .2rem; } }

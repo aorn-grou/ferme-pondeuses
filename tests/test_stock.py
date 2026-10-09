@@ -16,6 +16,11 @@ class StockBase(Base):
     def one(self, sql, params=()):
         return self.db().execute(sql, params).fetchone()
 
+    def today(self):
+        from app.stock import today
+        with self.app.test_request_context():
+            return today()
+
     def material(self, name, unit="kg", qty="", cost="", threshold=""):
         self.post("/matieres/matiere/nouvelle", {"name": name, "unit": unit, "initial_qty": qty,
                                                  "initial_cost": cost, "alert_threshold": threshold})
@@ -512,7 +517,7 @@ class TestUnitesFormule(StockBase):
             follow_redirects=True)
         self.assertIn("impossible de", res.get_data(as_text=True))
         # fabrication d'un sac de 50 kg : stock diminué et associé prévenu
-        self.post("/provenderie/fabrication/nouvelle", {"formula_id": str(f["id"]), "quantity": "50", "date": "2026-10-08"})
+        self.post("/provenderie/fabrication/nouvelle", {"formula_id": str(f["id"]), "quantity": "50", "date": self.today()})
         self.assertAlmostEqual(self.stock(mais), 50.5)
         self.assertAlmostEqual(self.stock(premix), 4.5)
         msg = self.one("SELECT body FROM messages WHERE auto = 1 AND ref_type = 'production'")

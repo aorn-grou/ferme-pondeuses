@@ -46,7 +46,7 @@
     {% endif %}
     <div class="lot-figs">
       <div><span>🌾 Mangé</span><strong class="text-green">{{ s.eaten_kg|qty('kg') }}</strong><small>{{ s.eaten_cost|money }}</small></div>
-      {% if s.forecast %}<div><span>🔮 Reste à manger</span><strong class="text-gold">{{ s.forecast.kg|qty('kg') }}</strong><small>{{ s.forecast.cost|money }}</small></div>{% endif %}
+      {% if s.forecast %}<div><span>🔮 Reste à manger</span><strong class="text-gold">{{ s.forecast.kg|round(0)|qty('kg') }}</strong><small>{{ s.forecast.cost|money }}</small></div>{% endif %}
     </div>
     <div class="life-bar" title="Semaine {{ s.week }} sur {{ l.reform_week }} (réforme prévue)"><span style="width: {{ s.progress|round(0) }}%"></span></div>
     <div class="muted small">Semaine {{ s.week }} / {{ l.reform_week }}{% if s.forecast %} · réforme prévue le {{ s.forecast.end_date|date_fr }}{% endif %}</div>
