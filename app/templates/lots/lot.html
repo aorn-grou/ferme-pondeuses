@@ -2,7 +2,7 @@
 {% from "_macros.html" import icon, page_head, csrf with context %}
 {% block title %}{{ item.name }}{% endblock %}
 {% block content %}
-{% call page_head(item.name, ('Semaine ' ~ s.week ~ ' · ' ~ s.days ~ ' jours') ~ (' · ' ~ item.building if item.building else '') ~ (' · terminé' if item.status != 'actif' else ''), 'layers') %}
+{% call page_head(item.name, ('Semaine ' ~ s.week ~ ' · ' ~ s.days ~ (' jour' if s.days < 2 else ' jours')) ~ (' · ' ~ item.building if item.building else '') ~ (' · terminé' if item.status != 'actif' else ''), 'layers') %}
   <a class="btn ghost" href="{{ url_for('lots.index') }}">← Lots</a>
   {% if can('lots', 2) %}<a class="btn ghost" href="{{ url_for('lots.lot_edit', lot_id=item.id) }}">{{ icon('edit', 18) }} Modifier</a>{% endif %}
 {% endcall %}
