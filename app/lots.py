@@ -287,6 +287,19 @@ def lot_new():
     values = {"name": f"Lot {chr(65 + count % 26)}", "arrival_date": today(), "age_days_at_arrival": 0,
               "initial_count": "", "breed": "", "building": "", "supplier": "", "chick_price": "", "other_costs": "",
               "paid": None, "account_id": None, "program_id": None, "reform_week": 72, "egg_price": "", "notes": ""}
+    # le logiciel propose les réglages du dernier lot (tout reste modifiable)
+    last = query("SELECT * FROM lots ORDER BY id DESC LIMIT 1", one=True)
+    if last:
+        for key in ("breed", "building", "supplier", "chick_price", "reform_week", "egg_price"):
+            v = last[key]
+            if v not in (None, "", 0):
+                values[key] = int(v) if isinstance(v, float) and v.is_integer() else v
+        if last["program_id"] and query("SELECT 1 FROM feed_programs WHERE id = ? AND active = 1", (last["program_id"],), one=True):
+            values["program_id"] = last["program_id"]
+    if not values["program_id"]:
+        progs = query("SELECT id FROM feed_programs WHERE active = 1")
+        if len(progs) == 1:
+            values["program_id"] = progs[0]["id"]
     if request.method == "POST":
         values = _form_values()
         errors = _errors(values)
