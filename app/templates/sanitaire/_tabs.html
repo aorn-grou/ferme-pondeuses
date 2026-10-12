@@ -1,0 +1,5 @@
+{% from "_macros.html" import icon %}
+<nav class="tabs" aria-label="Sections">
+  <a class="tab {% if active == 'soins' %}active{% endif %}" href="{{ url_for('sanitaire.index') }}">{{ icon('shield', 18) }} Soins &amp; alertes</a>
+  <a class="tab {% if active == 'programmes' %}active{% endif %}" href="{{ url_for('sanitaire.programs') }}">{{ icon('clock', 18) }} Programmes</a>
+</nav>

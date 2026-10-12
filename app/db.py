@@ -206,7 +206,8 @@ SCHEMA = {
         ("account_id", "INTEGER"),
         ("program_id", "INTEGER"),
         ("reform_week", "INTEGER NOT NULL DEFAULT 72"),
-        ("laying_week", "INTEGER NOT NULL DEFAULT 18"),  # semaine où les poules commencent à pondre (variable)
+        ("laying_week", "INTEGER NOT NULL DEFAULT 18"),
+        ("health_program_id", "INTEGER"),  # programme sanitaire suivi par le lot  # semaine où les poules commencent à pondre (variable)
         ("egg_price", "REAL NOT NULL DEFAULT 0"),
         ("status", "TEXT NOT NULL DEFAULT 'actif'"),
         ("end_date", "TEXT DEFAULT ''"),
@@ -265,6 +266,43 @@ SCHEMA = {
         ("kind", "TEXT NOT NULL"),
         ("quantity", "INTEGER NOT NULL DEFAULT 0"),  # signé
         ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "health_programs": [  # programmes sanitaires (vaccinations…)
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "health_program_items": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("program_id", "INTEGER NOT NULL"),
+        ("day_age", "INTEGER NOT NULL"),       # jour d'âge (1 = jour d'arrivée des poussins)
+        ("title", "TEXT NOT NULL"),
+        ("kind", "TEXT NOT NULL DEFAULT 'vaccin'"),
+        ("method", "TEXT DEFAULT ''"),
+        ("product", "TEXT DEFAULT ''"),
+        ("notes", "TEXT DEFAULT ''"),
+    ],
+    "health_events": [  # soins prévus / faits, par lot (lot vide = toute la ferme)
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("lot_id", "INTEGER"),
+        ("item_id", "INTEGER"),
+        ("due_date", "TEXT NOT NULL"),
+        ("title", "TEXT NOT NULL"),
+        ("kind", "TEXT NOT NULL DEFAULT 'autre'"),
+        ("method", "TEXT DEFAULT ''"),
+        ("product", "TEXT DEFAULT ''"),
+        ("dose", "TEXT DEFAULT ''"),
+        ("status", "TEXT NOT NULL DEFAULT 'prevu'"),  # prevu, fait, annule
+        ("done_date", "TEXT"),
+        ("done_by", "INTEGER"),
+        ("cost", "REAL NOT NULL DEFAULT 0"),
+        ("account_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("notified", "TEXT DEFAULT ''"),    # rappels déjà envoyés : j7, j0, late
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
@@ -330,6 +368,7 @@ TRANSACTION_TABLES = [
     "purchases", "purchase_lines", "supplier_payments", "stock_moves",
     "productions", "production_lines", "feed_moves", "cash_movements",
     "lots", "lot_events", "feedings", "egg_collections", "clients", "sales", "sale_payments", "egg_moves",
+    "health_programs", "health_program_items", "health_events",
 ]
 
 DEFAULT_ACCOUNTS = [
@@ -364,7 +403,9 @@ def now_utc():
 def db_path():
     """La base utilisée : la vraie, ou celle de la démo pour un visiteur qui essaie le logiciel."""
     if g.get("demo"):
-        return current_app.config["DEMO_DATABASE"]
+        from .demo import visitor_path
+
+        return visitor_path() or current_app.config["DEMO_DATABASE"]
     return current_app.config["DATABASE"]
 
 

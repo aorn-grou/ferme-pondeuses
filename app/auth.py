@@ -98,9 +98,15 @@ def logout():
     if g.get("user"):
         log_activity("Déconnexion")
     was_demo = g.get("demo")
+    if was_demo:
+        from flask import current_app
+
+        from .demo import end_visitor
+
+        end_visitor(current_app._get_current_object())
     session.clear()
     if was_demo:
-        flash("Vous avez quitté la démonstration. Merci de l'avoir essayée !", "info")
+        flash("Vous avez quitté la démonstration : tout ce que vous avez essayé a été effacé. Merci de l'avoir essayée !", "info")
         return redirect(url_for("demo.index"))
     flash("Vous êtes déconnecté.", "info")
     return redirect(url_for("auth.login"))

@@ -254,6 +254,85 @@ class TestRapportsEtDemo(StockBase):
                                          "qty": "1", "unit": "sac", "price": "5000", "price_unit": "unite", "paid": "",
                                          "account_id": "1", "lot_id": "", "notes": ""})
         self.assertEqual(self.one("SELECT COUNT(*) FROM sales")[0], 0)
-        # sortir
+        # la vente d'essai est dans la copie du visiteur, pas dans la ferme d'exemple partagée
+        import os
+        import sqlite3
+        from app.demo import visitors_dir
+        files = [f for f in os.listdir(visitors_dir(self.app)) if f.endswith(".db")]
+        self.assertEqual(len(files), 1)
+        shared = sqlite3.connect(self.app.config["DEMO_DATABASE"])
+        self.assertEqual(shared.execute("SELECT COUNT(*) FROM sales WHERE product = 'Fumier' AND notes = ''").fetchone()[0],
+                         sqlite3.connect(os.path.join(visitors_dir(self.app), files[0])).execute(
+                             "SELECT COUNT(*) FROM sales WHERE product = 'Fumier' AND notes = ''").fetchone()[0] - 1)
+        shared.close()
+        # un 2e visiteur ne voit pas les essais du 1er
+        c2 = self.app.test_client()
+        with c2.session_transaction() as sess:
+            sess["_csrf"] = "u"
+        c2.post("/demo/entrer", data={"_csrf": "u", "username": "vendeur"})
+        self.assertEqual(len([f for f in os.listdir(visitors_dir(self.app)) if f.endswith(".db")]), 2)
+        # sortir : la copie est effacée
         c.post("/deconnexion", data={"_csrf": tok})
         self.assertEqual(c.get("/").status_code, 302)
+        self.assertEqual(len([f for f in os.listdir(visitors_dir(self.app)) if f.endswith(".db")]), 1)
+        # une page de démo sans copie renvoie vers le choix du rôle
+        c2.get("/demo/")  # « Changer de rôle » efface aussi l'essai
+        self.assertEqual(len([f for f in os.listdir(visitors_dir(self.app)) if f.endswith(".db")]), 0)
+
+
+class TestSanitaire(StockBase):
+    def test_program_alerts_confirm(self):
+        dem, ponte, prog = TestLots.setup_feed(self)
+        # programme : J1, J7, J30
+        res = self.post("/sanitaire/programmes/nouveau", {
+            "name": "Vaccins", "notes": "", "day_age": ["1", "7", "30"], "title": ["Marek", "Newcastle", "Gumboro"],
+            "kind": ["vaccin", "vaccin", "vaccin"], "method": ["Au couvoir", "Eau de boisson", "Eau de boisson"],
+            "product": ["", "La Sota", ""]})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:1500])
+        hp = self.one("SELECT id FROM health_programs")[0]
+        # lot arrivé il y a 3 jours : J1 en retard, J7 dans 3 jours (alerte), J30 plus tard
+        arrival = (date.today() - timedelta(days=3)).isoformat()
+        TestLots.new_lot(self, prog, arrival, count="300", paid="0", health_program_id=str(hp))
+        lot = self.one("SELECT * FROM lots")
+        evs = self.db().execute("SELECT * FROM health_events ORDER BY due_date").fetchall()
+        self.assertEqual([e["title"] for e in evs], ["Marek", "Newcastle", "Gumboro"])
+        self.assertEqual(evs[1]["due_date"], (date.today() + timedelta(days=3)).isoformat())
+        page = self.client.get("/sanitaire/").get_data(as_text=True)
+        self.assertIn("En retard de 3 jours", page)
+        self.assertIn("Dans 3 jours", page)
+        self.assertNotIn("Dans 26 jours</span>", page)
+        # rappels envoyés une seule fois dans la Discussion
+        self.client.get("/")
+        self.client.get("/")
+        msgs = self.db().execute("SELECT body FROM messages WHERE body LIKE '%Suivi sanitaire%'").fetchall()
+        self.assertEqual(len(msgs), 2)
+        self.assertIn("Newcastle", self.client.get("/").get_data(as_text=True))  # alerte sur le tableau de bord
+        # confirmation avec coût : l'alerte s'arrête, l'argent sort de la caisse
+        res = self.post(f"/sanitaire/soin/{evs[1]['id']}/fait", {"done_date": date.today().isoformat(), "product": "La Sota",
+                                                                  "dose": "1 flacon", "cost": "12000", "account_id": str(self.account()),
+                                                                  "notes": ""})
+        self.assertEqual(res.status_code, 302)
+        self.assertEqual(self.one("SELECT status FROM health_events WHERE id = ?", (evs[1]["id"],))[0], "fait")
+        self.assertAlmostEqual(self.one("SELECT SUM(amount) FROM cash_movements WHERE kind = 'sanitaire'")[0], -12000)
+        # annuler J1 sans raison : refusé ; avec raison : accepté
+        self.post(f"/sanitaire/soin/{evs[0]['id']}/modifier", {"action": "annuler", "reason": ""})
+        self.assertEqual(self.one("SELECT status FROM health_events WHERE id = ?", (evs[0]["id"],))[0], "prevu")
+        self.post(f"/sanitaire/soin/{evs[0]['id']}/modifier", {"action": "annuler", "reason": "Fait au couvoir"})
+        self.assertEqual(self.one("SELECT status FROM health_events WHERE id = ?", (evs[0]["id"],))[0], "annule")
+        page = self.client.get("/sanitaire/").get_data(as_text=True)
+        self.assertIn("rien à faire", page)
+        # modifier le programme : les soins faits restent, les autres sont recalculés
+        self.post(f"/sanitaire/programmes/{hp}/modifier", {
+            "name": "Vaccins", "notes": "", "day_age": ["1", "7", "35"], "title": ["Marek", "Newcastle", "Gumboro"],
+            "kind": ["vaccin"] * 3, "method": ["", "", ""], "product": ["", "", ""]})
+        gum = self.one("SELECT due_date FROM health_events WHERE title = 'Gumboro'")[0]
+        self.assertEqual(gum, (date.fromisoformat(arrival) + timedelta(days=34)).isoformat())
+        self.assertEqual(self.one("SELECT status FROM health_events WHERE title = 'Newcastle'")[0], "fait")
+        # soin à la main, coût dans le lot
+        self.post("/sanitaire/soin/nouveau", {"title": "Vitamines", "kind": "vitamines", "due_date": date.today().isoformat(),
+                                             "lot_id": [str(lot["id"])], "method": "Eau de boisson", "product": "", "notes": ""})
+        self.assertIn("Vitamines", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True))
+        self.assertIn("soins 12", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True).replace(" ", " "))
+        for url in ["/sanitaire/", f"/sanitaire/?lot={lot['id']}", "/sanitaire/programmes", f"/sanitaire/programmes/{hp}",
+                    f"/sanitaire/programmes/{hp}/modifier", "/sanitaire/programmes/nouveau?exemple=1", "/rapports/"]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)

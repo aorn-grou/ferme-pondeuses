@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ 'Modifier ' ~ program.name if program else 'Nouveau programme sanitaire' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier « ' ~ program.name ~ ' »') if program else 'Nouveau programme sanitaire', "Une ligne par soin : le jour d'âge (J1 = arrivée des poussins) et ce qu'il faut faire. Tout s'écrit librement.", 'shield') %}
+  <a class="btn ghost" href="{{ url_for('sanitaire.program', program_id=program.id) if program else url_for('sanitaire.programs') }}">← Retour</a>
+{% endcall %}
+<form method="post" class="stack">
+  {{ csrf() }}
+  <section class="card">
+    <div class="field"><label for="name">Nom du programme *</label><input class="input" id="name" name="name" value="{{ values.name }}" required maxlength="80" placeholder="ex. Pondeuses Isa Brown"></div>
+    {% if not program and values.notes %}<div class="alert alert-warning static">{{ icon('alert', 18) }}<span>Ceci est un <strong>exemple</strong> : vérifiez chaque ligne avec votre vétérinaire (maladies de votre région, vaccins disponibles) avant de l'utiliser.</span></div>{% endif %}
+  </section>
+  <section class="card">
+    <h2>Les soins</h2>
+    <div class="line-head hs-line" aria-hidden="true"><span>Jour d'âge</span><span>Quoi faire</span><span>Type</span><span>Comment</span><span>Produit</span><span></span></div>
+    <div class="lines" data-lines>
+      {% for r in rows %}
+      <div class="line-row hs-line" data-line>
+        <div class="field"><label class="line-label">Jour d'âge</label><input class="input" name="day_age" inputmode="numeric" value="{{ r.day_age }}" placeholder="ex. 7" data-hs-day><small class="hint" data-hs-week></small></div>
+        <div class="field"><label class="line-label">Quoi faire</label><input class="input" name="title" value="{{ r.title }}" maxlength="120" placeholder="ex. Vaccin Newcastle" list="hs-titles" data-combo></div>
+        <div class="field"><label class="line-label">Type</label><select class="input" name="kind">{% for k, v in kinds.items() %}<option value="{{ k }}" {% if r.kind == k %}selected{% endif %}>{{ v[0] }} {{ v[1] }}</option>{% endfor %}</select></div>
+        <div class="field"><label class="line-label">Comment</label><input class="input" name="method" value="{{ r.method }}" list="hs-methods" placeholder="ex. Eau de boisson" data-combo></div>
+        <div class="field"><label class="line-label">Produit</label><input class="input" name="product" value="{{ r.product }}" placeholder="facultatif"></div>
+        <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer">{{ icon('trash', 18) }}</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn ghost" data-add-line>{{ icon('plus', 18) }} Ajouter un soin</button>
+    <p class="hint">Astuce : J7 = fin de la 1ʳᵉ semaine, J14 = 2ᵉ semaine, J112 = 16ᵉ semaine. La semaine s'affiche sous chaque jour.</p>
+  </section>
+  <section class="card"><div class="field"><label for="notes">Remarques</label><textarea class="input" id="notes" name="notes" rows="2">{{ values.notes }}</textarea></div></section>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le programme</button></div>
+</form>
+<datalist id="hs-methods">{% for m in methods %}<option value="{{ m }}">{% endfor %}</datalist>
+<datalist id="hs-titles">{% for t in ['Vaccin Newcastle', 'Vaccin Gumboro', 'Vaccin Bronchite infectieuse', 'Vaccin variole aviaire', 'Vaccin Marek', 'Vitamines', 'Anti-stress', 'Vermifuge', 'Traitement coccidiose', 'Désinfection du bâtiment'] %}<option value="{{ t }}">{% endfor %}</datalist>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const up = (inp) => { const d = parseInt(inp.value, 10), out = inp.parentElement.querySelector("[data-hs-week]"); if (out) out.textContent = d > 0 ? "semaine " + (Math.floor((d - 1) / 7) + 1) : ""; };
+  document.addEventListener("input", (e) => { if (e.target.matches("[data-hs-day]")) up(e.target); });
+  document.querySelectorAll("[data-hs-day]").forEach(up);
+})();
+</script>
+{% endblock %}

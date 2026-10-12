@@ -22,6 +22,7 @@
     <li><a href="#alimentation">Provende du jour</a></li>
     <li><a href="#oeufs">Œufs (ramassage)</a></li>
     <li><a href="#ventes">Ventes, clients et stock d'œufs</a></li>
+    <li><a href="#sanitaire">Suivi sanitaire (vaccins, traitements)</a></li>
     <li><a href="#ecarts">Écarts & contrôles</a></li>
     <li><a href="#rapports">Rapports</a></li>
     <li><a href="#discussion">Discussion et signalements</a></li>
@@ -175,8 +176,33 @@
   {% call ex() %}<p>20 plateaux + 10 œufs à 15 000 Ar le plateau = 610 œufs × 500 Ar = <strong>305 000 Ar</strong>. Payé 200 000 Ar → reste à recevoir <strong>105 000 Ar</strong>.</p>{% endcall %}
 </section>
 
+<section class="card g-sec" id="sanitaire">
+  <h2>10. Suivi sanitaire (vaccins, traitements)</h2>
+  <p>Le logiciel vous rappelle les <strong>vaccins, traitements, vitamines, vermifuges et désinfections</strong> de chaque lot, et garde l'historique de ce qui a été fait.</p>
+  <h3>1. Le programme de soins</h3>
+  <p>Menu <em>Suivi sanitaire</em> → onglet <strong>Programmes</strong> → <em>Partir de l'exemple</em> (un programme type est pré-rempli : Marek, Newcastle, Gumboro, Bronchite, Variole, vermifuge, rappels…). Chaque ligne = <strong>un jour d'âge</strong> + un soin. <strong>J1 = le jour d'arrivée d'un poussin d'un jour.</strong> Modifiez librement selon votre vétérinaire, puis <em>Enregistrer</em>.</p>
+  <h3>2. Donner le programme à un lot</h3>
+  <p>Dans le lot → <em>Modifier</em> → carte <strong>Suivi sanitaire</strong> → choisissez le programme. Le logiciel calcule tout seul la <strong>date de chaque soin</strong> à partir de la date d'arrivée et de l'âge des poules à l'arrivée (les soins déjà passés avant l'arrivée sont ignorés).</p>
+  <h3>3. Les alertes</h3>
+  <ul>
+    <li><strong>7 jours avant</strong> le jour J : alerte orange 🟠 sur le tableau de bord et la cloche, et un message automatique dans la Discussion (et un e-mail aux administrateurs si l'e-mail est configuré).</li>
+    <li><strong>Le jour J</strong> : nouveau rappel.</li>
+    <li><strong>Après le jour J</strong>, tant que ce n'est pas confirmé : alerte <strong>rouge 🔴 « en retard »</strong> qui reste <strong>tous les jours, sans fin</strong>, jusqu'à la confirmation.</li>
+  </ul>
+  <h3>4. Confirmer qu'un soin est fait</h3>
+  <p>Sur la carte du soin : <strong>« Confirmer : c'est fait »</strong> avec la date réelle, le produit, la dose et le <strong>coût</strong> (facultatif). Le coût sort de la caisse choisie et s'ajoute aux dépenses du lot (il compte dans le prix de revient d'un œuf). L'alerte disparaît et vos associés sont prévenus.</p>
+  <ul>
+    <li><strong>Reporter</strong> : changer la date (ex. vaccin pas encore livré).</li>
+    <li><strong>Annuler</strong> : le soin n'aura pas lieu — une raison est obligatoire.</li>
+    <li><strong>« À faire » (dans l'historique)</strong> : si on a confirmé par erreur (propriétaires).</li>
+    <li><strong>Ajouter un soin</strong> hors programme (ex. traitement après une maladie), pour un lot, plusieurs ou toute la ferme.</li>
+  </ul>
+  <p>Le schéma <em>Mortalité par semaine</em> en bas de la page aide à voir si une maladie arrive après un soin oublié. Dans chaque lot, la partie <strong>Suivi sanitaire</strong> montre la frise des soins faits et à venir.</p>
+  {% call ex() %}<p>Poussins arrivés le 1<sup>er</sup> mars, âge 1 jour. Programme : J14 Gumboro → prévu le <strong>14 mars</strong>. Alerte dès le <strong>7 mars</strong>. Si personne ne confirme, le 15 mars l'alerte devient rouge « en retard de 1 jour » et le reste jusqu'au clic sur <em>Confirmer : c'est fait</em>.</p>{% endcall %}
+</section>
+
 <section class="card g-sec" id="ecarts">
-  <h2>10. Écarts & contrôles</h2>
+  <h2>11. Écarts & contrôles</h2>
   <p>Tout ce qui manque ou ne colle pas, au même endroit : écarts d'inventaire (matières, provende, œufs), pertes déclarées, poules disparues ou écarts de comptage, <strong>mortalité anormale</strong> (plus de 3 fois la moyenne du lot, au moins 3 morts), <strong>baisse de ponte</strong>.</p>
   <ul>
     <li>Pour chaque écart : la date, l'avant → après, l'écart, sa <strong>valeur en Ariary</strong>, l'explication et qui l'a saisi.</li>
@@ -189,7 +215,7 @@
 </section>
 
 <section class="card g-sec" id="rapports">
-  <h2>11. Rapports</h2>
+  <h2>12. Rapports</h2>
   <p>Les diagnostics de la ferme, en schémas (bouton <em>Imprimer</em> pour une version papier ou PDF) :</p>
   <ul>
     <li><strong>💰 L'argent</strong> : ventes et dépenses chaque mois, et le <strong>résultat cumulé</strong> (quand la courbe passe au-dessus de 0, l'investissement est remboursé).</li>
@@ -201,12 +227,12 @@
 </section>
 
 <section class="card g-sec" id="discussion">
-  <h2>12. Discussion et signalements</h2>
+  <h2>13. Discussion et signalements</h2>
   <p>La Discussion (💬 en haut) sert à parler entre associés. Le logiciel y écrit aussi tout seul (en doré) chaque action importante : achats, fabrications, ventes, écarts, corrections, annulations. Sur chaque achat, lot, vente… il y a une zone <em>Commentaires</em> : vos associés la voient aussi dans la Discussion.</p>
 </section>
 
 <section class="card g-sec" id="admin">
-  <h2>13. Administration</h2>
+  <h2>14. Administration</h2>
   <h3>Utilisateurs et droits</h3>
   <p>Créez un compte pour chaque personne (soigneur, vendeur, caissier…). Chaque rôle a des droits de départ, que vous pouvez changer partie par partie : <strong>Aucun accès</strong> · <strong>Voir</strong> · <strong>Voir et saisir</strong> · <strong>Tout</strong> (y compris supprimer). Vous pouvez aussi désactiver un compte ou remettre un mot de passe à zéro.</p>
   <h3>Paramètres</h3>
@@ -219,7 +245,7 @@
 </section>
 
 <section class="card g-sec" id="moteur">
-  <h2>14. Le moteur : comment le logiciel calcule</h2>
+  <h2>15. Le moteur : comment le logiciel calcule</h2>
   <p>Aucune formule à retenir : le logiciel fait tout. Voici ce qu'il fait « sous le capot », pour pouvoir l'expliquer.</p>
   <h3>Le chemin de la ferme, de l'achat à l'argent</h3>
   <div class="g-flow" role="img" aria-label="Achats, matières premières, fabrication, provende, lots de poules, œufs, ventes, caisse">
@@ -252,7 +278,7 @@
 </section>
 
 <section class="card g-sec" id="questions">
-  <h2>15. Questions fréquentes</h2>
+  <h2>16. Questions fréquentes</h2>
   <dl class="g-faq">
     <dt>J'ai fait une erreur de saisie.</dt><dd>Ouvrez la saisie (achat, vente, fabrication, ramassage…) et utilisez <em>Corriger</em> ou <em>Annuler</em>. Pour le ramassage, enregistrez simplement de nouveau le même jour.</dd>
     <dt>Le logiciel refuse ma distribution de provende.</dt><dd>Il n'y a pas assez de cette provende en stock : fabriquez-en d'abord (Provenderie → Fabriquer).</dd>
@@ -261,7 +287,7 @@
     <dt>Mes poules pondent plus tôt (ou plus tard) que prévu.</dt><dd>Ouvrez le lot → <em>Modifier</em> → changez la semaine de « Début de ponte prévu ».</dd>
     <dt>Un chiffre me paraît bizarre.</dt><dd>Ouvrez le bandeau 📖 au-dessus : le calcul y est écrit. Puis regardez l'historique avant → après.</dd>
     <dt>J'ai oublié mon mot de passe.</dt><dd>Sur la page de connexion : <em>Mot de passe oublié ?</em> (question secrète ou e-mail), ou demandez à un administrateur de le remettre à zéro.</dd>
-    <dt>À quoi sert la version de démonstration ?</dt><dd>Sur la page de connexion, <em>Découvrir le logiciel</em> ouvre une ferme d'exemple (6 mois de données) où chacun peut tout essayer sans risque, dans le rôle de son choix. Elle est séparée de vos vraies données et se remet à zéro chaque jour.</dd>
+    <dt>À quoi sert la version de démonstration ?</dt><dd>Sur la page de connexion, <em>Découvrir le logiciel</em> ouvre une ferme d'exemple (6 mois de données) où chacun peut tout essayer sans risque, dans le rôle de son choix. Chaque visiteur reçoit sa propre copie : <strong>tout ce qu'il fait est effacé dès qu'il se déconnecte</strong> (ou change de rôle), et la ferme d'exemple est remise à jour chaque jour. Vos vraies données ne sont jamais touchées.</dd>
     <dt>Le logiciel m'a déconnecté.</dt><dd>Après un moment sans activité, il se déconnecte pour votre sécurité. Reconnectez-vous : rien n'est perdu.</dd>
   </dl>
 </section>

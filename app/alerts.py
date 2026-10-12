@@ -34,6 +34,14 @@ def current_alerts():
                 items.append({"level": "warning", "title": f"Provende « {f['name']} » : stock bas",
                               "text": f"Reste {fmt_qty(f['stock'], 'kg')}, seuil {fmt_qty(f['alert_threshold'], 'kg')}.",
                               "url": url_for("provenderie.index")})
+    if can("sanitaire") or can("lots"):
+        from .health import alerts as health_alerts, send_reminders
+
+        try:
+            send_reminders()
+            items = health_alerts() + items
+        except Exception:  # pendant une mise à jour de la base
+            pass
     items.sort(key=lambda a: 0 if a["level"] == "critical" else 1)
     g.alerts = items
     return items

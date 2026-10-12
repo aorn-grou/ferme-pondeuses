@@ -173,7 +173,9 @@ def lot_report(lot):
         {"name": "Taux réel", "values": [round(rate[w], 1) if w in rate else None for w in weeks], "color": "#2e7d32"},
         {"name": "Estimation", "values": [round(proj_rate[w], 1) if w in proj_rate else None for w in weeks], "color": "#c9971c", "dash": True},
     ] + ([{"name": "Seuil de rentabilité", "values": [round(threshold, 1)] * len(weeks), "color": "#c0352b", "dash": True, "thin": True}] if threshold else [])}
-    costs = s["chick_cost"] + s["eaten_cost"]
+    from .health import lot_health_cost
+
+    costs = s["chick_cost"] + s["eaten_cost"] + lot_health_cost(lot["id"])
     feed_since_lay = sum(feed_cost.get(w, 0) for w in weeks if w >= lw)
     return {
         "lot": lot, "s": s, "eggs": eggs, "rev": rev, "price": price, "costs": costs, "result": rev["total"] - costs,

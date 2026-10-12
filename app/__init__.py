@@ -14,7 +14,7 @@ from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.15.0"
+VERSION = "0.16.0"
 
 
 def _secret_key(instance_dir):
@@ -53,7 +53,7 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
-    from . import auth, backups, controls, demo, discussion, eggs, lots, main, matieres, provenderie, reports, sales, settings, users
+    from . import auth, backups, controls, demo, discussion, eggs, health, lots, main, matieres, provenderie, reports, sales, settings, users
 
     app.register_blueprint(discussion.bp)
 
@@ -63,6 +63,7 @@ def create_app(test_config=None):
     app.register_blueprint(controls.bp)
     app.register_blueprint(eggs.bp)
     app.register_blueprint(sales.bp)
+    app.register_blueprint(health.bp)
     app.register_blueprint(reports.bp)
     app.register_blueprint(demo.bp)
     app.register_blueprint(auth.bp)
@@ -153,7 +154,7 @@ def create_app(test_config=None):
             "logo_url": logo_url,
             "is_demo": bool(g.get("demo")),
             "guide_anchor": {"matieres": "matieres", "provenderie": "provenderie", "lots": "lots", "oeufs": "oeufs",
-                             "ventes": "ventes", "controles": "ecarts", "rapports": "rapports", "discussion": "discussion",
+                             "ventes": "ventes", "controles": "ecarts", "rapports": "rapports", "discussion": "discussion", "sanitaire": "sanitaire",
                              "users": "admin", "settings": "admin", "backups": "admin"}.get(request.blueprint or "", "tableau")
             if request.endpoint != "lots.feeding_day" else "alimentation",
             "module_url": module_url,

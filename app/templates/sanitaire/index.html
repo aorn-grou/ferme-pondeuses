@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Suivi sanitaire{% endblock %}
+{% macro confirm_form(e) %}
+<details class="hs-confirm" {% if e.state in ('late', 'today') %}open{% endif %}><summary class="btn primary sm">{{ icon('check', 16) }} Confirmer : c'est fait</summary>
+  <form method="post" action="{{ url_for('sanitaire.event_done', event_id=e.id) }}" class="grid four top">{{ csrf() }}
+    <div class="field"><label>Fait le</label><input class="input" type="date" name="done_date" value="{{ today if e.due_date > today else (e.due_date if e.state == 'late' else today) }}" max="{{ today }}" required></div>
+    <div class="field"><label>Produit utilisé</label><input class="input" name="product" value="{{ e.product }}" placeholder="ex. Hipraviar, La Sota…" list="hs-products" data-combo></div>
+    <div class="field"><label>Dose / quantité</label><input class="input" name="dose" placeholder="ex. 1 flacon de 1000 doses"></div>
+    <div class="field"><label>Coût (Ar)</label><input class="input" name="cost" inputmode="decimal" placeholder="facultatif"></div>
+    <div class="field"><label>Payé avec</label><select class="input" name="account_id" data-free="compte">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+    <div class="field span-2"><label>Remarque</label><input class="input" name="notes" maxlength="300" placeholder="ex. fait par le vétérinaire, 3 poules faibles…"></div>
+    <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 18) }} C'est fait</button></div>
+  </form></details>
+<details class="hs-confirm"><summary class="btn ghost sm">{{ icon('clock', 16) }} Reporter / annuler</summary>
+  <form method="post" action="{{ url_for('sanitaire.event_move', event_id=e.id) }}" class="grid four top">{{ csrf() }}
+    <div class="field"><label>Nouvelle date</label><input class="input" type="date" name="due_date" value="{{ e.due_date }}"></div>
+    <div class="field span-2"><label>Raison</label><input class="input" name="reason" maxlength="200" placeholder="ex. vaccin pas encore livré, avis du vétérinaire…"></div>
+    <div class="field"><label>&nbsp;</label><div class="btn-row"><button class="btn ghost" name="action" value="reporter" type="submit">Reporter</button>
+      <button class="btn danger-ghost" name="action" value="annuler" type="submit" data-confirm="Annuler ce soin ? (la raison est obligatoire)">Annuler le soin</button></div></div>
+  </form></details>
+{% endmacro %}
+{% block content %}
+{% call page_head('Suivi sanitaire', "Vaccinations, traitements, vitamines… Le logiciel prévient 7 jours avant, et l'alerte reste tant que personne n'a confirmé que c'est fait.", 'shield') %}
+  {% if can('sanitaire', 2) %}<a class="btn primary" href="#nouveau">{{ icon('plus', 18) }} Ajouter un soin</a>{% endif %}
+{% endcall %}
+{% with active='soins' %}{% include "sanitaire/_tabs.html" %}{% endwith %}
+
+<details class="calc-banner fold" open data-fold="hs-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>1️⃣ Créez un <strong>programme</strong> (onglet Programmes) : « au jour d'âge 7 : vaccin Newcastle… ». 2️⃣ Choisissez-le dans chaque <strong>lot</strong> : chaque étape devient un soin avec sa vraie date. 3️⃣ <strong>7 jours avant</strong>, l'alerte apparaît (cloche 🔔, tableau de bord, Discussion, e-mail si configuré). 4️⃣ Quand c'est fait, cliquez sur <strong>« Confirmer : c'est fait »</strong>. Sans confirmation, l'alerte <strong>reste</strong> et passe au rouge <em>« en retard »</em>.</span>
+  <small>J1 = le jour d'arrivée des poussins. Un soin imprévu (maladie…) s'ajoute avec « Ajouter un soin ».</small></div></details>
+
+<form method="get" class="inline-form top-gap-sm"><label for="lot">Lot</label>
+  <select class="input sm" id="lot" name="lot" onchange="this.form.submit()"><option value="">Tous les lots</option>
+    {% for l in lots %}<option value="{{ l.id }}" {% if lot_id == l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></form>
+
+{# ---------- À faire ---------- #}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('bell', 20) }} À faire (7 prochains jours et retards)</h2>
+    {% if todo %}<span class="tag {{ 'tag-red' if todo|selectattr('state', 'in', ['late', 'today'])|list else 'tag-gold' }}">{{ todo|length }} soin(s)</span>{% else %}<span class="tag tag-green">rien à faire ✅</span>{% endif %}</div>
+  {% if not todo %}<p class="muted">Aucun soin à faire dans les 7 prochains jours. 👍</p>{% endif %}
+  <div class="hs-list">
+  {% for e in todo %}
+    <article class="hs-card {{ e.state }}" id="soin-{{ e.id }}">
+      <div class="hs-head"><span class="hs-emoji">{{ e.emoji }}</span>
+        <div><strong>{{ e.title }}</strong><small class="muted block">{{ e.lot or 'Tous les lots' }} · {{ e.kind_label }}{% if e.method %} · {{ e.method }}{% endif %}{% if e.product %} · {{ e.product }}{% endif %}</small></div>
+        <span class="hs-state {{ e.state }}">{{ '🚨 ' if e.state == 'late' else ('⏰ ' if e.state == 'today' else '🔔 ') }}{{ e.state_label }}<small>prévu le {{ e.due_date|date_fr }}</small></span></div>
+      {% if e.notes %}<p class="muted small">📝 {{ e.notes }}</p>{% endif %}
+      {% if can('sanitaire', 2) %}<div class="hs-actions">{{ confirm_form(e) }}</div>{% endif %}
+    </article>
+  {% endfor %}
+  </div>
+</section>
+
+{# ---------- Nouveau soin ---------- #}
+{% if can('sanitaire', 2) %}
+<section class="card top-gap" id="nouveau">
+  <h2>{{ icon('plus', 20) }} Ajouter un soin</h2>
+  <form method="post" action="{{ url_for('sanitaire.event_new') }}" class="grid four top">{{ csrf() }}
+    <div class="field span-2"><label>Quoi ? *</label><input class="input" name="title" required maxlength="120" placeholder="ex. Vaccin Newcastle, Traitement coccidiose…" list="hs-titles" data-combo></div>
+    <div class="field"><label>Type</label><select class="input" name="kind">{% for k, v in kinds.items() %}<option value="{{ k }}">{{ v[0] }} {{ v[1] }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Date prévue *</label><input class="input" type="date" name="due_date" value="{{ today }}" required></div>
+    <div class="field"><label>Pour quels lots ?</label><select class="input" name="lot_id" multiple size="{{ [lots|length + 1, 4]|min }}"><option value="">Toute la ferme</option>{% for l in lots %}<option value="{{ l.id }}" {% if lot_id == l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select>
+      <small class="hint">Ctrl + clic pour en choisir plusieurs.</small></div>
+    <div class="field"><label>Comment</label><input class="input" name="method" list="hs-methods" placeholder="ex. Eau de boisson" data-combo></div>
+    <div class="field"><label>Produit</label><input class="input" name="product" list="hs-products" placeholder="facultatif" data-combo></div>
+    <div class="field"><label>Remarque</label><input class="input" name="notes" maxlength="300" placeholder="ex. sur conseil du vétérinaire"></div>
+    <div class="form-actions span-all"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le soin</button></div>
+  </form>
+</section>
+{% endif %}
+<datalist id="hs-methods">{% for m in methods %}<option value="{{ m }}">{% endfor %}</datalist>
+<datalist id="hs-titles">{% for t in ['Vaccin Newcastle', 'Vaccin Gumboro', 'Vaccin Bronchite infectieuse', 'Vaccin variole aviaire', 'Vitamines', 'Anti-stress', 'Vermifuge', 'Traitement coccidiose', 'Antibiotique', 'Désinfection du bâtiment', 'Visite du vétérinaire'] %}<option value="{{ t }}">{% endfor %}</datalist>
+<datalist id="hs-products">{% for p in ['La Sota', 'HB1', 'Hipraviar', 'Gumboro D78', 'Amprolium', 'Vitamines AD3E', 'Pipérazine', 'Lévamisole'] %}<option value="{{ p }}">{% endfor %}</datalist>
+
+{# ---------- Diagnostic ---------- #}
+{% if weekly.has %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Mortalité par semaine</h2><span class="tag {{ 'tag-red' if weekly.total else 'tag-green' }}">{{ weekly.total|num }} poule(s) · 12 semaines</span></div>
+  <details class="calc-banner fold" open data-fold="hs-mort"><summary>📖 Comment lire ce graphique <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>Chaque barre = le nombre de poules mortes cette semaine-là{% if lot_id %} dans ce lot{% else %}, tous les lots ensemble{% endif %}. Passez la souris sur une barre : vous voyez aussi combien de soins ont été faits. <strong>Une barre qui monte d'un coup = à surveiller</strong> (maladie, chaleur…) : parlez-en au vétérinaire.</span></div></details>
+  <div class="chart-box sm" data-chart='{{ weekly.chart|tojson }}'></div>
+</section>
+{% endif %}
+
+{# ---------- À venir ---------- #}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Plus tard</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Date prévue</th><th>Lot</th><th>Quoi</th><th>Comment</th><th>Dans</th></tr></thead>
+    <tbody>{% for e in upcoming %}
+      <tr id="soin-{{ e.id }}"><td data-label="Date" class="nowrap">{{ e.due_date|date_fr }}</td><td data-label="Lot">{{ e.lot or 'Tous' }}</td>
+        <td data-label="Quoi">{{ e.emoji }} {{ e.title }}</td><td data-label="Comment">{{ e.method or '—' }}</td><td data-label="Dans">{{ e.days }} jours</td></tr>
+    {% else %}<tr><td colspan="5" class="center muted">Rien de prévu plus tard. Choisissez un programme sanitaire pour vos lots (onglet Programmes).</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+
+{# ---------- Historique ---------- #}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} Historique des soins</h2>{% if cost %}<span class="tag tag-gold">coût {{ cost|money }}</span>{% endif %}</div>
+  <table class="table responsive">
+    <thead><tr><th>Fait le</th><th>Lot</th><th>Quoi</th><th>Produit · dose</th><th class="right">Coût</th><th>Par</th><th>État</th><th></th></tr></thead>
+    <tbody>{% for e in history %}
+      <tr id="soin-{{ e.id }}"><td data-label="Fait le" class="nowrap">{{ (e.done_date or e.due_date)|date_fr }}{% if e.status == 'fait' and e.done_date > e.due_date %}<small class="text-danger block">prévu le {{ e.due_date|date_fr }}</small>{% endif %}</td>
+        <td data-label="Lot">{{ e.lot or 'Tous' }}</td><td data-label="Quoi">{{ e.emoji }} {{ e.title }}{% if e.notes %}<small class="muted block">{{ e.notes }}</small>{% endif %}</td>
+        <td data-label="Produit">{{ e.product or '—' }}{% if e.dose %} · {{ e.dose }}{% endif %}</td><td data-label="Coût" class="right">{{ e.cost|money if e.cost else '—' }}</td>
+        <td data-label="Par">{{ e.done_name or e.done_user or '—' }}</td><td data-label="État"><span class="badge {{ 'badge-ok' if e.status == 'fait' else 'badge-muted' }}">{{ e.state_label }}</span></td>
+        <td class="right">{% if can('sanitaire', 3) %}<form method="post" action="{{ url_for('sanitaire.event_move', event_id=e.id) }}" data-confirm="Remettre ce soin « à faire » ?">{{ csrf() }}<button class="btn ghost sm" name="action" value="rouvrir" type="submit" title="Remettre « à faire »">{{ icon('refresh', 14) }} À faire</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="8" class="center muted">Aucun soin confirmé pour l'instant.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endblock %}

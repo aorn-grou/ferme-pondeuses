@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Programmes sanitaires{% endblock %}
+{% block content %}
+{% call page_head('Programmes sanitaires', "Le calendrier des vaccinations et soins selon l'âge des poules. Un lot qui suit un programme reçoit ses alertes tout seul.", 'shield') %}
+  {% if can('sanitaire', 2) %}<a class="btn ghost" href="{{ url_for('sanitaire.program_new', exemple=1) }}">{{ icon('book', 18) }} Partir de l'exemple</a>
+  <a class="btn primary" href="{{ url_for('sanitaire.program_new') }}">{{ icon('plus', 18) }} Nouveau programme</a>{% endif %}
+{% endcall %}
+{% with active='programmes' %}{% include "sanitaire/_tabs.html" %}{% endwith %}
+<section class="card flush">
+  <table class="table responsive"><thead><tr><th>Programme</th><th class="right">Étapes</th><th class="right">Lots qui le suivent</th></tr></thead>
+    <tbody>{% for p in rows %}<tr class="clickable" data-href="{{ url_for('sanitaire.program', program_id=p.id) }}"><td data-label="Programme"><a href="{{ url_for('sanitaire.program', program_id=p.id) }}"><strong>{{ p.name }}</strong></a>{% if not p.active %} <span class="badge badge-muted">archivé</span>{% endif %}</td>
+      <td data-label="Étapes" class="right">{{ p.nb }}</td><td data-label="Lots" class="right">{{ p.lots }}</td></tr>
+    {% else %}<tr><td colspan="3" class="center muted">Aucun programme. Cliquez sur « Partir de l'exemple » : un calendrier type de pondeuses est déjà rempli, vous l'adaptez avec votre vétérinaire.</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

@@ -242,7 +242,7 @@ class TestUsers(Base):
         for url in ["/", "/utilisateurs/", "/utilisateurs/?voir=tous", "/utilisateurs/nouveau", f"/utilisateurs/{uid}",
                     "/parametres/", "/parametres/?onglet=apparence", "/parametres/?onglet=email",
                     "/parametres/?onglet=securite", "/sauvegardes/", "/journal", "/journal?utilisateur=super-adm&du=2020-01-01",
-                    "/mon-profil", "/oeufs/", "/guide", "/module/sanitaire", "/ventes/", "/ventes/stock", "/ventes/clients", "/ventes/nouvelle", "/lots/", "/lots/alimentation"]:
+                    "/mon-profil", "/oeufs/", "/guide", "/sanitaire/", "/sanitaire/programmes", "/sanitaire/programmes/nouveau?exemple=1", "/ventes/", "/ventes/stock", "/ventes/clients", "/ventes/nouvelle", "/lots/", "/lots/alimentation"]:
             res = self.client.get(url)
             self.assertEqual(res.status_code, 200, url)
         self.assertEqual(self.client.get("/module/inconnu").status_code, 404)

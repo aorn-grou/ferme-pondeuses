@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+{% call page_head(item.name, 'Programme sanitaire' ~ (' · archivé' if not item.active else ''), 'shield') %}
+  <a class="btn ghost" href="{{ url_for('sanitaire.programs') }}">← Programmes</a>
+  {% if can('sanitaire', 2) %}<a class="btn primary" href="{{ url_for('sanitaire.program_edit', program_id=item.id) }}">{{ icon('edit', 18) }} Modifier</a>{% endif %}
+{% endcall %}
+{% if item.notes %}<section class="card note-card"><p class="pre-line">{{ item.notes }}</p></section>{% endif %}
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Le calendrier</h2></div>
+  <table class="table responsive"><thead><tr><th>Âge</th><th>Quoi</th><th>Type</th><th>Comment</th><th>Produit</th></tr></thead>
+    <tbody>{% for i in items %}<tr><td data-label="Âge" class="nowrap"><strong>{{ describe_day(i.day_age) }}</strong></td><td data-label="Quoi">{{ i.title }}</td>
+      <td data-label="Type">{{ kinds.get(i.kind, kinds['autre'])[0] }} {{ kinds.get(i.kind, kinds['autre'])[1] }}</td><td data-label="Comment">{{ i.method or '—' }}</td><td data-label="Produit">{{ i.product or '—' }}</td></tr>{% endfor %}</tbody></table>
+</section>
+<section class="card top-gap">
+  <h2>{{ icon('layers', 20) }} Lots qui suivent ce programme</h2>
+  {% if lots %}<ul>{% for l in lots %}<li><a href="{{ url_for('lots.lot', lot_id=l.id) }}#sante">{{ l.name }}</a>{% if l.status != 'actif' %} <small class="muted">(terminé)</small>{% endif %}</li>{% endfor %}</ul>{% else %}<p class="muted">Aucun lot pour l'instant.</p>{% endif %}
+  {% if all_lots and can('sanitaire', 2) %}
+  <form method="post" action="{{ url_for('sanitaire.program_assign', program_id=item.id) }}" class="top-gap-sm">{{ csrf() }}
+    <p><strong>Appliquer ce programme à :</strong></p>
+    <div class="check-list">{% for l in all_lots %}<label class="check"><input type="checkbox" name="lot_id" value="{{ l.id }}"> {{ l.name }} <small class="muted">({{ l.initial_count }} poules, arrivé le {{ l.arrival_date|date_fr }})</small></label>{% endfor %}</div>
+    <button class="btn primary top-gap-sm" type="submit">{{ icon('check', 18) }} Appliquer</button>
+    <p class="hint">Les soins sont calculés d'après l'âge de chaque lot. Les étapes déjà passées apparaissent « en retard » : confirmez-les si elles ont été faites, ou annulez-les avec une raison.</p>
+  </form>{% endif %}
+</section>
+{% if can('sanitaire', 3) %}
+<section class="card top-gap"><form method="post" action="{{ url_for('sanitaire.program_archive', program_id=item.id) }}" data-confirm="{{ 'Archiver' if item.active else 'Réactiver' }} ce programme ?">{{ csrf() }}<button class="btn ghost" type="submit">{{ 'Archiver' if item.active else 'Réactiver' }}</button></form></section>
+{% endif %}
+{% endblock %}

@@ -44,6 +44,16 @@
   </section>
 
   <section class="card">
+    <h2>{{ icon('shield', 20) }} Suivi sanitaire</h2>
+    <div class="grid two top">
+      <div class="field"><label for="health_program_id">Programme de vaccinations et soins</label>
+        <select class="input" id="health_program_id" name="health_program_id"><option value="">— Sans programme (j'ajoute les soins à la main) —</option>
+          {% for p in health_programs %}<option value="{{ p.id }}" {% if values.health_program_id|string == p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+        <p class="hint">Chaque étape du programme devient un soin avec sa date (d'après l'âge du lot). Alerte 7 jours avant, jusqu'à la confirmation. {% if not health_programs %}<a href="{{ url_for('sanitaire.program_new', exemple=1) }}">Créer un programme</a>{% endif %}</p></div>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>{{ icon('wallet', 20) }} Achat des poussins</h2>
     <div class="grid three">
       <div class="field"><label for="supplier">Fournisseur / couvoir</label><input class="input" id="supplier" name="supplier" value="{{ values.supplier }}" list="dl-supplier" placeholder="ex. Couvoir Rabe" data-combo>

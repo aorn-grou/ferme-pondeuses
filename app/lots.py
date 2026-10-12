@@ -221,6 +221,10 @@ def _programs():
     return query("SELECT * FROM feed_programs WHERE active = 1 ORDER BY name")
 
 
+def _health_programs():
+    return query("SELECT * FROM health_programs WHERE active = 1 ORDER BY name")
+
+
 def _formulas():
     return query("SELECT * FROM formulas WHERE active = 1 ORDER BY name")
 
@@ -267,9 +271,16 @@ def lot(lot_id):
     first_egg = eggs["rows"][0]["date"] if eggs["rows"] else None
     if first_egg and first_egg < lay_date:  # les œufs sont arrivés plus tôt que prévu
         feed_since_lay = sum(r["quantity"] * r["unit_cost"] for r in cons["rows"] if r["date"] >= first_egg)
-    money = {"costs": summary["chick_cost"] + summary["eaten_cost"], "eggs_value": eggs["value"],
+    from .health import events as health_events, lot_health_cost
+
+    health_cost = lot_health_cost(lot_id)
+    all_costs = summary["chick_cost"] + summary["eaten_cost"] + health_cost
+    money = {"costs": all_costs, "health": health_cost, "eggs_value": eggs["value"],
              "feed_per_egg": (feed_since_lay / eggs["laid"]) if eggs["laid"] else None,
-             "cost_per_egg": ((summary["chick_cost"] + summary["eaten_cost"]) / eggs["laid"]) if eggs["laid"] else None}
+             "cost_per_egg": (all_costs / eggs["laid"]) if eggs["laid"] else None}
+    health = health_events("e.lot_id = ?", (lot_id,))
+    first_todo = next((i for i, e in enumerate(health) if e["status"] == "prevu"), len(health))
+    health_window = health[max(0, first_todo - 4): first_todo + 10]
     money["result"] = money["eggs_value"] - money["costs"]
     from .sales import lot_revenue
 
@@ -277,7 +288,7 @@ def lot(lot_id):
     money["real"] = money["sales"]["total"] - money["costs"]
     egg_chart = lot_chart(item)
     return render_template("lots/lot.html", item=item, s=summary, cons=cons, events=events, feedings=feedings,
-                           eggs=eggs, money=money, egg_chart=egg_chart,
+                           eggs=eggs, money=money, egg_chart=egg_chart, health=health, health_window=health_window,
                            kinds=EVENT_KINDS, chart=json.dumps(chart) if chart else None,
                            formulas=_formulas(), today=today(), programs=program_rows(item["program_id"]))
 
@@ -302,6 +313,7 @@ def _form_values(existing=None):
         "program_id": f.get("program_id") or None,
         "reform_week": int(parse_num(f.get("reform_week"), 72) or 72),
         "laying_week": int(parse_num(f.get("laying_week"), 18) or 18),
+        "health_program_id": f.get("health_program_id") or None,
         "egg_price": parse_num(f.get("egg_price"), 0) or 0,
         "notes": f.get("notes", "").strip(),
     }
@@ -332,7 +344,7 @@ def lot_new():
     count = query("SELECT COUNT(*) AS n FROM lots", one=True)["n"]
     values = {"name": f"Lot {chr(65 + count % 26)}", "arrival_date": today(), "age_days_at_arrival": 0,
               "initial_count": "", "breed": "", "building": "", "supplier": "", "chick_price": "", "other_costs": "",
-              "paid": None, "account_id": None, "program_id": None, "reform_week": 72, "laying_week": 18, "egg_price": "", "notes": ""}
+              "paid": None, "account_id": None, "program_id": None, "reform_week": 72, "laying_week": 18, "health_program_id": None, "egg_price": "", "notes": ""}
     # le logiciel propose les réglages du dernier lot (tout reste modifiable)
     last = query("SELECT * FROM lots ORDER BY id DESC LIMIT 1", one=True)
     if last:
@@ -342,6 +354,9 @@ def lot_new():
                 values[key] = int(v) if isinstance(v, float) and v.is_integer() else v
         if last["program_id"] and query("SELECT 1 FROM feed_programs WHERE id = ? AND active = 1", (last["program_id"],), one=True):
             values["program_id"] = last["program_id"]
+        if last["health_program_id"] and query("SELECT 1 FROM health_programs WHERE id = ? AND active = 1",
+                                               (last["health_program_id"],), one=True):
+            values["health_program_id"] = last["health_program_id"]
     if not values["program_id"]:
         progs = query("SELECT id FROM feed_programs WHERE active = 1")
         if len(progs) == 1:
@@ -364,12 +379,12 @@ def lot_new():
                 cur = conn.execute(
                     """INSERT INTO lots (name, arrival_date, age_days_at_arrival, initial_count, breed, building, supplier,
                        chick_price, other_costs, paid, account_id, program_id, reform_week, egg_price, notes,
-                       created_by, created_at, laying_week) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       created_by, created_at, laying_week, health_program_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (values["name"], values["arrival_date"], values["age_days_at_arrival"], values["initial_count"],
                      values["breed"], values["building"], values["supplier"], values["chick_price"],
                      values["other_costs"], paid, account["id"] if account and paid > 0 else None,
                      values["program_id"], values["reform_week"], values["egg_price"], values["notes"],
-                     g.user["id"], now_utc(), values["laying_week"]))
+                     g.user["id"], now_utc(), values["laying_week"], values["health_program_id"]))
                 lot_id = cur.lastrowid
                 if paid > 0:
                     conn.execute(
@@ -377,13 +392,16 @@ def lot_new():
                            VALUES (?, ?, ?, 'achat_poussins', ?, 'lot', ?, ?, ?)""",
                         (values["arrival_date"], account["id"], -paid, f"Achat poussins {values['name']}", lot_id,
                          g.user["id"], now_utc()))
+            from .health import schedule_lot_id
+
+            schedule_lot_id(lot_id)
             log_activity("Lot créé", f"{values['name']} — {values['initial_count']} poules")
             notify("lot", lot_id, f"🐣 Nouveau lot « {values['name']} » : {values['initial_count']} "
                    f"{'poussins' if values['age_days_at_arrival'] < 7 else 'poules'} arrivés le {date_fr(values['arrival_date'])}"
                    + (f" ({fmt_money(total)})" if total else "") + ".")
             flash(f"Lot « {values['name']} » enregistré.", "success")
             return redirect(url_for("lots.lot", lot_id=lot_id))
-    return render_template("lots/lot_form.html", values=values, lot=None, programs=_programs(),
+    return render_template("lots/lot_form.html", values=values, lot=None, programs=_programs(), health_programs=_health_programs(),
                            accounts=accounts(), suggestions=_suggestions())
 
 
@@ -408,24 +426,27 @@ def lot_edit(lot_id):
         else:
             changes = []
             labels = {"name": "nom", "arrival_date": "arrivée", "initial_count": "nombre au départ",
-                      "program_id": "programme", "laying_week": "début de ponte (semaine)",
+                      "program_id": "programme", "health_program_id": "programme sanitaire", "laying_week": "début de ponte (semaine)",
                       "reform_week": "semaine de réforme", "chick_price": "prix du poussin"}
             for key, label in labels.items():
                 if str(values[key] or "") != str(item[key] or ""):
                     changes.append(f"{label} {item[key] or '—'} → {values[key] or '—'}")
             execute("""UPDATE lots SET name = ?, arrival_date = ?, age_days_at_arrival = ?, initial_count = ?, breed = ?,
                        building = ?, supplier = ?, chick_price = ?, other_costs = ?, program_id = ?, reform_week = ?,
-                       egg_price = ?, notes = ?, laying_week = ? WHERE id = ?""",
+                       egg_price = ?, notes = ?, laying_week = ?, health_program_id = ? WHERE id = ?""",
                     (values["name"], values["arrival_date"], values["age_days_at_arrival"], values["initial_count"],
                      values["breed"], values["building"], values["supplier"], values["chick_price"],
                      values["other_costs"], values["program_id"], values["reform_week"], values["egg_price"],
-                     values["notes"], values["laying_week"], lot_id))
+                     values["notes"], values["laying_week"], values["health_program_id"], lot_id))
+            from .health import schedule_lot_id
+
+            schedule_lot_id(lot_id)
             log_activity("Lot modifié", f"{values['name']} : " + ("; ".join(changes) or "détails"))
             if changes:
                 notify("lot", lot_id, f"✏️ Lot « {values['name']} » modifié : " + "; ".join(changes))
             flash("Lot mis à jour.", "success")
             return redirect(url_for("lots.lot", lot_id=lot_id))
-    return render_template("lots/lot_form.html", values=values, lot=item, programs=_programs(),
+    return render_template("lots/lot_form.html", values=values, lot=item, programs=_programs(), health_programs=_health_programs(),
                            accounts=accounts(), suggestions=_suggestions())
 
 
@@ -443,6 +464,9 @@ def lot_close(lot_id):
         execute("UPDATE lots SET status = 'actif', end_date = '' WHERE id = ?", (lot_id,))
         log_activity("Lot réactivé", item["name"])
         flash("Lot réactivé.", "success")
+    from .health import schedule_lot_id
+
+    schedule_lot_id(lot_id)  # lot terminé : ses soins à venir sont retirés ; réactivé : ils reviennent
     return redirect(url_for("lots.lot", lot_id=lot_id))
 
 
@@ -455,6 +479,7 @@ def lot_delete(lot_id):
         return redirect(url_for("lots.lot", lot_id=lot_id))
     with transaction() as conn:
         conn.execute("DELETE FROM lot_events WHERE lot_id = ?", (lot_id,))
+        conn.execute("DELETE FROM health_events WHERE lot_id = ? AND status = 'prevu'", (lot_id,))
         conn.execute("DELETE FROM cash_movements WHERE ref_type = 'lot' AND ref_id = ?", (lot_id,))
         conn.execute("DELETE FROM lots WHERE id = ?", (lot_id,))
     log_activity("Lot supprimé", item["name"])

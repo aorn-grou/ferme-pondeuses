@@ -188,6 +188,18 @@ def build(app, days=180, seed=7):
     with _ctx(app):
         prog = query("SELECT id FROM feed_programs", one=True)["id"]
 
+    # --- programme sanitaire (exemple) ---------------------------------------
+    from .health import EXAMPLE
+
+    br.post("/sanitaire/programmes/nouveau", {
+        "name": "Programme pondeuses (exemple)", "notes": "Exemple à adapter avec votre vétérinaire.",
+        "day_age": [str(d) for d, *_ in EXAMPLE], "title": [t for _, t, _, _ in EXAMPLE], "kind": [k for _, _, k, _ in EXAMPLE],
+        "method": [m for *_, m in EXAMPLE], "product": ["" for _ in EXAMPLE]})
+    with _ctx(app):
+        health_prog = query("SELECT id FROM health_programs", one=True)["id"]
+    PRODUCTS = {"vaccin": ("Vaccin (flacon 1000 doses)", 9000, 25000), "vitamines": ("Vitamines AD3E", 6000, 12000),
+                "vermifuge": ("Pipérazine", 8000, 15000)}
+
     # --- lots en escalier ----------------------------------------------------
     lots_plan = [  # nom, arrivée (jours avant aujourd'hui), poussins, bâtiment, début de ponte
         ("Lot A", 230, 600, "Bâtiment 1", 19),
@@ -201,6 +213,7 @@ def build(app, days=180, seed=7):
         br.post("/lots/nouveau", {
             "name": name, "arrival_date": arrival.isoformat(), "initial_count": str(count), "age_weeks": "", "age_days": "",
             "breed": "Isa Brown", "building": building, "program_id": str(prog), "reform_week": "80", "laying_week": str(laying),
+            "health_program_id": str(health_prog),
             "egg_price": "500", "supplier": "Couvoir Rabe", "chick_price": "3500", "other_costs": "60000",
             "paid": "", "account_id": str(proprio), "notes": ""})
         with _ctx(app):
@@ -316,6 +329,18 @@ def build(app, days=180, seed=7):
                 if s:
                     br.post(f"/ventes/{sale_id}/encaisser", {"amount": str(int(s["total"])), "date": d, "account_id": str(caisse)})
                 client_debt_sales.remove((sale_id, sold_day))
+        # soins faits le jour prévu (ou 1 à 2 jours après) ; les tout derniers restent à confirmer pour la démo
+        if day < today - timedelta(days=1):
+            with _ctx(app):
+                due = query("SELECT * FROM health_events WHERE status = 'prevu' AND due_date <= ? AND due_date < ?",
+                            (d, (today - timedelta(days=5)).isoformat()))  # les soins des 5 derniers jours restent à confirmer
+            for ev in due:
+                if rng.random() < 0.6 and ev["due_date"] == d:
+                    continue  # fait un peu plus tard
+                prod, lo, hi = PRODUCTS.get(ev["kind"], ("", 0, 0))
+                br.post(f"/sanitaire/soin/{ev['id']}/fait", {
+                    "done_date": d, "product": ev["product"] or prod, "dose": "", "cost": str(rng.randint(lo, hi) // 500 * 500) if hi else "",
+                    "account_id": str(caisse), "notes": ""})
         # fumier tous les mois
         if day.day == 15:
             br.post("/ventes/nouvelle", {"date": d, "client_id": "__new__:Coopérative maraîchère", "product": "Fumier",
@@ -359,6 +384,12 @@ def build(app, days=180, seed=7):
         conn = get_db()
         conn.execute("UPDATE users SET last_seen_message = COALESCE((SELECT MAX(id) FROM messages), 0) - 3")
         conn.commit()
+    # un soin en retard (jamais confirmé) pour montrer l'alerte rouge permanente
+    with _ctx(app):
+        ev = query("""SELECT e.id FROM health_events e JOIN lots l ON l.id = e.lot_id
+                      WHERE l.name = 'Lot D' AND e.status = 'fait' ORDER BY e.due_date DESC LIMIT 1""", one=True)
+    if ev:
+        br.post(f"/sanitaire/soin/{ev['id']}/modifier", {"action": "rouvrir"})
     with _ctx(app):
         return {"lots": query("SELECT COUNT(*) AS n FROM lots", one=True)["n"],
                 "eggs": query("SELECT COALESCE(SUM(good), 0) AS n FROM egg_collections", one=True)["n"],
@@ -471,6 +502,91 @@ def build_snapshot(app, days=180):
 
 
 # ---------------------------------------------------------------------------
+# Une copie personnelle pour chaque visiteur, effacée quand il se déconnecte
+# ---------------------------------------------------------------------------
+VISITOR_MAX_AGE = 3 * 3600   # une copie inutilisée depuis 3 heures est effacée
+VISITOR_MAX = 60             # au-delà, les plus anciennes sont effacées
+
+
+def visitors_dir(app):
+    return os.path.join(demo_dir(app), "visiteurs")
+
+
+def visitor_path():
+    from flask import current_app, has_request_context, session
+
+    if not has_request_context() or current_app.config.get("DEMO_BUILDING"):
+        return None
+    vid = session.get("demo_id")
+    if not vid or not vid.isalnum():
+        return None
+    return os.path.join(visitors_dir(current_app), vid + ".db")
+
+
+def _remove_db(path):
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        try:
+            os.remove(path + suffix)
+        except OSError:
+            pass
+
+
+def cleanup_visitors(app):
+    import time
+
+    folder = visitors_dir(app)
+    if not os.path.isdir(folder):
+        return
+    files = []
+    for f in os.listdir(folder):
+        if f.endswith(".db"):
+            path = os.path.join(folder, f)
+            try:
+                files.append((os.path.getmtime(path), path))
+            except OSError:
+                pass
+    files.sort()
+    now = time.time()
+    for i, (mtime, path) in enumerate(files):
+        if now - mtime > VISITOR_MAX_AGE or i < len(files) - VISITOR_MAX:
+            _remove_db(path)
+
+
+def new_visitor(app):
+    """Crée la copie personnelle d'un visiteur à partir de la ferme d'exemple du jour."""
+    import secrets
+
+    from flask import session
+
+    from .db import close_db
+
+    end_visitor(app)
+    cleanup_visitors(app)
+    reset_if_needed(app)
+    os.makedirs(visitors_dir(app), exist_ok=True)
+    vid = secrets.token_hex(10)
+    path = os.path.join(visitors_dir(app), vid + ".db")
+    close_db()
+    src = sqlite3.connect(app.config["DEMO_DATABASE"], timeout=30)
+    dst = sqlite3.connect(path)
+    src.backup(dst)
+    src.close()
+    dst.close()
+    session["demo_id"] = vid
+    return path
+
+
+def end_visitor(app):
+    """Efface la copie du visiteur : tout ce qu'il a essayé disparaît."""
+    from .db import close_db
+
+    path = visitor_path()
+    if path:
+        close_db()
+        _remove_db(path)
+
+
+# ---------------------------------------------------------------------------
 # Pages : entrer dans la démo, en sortir
 # ---------------------------------------------------------------------------
 from flask import Blueprint, current_app, flash, g, redirect, render_template, request, session, url_for  # noqa: E402
@@ -492,7 +608,19 @@ def guard():
         g.demo = False
         flash("La démonstration n'est pas disponible pour le moment.", "info")
         return redirect(url_for("auth.login"))
-    reset_if_needed(current_app._get_current_object())
+    app = current_app._get_current_object()
+    path = visitor_path()
+    if request.endpoint not in ("demo.index", "demo.enter", "demo.leave", "static") and (not path or not os.path.exists(path)):
+        session.clear()
+        g.demo = False
+        flash("Votre essai de la démonstration est terminé (les données d'essai ont été effacées). "
+              "Choisissez un rôle pour recommencer.", "info")
+        return redirect(url_for("demo.index"))
+    if path and os.path.exists(path):
+        try:
+            os.utime(path, None)  # le visiteur est toujours là : on garde sa copie
+        except OSError:
+            pass
     if request.method == "POST" and (request.blueprint in BLOCKED or request.endpoint in BLOCKED_ENDPOINTS):
         flash("Dans la démonstration, cette action est désactivée (comptes, sauvegardes, paramètres). "
               "Tout le reste peut être essayé librement.", "info")
@@ -505,6 +633,10 @@ def guard():
 
 @bp.route("/")
 def index():
+    if session.get("demo"):  # « Changer de rôle » : l'essai précédent est effacé
+        end_visitor(current_app._get_current_object())
+        session.clear()
+        g.demo = False
     return render_template("demo/index.html", users=DEMO_USERS, ready=available(current_app._get_current_object()))
 
 
@@ -521,10 +653,11 @@ def enter():
     username = request.form.get("username", "")
     if username not in {u[0] for u in DEMO_USERS}:
         return redirect(url_for("demo.index"))
+    end_visitor(app)
     session.clear()
     session["demo"] = True
     g.demo = True
-    reset_if_needed(app)
+    new_visitor(app)
     user = query("SELECT * FROM users WHERE username = ? AND deleted = 0", (username,), one=True)
     if user is None:
         session.clear()
@@ -534,11 +667,13 @@ def enter():
     session["user_id"] = user["id"]
     session["last_seen"] = datetime.now(timezone.utc).timestamp()
     flash(f"Bienvenue dans la démonstration ! Vous êtes connecté comme « {user['full_name']} ». "
-          "Essayez tout librement : les données sont remises à zéro chaque jour.", "success")
+          "Essayez tout librement : tout ce que vous faites sera effacé quand vous vous déconnecterez.", "success")
     return redirect(url_for("main.dashboard"))
 
 
 @bp.route("/sortir", methods=["POST", "GET"])
 def leave():
+    if session.get("demo"):
+        end_visitor(current_app._get_current_object())
     session.clear()
     return redirect(url_for("demo.index"))

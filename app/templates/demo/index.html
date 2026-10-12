@@ -13,7 +13,7 @@
       <span><strong>{{ name }}</strong><small>{{ desc }}</small></span><span class="dr-go">{{ icon('arrow-right', 18) if false else '→' }}</span></button></form>
   {% endfor %}
 </div>
-<p class="hint">Vous pouvez tout essayer : saisir un ramassage, faire une vente, fabriquer de la provende… Les données sont remises à zéro chaque jour. Seuls les comptes, les sauvegardes et les paramètres sont bloqués.</p>
+<p class="hint">Vous pouvez tout essayer : saisir un ramassage, faire une vente, fabriquer de la provende… Chaque visiteur a sa propre copie : tout ce que vous faites est effacé dès que vous vous déconnectez. Seuls les comptes, les sauvegardes et les paramètres sont bloqués.</p>
 {% else %}
 <div class="alert alert-info"><span>La démonstration n'est pas encore installée. Administrateur : dans la console, lancez <code>flask --app wsgi demo-build</code>.</span></div>
 {% endif %}

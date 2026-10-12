@@ -77,6 +77,21 @@
 </section>
 {% endif %}
 
+{% set h_todo = health|selectattr('status', 'equalto', 'prevu')|list %}{% set h_due = h_todo|selectattr('state', 'in', ['late', 'today', 'soon'])|list %}
+<section class="card top-gap" id="sante">
+  <div class="card-head"><h2>{{ icon('shield', 20) }} Suivi sanitaire</h2>
+    {% if can('sanitaire') %}<a class="btn ghost sm" href="{{ url_for('sanitaire.index', lot=item.id) }}">Tout voir / confirmer</a>{% endif %}</div>
+  {% if not item.health_program_id and not health %}
+  <p class="muted">Ce lot n'a pas de programme sanitaire. {% if can('lots', 2) %}<a href="{{ url_for('lots.lot_edit', lot_id=item.id) }}">Choisissez-en un</a> pour recevoir les alertes de vaccination 7 jours avant.{% endif %}</p>
+  {% else %}
+  {% for e in h_due %}<a class="alert-chip {{ 'critical' if e.state in ('late', 'today') else 'warning' }}" href="{{ url_for('sanitaire.index', lot=item.id) }}#soin-{{ e.id }}">{{ e.emoji }} <strong>{{ e.title }}</strong> <span>{{ e.state_label }} · prévu le {{ e.due_date|date_fr }} — à confirmer</span></a>{% endfor %}
+  <div class="hs-timeline">
+    {% for e in health_window %}<div class="hs-dot {{ e.state }}" title="{{ e.title }} · {{ e.due_date|date_fr }} · {{ e.state_label }}"><span>{{ e.emoji }}</span><small>{{ e.due_date|date_fr }}</small><em>{{ e.title }}</em></div>{% endfor %}
+  </div>
+  <p class="hint">✅ fait · 🔔 bientôt · 🚨 en retard · gris = plus tard. {{ h_todo|length }} soin(s) encore à faire{% if money.health %} · coût des soins : {{ money.health|money }}{% endif %}.</p>
+  {% endif %}
+</section>
+
 <section class="card top-gap" id="ponte">
   <div class="card-head"><h2>{{ icon('egg', 20) }} Ponte de ce lot</h2>
     {% if can('oeufs', 2) and item.status == 'actif' %}<a class="btn primary sm" href="{{ url_for('oeufs.index') }}">{{ icon('plus', 16) }} Saisir le ramassage</a>{% endif %}</div>
@@ -97,9 +112,9 @@
   {% endif %}
   {% if money.sales.total %}
   <p class="hint">💰 <strong>Ventes de ce lot : {{ money.sales.total|money }}</strong> = ventes marquées « {{ item.name }} » {{ money.sales.direct|money }} + sa part des ventes sans lot {{ money.sales.shared|money }} ({{ money.sales.share|round(1) }} % des bons œufs de la ferme viennent de ce lot).
-    Bénéfice réel = ventes − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}). Les autres dépenses viendront avec le module Dépenses.</p>
+    Bénéfice réel = ventes − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}{% if money.health %} + soins {{ money.health|money }}{% endif %}). Les autres dépenses viendront avec le module Dépenses.</p>
   {% else %}
-  <p class="hint">Bénéfice estimé = œufs × {{ item.egg_price|money }} − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}). Dès qu'il y a des ventes, le vrai bénéfice remplace l'estimation.</p>
+  <p class="hint">Bénéfice estimé = œufs × {{ item.egg_price|money }} − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}{% if money.health %} + soins {{ money.health|money }}{% endif %}). Dès qu'il y a des ventes, le vrai bénéfice remplace l'estimation.</p>
   {% endif %}
 </section>
 
