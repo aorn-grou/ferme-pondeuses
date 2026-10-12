@@ -196,9 +196,9 @@ def index():
     if per:  # on commence au premier jour de vente (au moins 7 jours affichés)
         first = min(per)
         keys = [k for k in keys if k >= first] if len([k for k in keys if k >= first]) >= 7 else keys[-7:]
-    chart = {"labels": [_label(k) for k in keys], "bars": [round(per[k]["q"]) if k in per else 0 for k in keys],
-             "line": [round(per[k]["t"]) if k in per else None for k in keys], "unit": "œufs", "barLabel": "Œufs vendus",
-             "lineLabel": "Montant", "lineUnit": "Ar"} if per else None
+    chart = {"labels": [_label(k) for k in keys], "bars": [round(per[k]["t"]) if k in per else 0 for k in keys],
+             "line": [None] * len(keys), "unit": "Ar", "barLabel": "Ventes", "barColor": "#2e7d32",
+             "tips": [f"{fmt_eggs(per[k]['q'])} vendus" if k in per and per[k]["q"] else "" for k in keys]} if per else None
     return render_template("ventes/index.html", rows=rows, kpi=kpi, period=period, chart=chart, fmt_eggs=fmt_eggs)
 
 

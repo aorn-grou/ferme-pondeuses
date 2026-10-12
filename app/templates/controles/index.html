@@ -26,6 +26,28 @@
   <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Afficher</button></div>
 </form>
 
+{% if diag.total %}
+<div class="dash-grid top-gap">
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('chart', 20) }} Pertes par semaine</h2><span class="tag tag-red">{{ (-diag.total)|money }}</span></div>
+    <details class="calc-banner fold" open data-fold="ctl-week"><summary>📖 Comment lire ce graphique <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+      <span>Chaque barre = la valeur de tout ce qui a été perdu cette semaine-là (écarts d'inventaire, pertes, poules disparues, baisse de ponte). <strong>Plus la barre est haute, plus la semaine a coûté cher.</strong> Passez la souris sur une barre pour voir le détail.</span></div></details>
+    <div class="chart-box sm" data-chart='{{ diag.chart|tojson }}'></div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>{{ icon('alert', 20) }} D'où viennent les pertes ?</h2></div>
+    <details class="calc-banner fold" open data-fold="ctl-cause"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+      <span>Les raisons écrites dans la colonne « Explication », de la plus coûteuse à la moins coûteuse. <strong>« Sans explication »</strong> = des pertes dont on ne connaît pas encore la cause.</span></div></details>
+    <div class="cause-bars">
+      {% for c in diag.causes %}
+      <div class="cause"><div class="cause-top"><strong>{{ c.name }}</strong><span>{{ (-c.value)|money }} <small class="muted">· {{ c.count }} fois</small></span></div>
+        <div class="cause-bar"><span class="{{ 'warn' if 'Sans explication' in c.name }}" style="width: {{ [c.pct, 2]|max|round(0) }}%"></span></div></div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endif %}
+
 {% if unexplained %}
 <div class="alert-chip critical top-gap-sm">{{ icon('alert', 16) }} <strong>{{ unexplained }} écart(s) sans explication</strong> <span>— écrivez la raison dans la colonne « Explication ».</span></div>
 {% endif %}
@@ -62,3 +84,4 @@
 <datalist id="causes-all">{% for c in ['Vol / disparition', 'Erreur de saisie', 'Erreur de comptage', 'Perte / casse', 'Humidité / pourriture', 'Rats / animaux', 'Maladie', 'Chaleur', 'Prédateur', 'Stress / bruit', 'Changement de provende', 'Manque d\'eau', 'Œufs volés', 'Autre'] %}<option value="{{ c }}">{% endfor %}</datalist>
 <p class="hint top-gap">Comment ça marche : chaque inventaire, perte, disparition ou comptage de poules est enregistré ici avec qui l'a fait. Une mortalité anormale (plus de 3 fois la moyenne du lot, au moins 3 morts) et une baisse de ponte (taux de ponte 10 points sous la moyenne des 7 jours précédents) sont aussi signalées. Les associés sont prévenus dans la Discussion.</p>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endblock %}

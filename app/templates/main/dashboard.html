@@ -104,7 +104,7 @@
 {% if d.eggs and d.eggs.chart %}{% set EC = d.eggs.chart %}
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('egg', 20) }} Taux de ponte de chaque lot (%)</h2>
-    <span class="legend-inline">{% for s in EC.rates.series %}<span><i class="sw" style="background: {{ ['#2e7d32', '#c9971c', '#1f6fa8', '#a33b8f', '#c0352b', '#0f8a80', '#6b4fbb', '#7a5c2e'][loop.index0 % 8] }}"></i> {{ s.name }}</span>{% endfor %}</span></div>
+    <span class="legend-inline">{% for s in EC.rates.series %}<span><i class="sw" style="background: var(--c{{ [loop.index, 8]|min }})"></i> {{ s.name }}</span>{% endfor %}</span></div>
   <div class="chart-box" data-chart-type="multi" aria-label="Taux de ponte par lot" data-chart='{{ EC.rates|tojson }}'></div>
   <p class="hint">Œufs pondus ÷ poules présentes × 100. ▲ meilleur jour · ▼ plus bas de chaque lot · 🥚 début de ponte prévu. <a href="{{ url_for('oeufs.index') }}">Détail et saisie →</a></p>
 </section>

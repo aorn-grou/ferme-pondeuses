@@ -23,8 +23,8 @@
 {% if chart %}
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('chart', 20) }} Ventes par jour · 30 jours</h2></div>
-  <div class="chart-box" data-chart-type="combo" data-chart='{{ chart|tojson }}'></div>
-  <p class="hint"><span class="sw-inline gold"></span> barres = œufs vendus (gauche) · <span class="sw-inline green"></span> courbe = montant de la journée en Ar (droite). ▲ meilleur jour · ▼ plus faible.</p>
+  <div class="chart-box" data-chart='{{ chart|tojson }}'></div>
+  <p class="hint">Chaque barre = le montant vendu ce jour-là. Passez la souris (ou touchez) une barre pour voir le nombre d'œufs vendus.</p>
 </section>
 {% endif %}
 

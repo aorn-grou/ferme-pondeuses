@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Guide d'utilisation{% endblock %}
+{% macro ex() %}<div class="g-ex"><strong>📌 Exemple</strong>{{ caller() }}</div>{% endmacro %}
+{% macro tip() %}<div class="g-tip">💡 {{ caller() }}</div>{% endmacro %}
+{% macro warn() %}<div class="g-warn">⚠️ {{ caller() }}</div>{% endmacro %}
+{% block content %}
+{% call page_head("Guide d'utilisation", "Tout le logiciel expliqué simplement : à quoi sert chaque page, chaque bouton, et comment le logiciel calcule.", 'book') %}
+  <button class="btn ghost" type="button" onclick="window.print()">{{ icon('download', 18) }} Imprimer le guide</button>
+{% endcall %}
+
+<div class="guide">
+<nav class="g-toc card" aria-label="Sommaire">
+  <strong>Sommaire</strong>
+  <ol>
+    <li><a href="#debut">Pour bien commencer</a></li>
+    <li><a href="#journee">Une journée type à la ferme</a></li>
+    <li><a href="#tableau">Le tableau de bord</a></li>
+    <li><a href="#matieres">Achats & matières premières</a></li>
+    <li><a href="#provenderie">Provenderie (formules, fabrication, programmes)</a></li>
+    <li><a href="#lots">Lots de poules</a></li>
+    <li><a href="#alimentation">Provende du jour</a></li>
+    <li><a href="#oeufs">Œufs (ramassage)</a></li>
+    <li><a href="#ventes">Ventes, clients et stock d'œufs</a></li>
+    <li><a href="#ecarts">Écarts & contrôles</a></li>
+    <li><a href="#rapports">Rapports</a></li>
+    <li><a href="#discussion">Discussion et signalements</a></li>
+    <li><a href="#admin">Administration (utilisateurs, paramètres, sauvegardes)</a></li>
+    <li><a href="#moteur">Le moteur : comment le logiciel calcule</a></li>
+    <li><a href="#questions">Questions fréquentes</a></li>
+  </ol>
+</nav>
+
+<div class="g-body">
+
+<section class="card g-sec" id="debut">
+  <h2>1. Pour bien commencer</h2>
+  <h3>Se connecter</h3>
+  <p>Ouvrez l'adresse du logiciel dans le navigateur (ordinateur ou téléphone), écrivez votre <strong>nom d'utilisateur</strong> et votre <strong>mot de passe</strong>, puis cliquez sur <em>Se connecter</em>. À la toute première connexion, le logiciel demande de choisir un nouveau mot de passe, un e-mail et une question secrète (pour retrouver le mot de passe en cas d'oubli).</p>
+  <h3>Se repérer</h3>
+  <ul>
+    <li><strong>Le menu à gauche</strong> (sur téléphone : le bouton ☰ en haut) mène à chaque partie du logiciel. Chaque personne ne voit que les parties auxquelles elle a droit.</li>
+    <li><strong>En haut à droite</strong> : {{ icon('help', 16) }} ce guide (il s'ouvre directement à la bonne partie), 🖥️ le thème clair/sombre, 💬 la Discussion entre associés, 🔔 les alertes, et votre nom (profil, déconnexion).</li>
+    <li><strong>Les onglets</strong> en haut de chaque page (ex. Stock · Achats · Inventaire) montrent les différentes vues d'une même partie.</li>
+  </ul>
+  <h3>Les 4 règles d'or du logiciel</h3>
+  <ol>
+    <li><strong>Vous écrivez librement.</strong> Partout où il y a une liste (matière, client, fournisseur, unité, catégorie…), vous pouvez écrire un nouveau nom : le logiciel le crée tout seul. Toutes les unités sont acceptées : g, kg, sac, L…</li>
+    <li><strong>Le logiciel propose, vous décidez.</strong> Il propose la provende du jour, les quantités, les prix… vous pouvez toujours changer.</li>
+    <li><strong>Tout se corrige.</strong> Une erreur ? Les boutons <em>Corriger</em> ou <em>Annuler</em> remettent tout en ordre (le stock et la caisse sont recalculés). Un employé peut corriger sa propre saisie du jour ; un responsable peut tout corriger.</li>
+    <li><strong>Vos associés sont prévenus.</strong> Chaque achat, fabrication, vente, écart, correction… envoie un message automatique dans la Discussion.</li>
+  </ol>
+  {% call tip() %}Les petits bandeaux dorés <strong>📖 « Comment lire… »</strong> au-dessus des tableaux et des graphiques expliquent ce que vous voyez. Cliquez sur leur titre pour les fermer quand vous avez compris : le logiciel s'en souvient.{% endcall %}
+</section>
+
+<section class="card g-sec" id="journee">
+  <h2>2. Une journée type à la ferme</h2>
+  <ol class="g-steps">
+    <li><strong>Le matin : donner la provende.</strong> Menu <em>Alimentation</em> → le logiciel propose pour chaque lot la bonne provende et les kg selon l'âge. Vérifiez, puis <em>Enregistrer la distribution</em>. Le stock de provende baisse tout seul.</li>
+    <li><strong>Pendant la journée : les morts ou problèmes.</strong> Sur la page du lot → <em>Effectif</em> : Mortalité, Disparition, Réforme… avec une explication.</li>
+    <li><strong>Le soir : le ramassage.</strong> Menu <em>Œufs</em> → plateaux + œufs + cassés pour chaque lot → <em>Enregistrer le ramassage</em>. Le taux de ponte se calcule tout seul.</li>
+    <li><strong>À chaque vente :</strong> menu <em>Ventes & clients</em> → <em>Nouvelle vente</em>. Le stock d'œufs baisse et l'argent entre dans la caisse.</li>
+    <li><strong>À chaque achat :</strong> <em>Achats & matières premières</em> → <em>Nouvel achat</em>.</li>
+    <li><strong>Quand la provende baisse :</strong> <em>Provenderie</em> → <em>Fabriquer</em>. Les matières premières baissent, la provende monte.</li>
+    <li><strong>Une fois par semaine ou par mois : les inventaires</strong> (matières, provende, œufs, comptage des poules). Les écarts apparaissent dans <em>Écarts & contrôles</em>.</li>
+    <li><strong>Pour décider :</strong> le <em>Tableau de bord</em> (coup d'œil) et les <em>Rapports</em> (diagnostics).</li>
+  </ol>
+</section>
+
+<section class="card g-sec" id="tableau">
+  <h2>3. Le tableau de bord</h2>
+  <p>C'est la page d'accueil : tout l'essentiel d'un coup d'œil. Elle se met à jour toute seule toutes les 2 minutes.</p>
+  <ul>
+    <li><strong>Le bandeau vert</strong> : nombre de poules, provende à donner aujourd'hui, nombre de jours de provende en stock. Ses boutons mènent aux saisies du jour (Provende du jour, Fabriquer, Nouvel achat, Ramassage, Vente, Nouveau lot).</li>
+    <li><strong>Les alertes</strong> (stock bas…) et <strong>Écarts & contrôles</strong> : en rouge s'il y a des pertes ou des écarts sans explication.</li>
+    <li><strong>Les cartes de chiffres</strong> : poules, provende en stock, matières premières, achats du mois, provende à prévoir, ventes, œufs du jour. Les petites courbes montrent l'évolution. Cliquez sur une carte pour voir le détail.</li>
+    <li><strong>Taux de ponte de chaque lot</strong>, <strong>provende donnée et fabriquée</strong> (▲ meilleur jour, ▼ plus faible, pointillés = moyenne).</li>
+    <li><strong>Bénéfice ou perte de chaque lot</strong> depuis le jour 1, et jusqu'à quand il reste rentable.</li>
+    <li><strong>Provende à venir, mois par mois</strong> jusqu'à la réforme de chaque lot, avec le calcul détaillé.</li>
+    <li><strong>Vos lots</strong>, <strong>l'argent par compte</strong> et <strong>ce qui s'est passé</strong> (derniers signalements).</li>
+  </ul>
+</section>
+
+<section class="card g-sec" id="matieres">
+  <h2>4. Achats & matières premières</h2>
+  <p>Les ingrédients de la provende : maïs, soja, son, coquillage, prémix… et tout ce que vous voulez suivre.</p>
+  <h3>Les boutons</h3>
+  <table class="g-table">
+    <tr><th>Nouvelle matière</th><td>Créer une matière (nom, catégorie, unité, seuil d'alerte) quand vous en commencez une nouvelle. Vous pouvez indiquer un stock de départ.</td></tr>
+    <tr><th>Nouvel achat</th><td>Enregistrer un achat chez un fournisseur : plusieurs matières à la fois, quantité, prix, transport. <strong>Le stock monte</strong> et l'argent sort du compte choisi.</td></tr>
+    <tr><th>Paiement</th><td><em>Tout payé</em> · <em>Une partie</em> (vous écrivez le montant payé, le reste devient une dette) · <em>À crédit</em> (rien payé, toute la somme est une dette).</td></tr>
+    <tr><th>Fournisseurs</th><td>Ce que vous devez à chacun. Sur la fiche d'un fournisseur, <em>Payer une partie de la dette</em> enregistre un paiement plus tard.</td></tr>
+    <tr><th>Inventaire</th><td>Vous comptez ce qu'il y a vraiment au dépôt. Le logiciel compare avec son stock : s'il manque quelque chose, il le note comme écart (à expliquer : rats, humidité, vol…).</td></tr>
+    <tr><th>Stock & historique</th><td>Chaque mouvement avec le stock <strong>avant → après</strong> : achats, fabrications, pertes, inventaires.</td></tr>
+    <tr><th>Catégories</th><td>Ranger les matières (Céréales, Protéines…). Libre : vous pouvez en ajouter.</td></tr>
+  </table>
+  <p>Dans la liste, chaque matière montre : le stock, le <strong>prix moyen</strong>, la valeur, le dernier inventaire, l'<strong>autonomie</strong> (combien de jours ça va durer) et l'état (OK, Stock bas, Épuisé).</p>
+  {% call ex() %}<p>Achat de 3 sacs de maïs de 50 kg à 65 000 Ar le sac : écrivez <em>Maïs grain</em>, quantité <em>150</em> (kg), prix <em>1 300</em> (Ar le kg). Le stock de maïs monte de 150 kg et 195 000 Ar sortent de la caisse.</p>{% endcall %}
+</section>
+
+<section class="card g-sec" id="provenderie">
+  <h2>5. Provenderie</h2>
+  <h3>Les formules (recettes)</h3>
+  <p>Une formule = la recette d'une provende : les matières et leurs quantités. Écrivez chaque ingrédient avec <strong>l'unité que vous voulez</strong> (g, kg…). En bas, le logiciel montre le <strong>poids total</strong> et le <strong>coût d'un kg</strong>. Si vous indiquez un « poids total visé » (ex. 100 kg), le bouton <em>Ajuster</em> corrige les quantités pour tomber juste. Le bouton <em>Copier</em> crée une nouvelle formule à partir d'une autre.</p>
+  <h3>Fabriquer</h3>
+  <p><em>Fabriquer</em> → choisissez la formule et la quantité (ex. 150 kg). Le logiciel <strong>retire les matières premières</strong> du stock et <strong>ajoute la provende</strong>. S'il manque une matière, il le dit avant de fabriquer. La page de la fabrication montre chaque matière avant → après.</p>
+  <h3>Stock de provende, historique et durée</h3>
+  <p>Le stock de chaque provende, son coût par kg et <strong>combien de jours il va durer</strong> (calculé d'après les lots). <em>Perte / inventaire</em> sert à corriger le stock de provende.</p>
+  <h3>Programmes par semaine</h3>
+  <p>Un programme dit : <em>« à tel âge, telle provende, tant de grammes par poule et par jour »</em>. Chaque ligne = une période en <strong>semaines d'âge</strong> (semaine 1 = jours 1 à 7, semaine 2 = jours 8 à 14…).</p>
+  {% call ex() %}<p>Semaines 1 → 1 : Démarrage, 12 g · Semaines 2 → 2 : Démarrage, 18 g · … · Semaines 19 → 80 : Ponte, 115 g. Un lot qui suit ce programme reçoit tout seul la bonne provende chaque jour.</p>{% endcall %}
+  {% call warn() %}Un programme <strong>archivé</strong> ne peut plus être choisi pour un lot. Pour le réutiliser, ouvrez-le et cliquez sur <em>Réactiver</em>.{% endcall %}
+</section>
+
+<section class="card g-sec" id="lots">
+  <h2>6. Lots de poules</h2>
+  <p>Un lot (ou bande) = des poules arrivées le même jour. Le logiciel calcule tout seul leur âge en semaines.</p>
+  <h3>Créer un lot (Nouveau lot)</h3>
+  <ul>
+    <li><strong>Nom, date d'arrivée, nombre</strong> ; l'âge à l'arrivée si ce ne sont pas des poussins d'un jour.</li>
+    <li><strong>Programme de provende</strong>, <strong>début de ponte prévu</strong> (semaine, souvent 18 à 22), <strong>réforme prévue</strong> (semaine), <strong>prix de vente d'un œuf</strong>.</li>
+    <li><strong>Achat des poussins</strong> : prix d'un poussin, transport, payé maintenant (vide = tout payé ; 0 = rien payé).</li>
+  </ul>
+  {% call tip() %}Un nouveau lot reprend les réglages du dernier lot créé : vous n'avez qu'à changer le nom, la date et le nombre.{% endcall %}
+  <h3>La page d'un lot</h3>
+  <ul>
+    <li><strong>Effectif</strong> aujourd'hui, mortalité, barre de vie avec le repère 🥚 du début de ponte.</li>
+    <li><strong>🧮 Comment c'est calculé</strong> : la provende qui reste à manger jusqu'à la réforme (poules × grammes × jours), avant et pendant la ponte.</li>
+    <li><strong>Donner la provende</strong> pour ce lot seul, et l'historique de ce qui a été donné.</li>
+    <li><strong>Ponte de ce lot</strong> : taux de ponte, meilleur et plus mauvais jour, coût d'un œuf, bénéfice.</li>
+    <li><strong>Effectif : morts, réformes, ajouts</strong> : <em>Mortalité</em>, <em>Réforme / vente de poules</em>, <em>Disparition / vol</em>, <em>Ajout</em>, et <em>Correction après comptage</em> (écrivez le nombre de poules comptées, le logiciel calcule l'écart).</li>
+    <li><strong>Modifier</strong> (corriger les réglages) et <strong>Terminer le lot</strong> quand toutes les poules sont parties.</li>
+  </ul>
+</section>
+
+<section class="card g-sec" id="alimentation">
+  <h2>7. Provende du jour</h2>
+  <p>Menu <em>Alimentation</em>. Une ligne par lot : âge, nombre de poules, <strong>provende proposée</strong> par le programme et <strong>quantité en kg</strong>. Changez ce que vous voulez, puis <em>Enregistrer la distribution</em> : tout est enregistré en une fois et le stock de provende baisse.</p>
+  <ul>
+    <li>Sous chaque provende, le logiciel rappelle le stock restant.</li>
+    <li>S'il n'y a pas assez de provende en stock, la ligne est refusée avec une explication : il faut d'abord fabriquer.</li>
+    <li>Si un lot a déjà reçu sa provende ce jour-là, sa case reste vide pour éviter de la donner deux fois.</li>
+  </ul>
+  {% call ex() %}<p>Lot de 400 poules en ponte, programme 115 g : 400 × 115 g = 46 000 g = <strong>46 kg</strong> proposés.</p>{% endcall %}
+</section>
+
+<section class="card g-sec" id="oeufs">
+  <h2>8. Œufs : le ramassage</h2>
+  <p>Menu <em>Œufs</em>. Pour chaque lot : <strong>plateaux pleins</strong> (30 œufs), <strong>œufs en plus</strong>, <strong>cassés</strong>, et une remarque si besoin. Le <strong>taux de ponte</strong> s'affiche pendant que vous tapez, avec ↑ ou ↓ par rapport à la semaine d'avant.</p>
+  <ul>
+    <li>Pour saisir un autre jour, changez la <strong>Date</strong> en haut.</li>
+    <li>Enregistrer de nouveau le même jour <strong>corrige</strong> la saisie (pas de doublon).</li>
+    <li>En <span class="text-danger">rouge</span> : une baisse de plus de 10 points. Écrivez la raison (chaleur, maladie…). Elle apparaît aussi dans <em>Écarts & contrôles</em>.</li>
+    <li>Les lots encore en élevage (🐣) sont en gris, mais vous pouvez saisir leurs premiers œufs s'ils arrivent plus tôt.</li>
+  </ul>
+  {% call ex() %}<p>14 plateaux + 20 œufs + 2 cassés = 442 œufs pondus. Avec 500 poules : 442 ÷ 500 × 100 = <strong>88,4 %</strong>, soit environ 88 poules sur 100 ont pondu.</p>{% endcall %}
+  <p>En dessous : la courbe du taux de ponte de chaque lot, les œufs ramassés par jour pour toute la ferme, et un tableau par lot (moyenne 7 jours, évolution, meilleur, plus bas, total, valeur).</p>
+</section>
+
+<section class="card g-sec" id="ventes">
+  <h2>9. Ventes, clients et stock d'œufs</h2>
+  <h3>Nouvelle vente</h3>
+  <ul>
+    <li><strong>Client</strong> : écrivez son nom (un nouveau client est créé tout seul), ou laissez vide pour un client de passage.</li>
+    <li><strong>Quoi ?</strong> : <em>Œufs</em> (fait baisser le stock d'œufs) ou autre chose écrit librement (fumier, poules de réforme…).</li>
+    <li><strong>Plateaux + œufs</strong>, <strong>prix</strong> par plateau ou par œuf : le <strong>total</strong> se calcule tout seul.</li>
+    <li><strong>Payé maintenant</strong> : vide = tout payé · <strong>0</strong> = à crédit · un montant = payé en partie. Le reste à recevoir s'affiche en rouge.</li>
+    <li><strong>Œufs de quel lot</strong> (facultatif) : sert au bénéfice de chaque lot. Laissé vide, la vente est partagée entre les lots selon leurs œufs.</li>
+  </ul>
+  <p>On ne peut pas vendre plus d'œufs qu'il n'y en a en stock ce jour-là : saisissez d'abord le ramassage.</p>
+  <h3>Encaisser un crédit</h3>
+  <p>Ouvrez la vente → <em>Encaisser un paiement</em> : montant, date, compte. Le reste à recevoir diminue. L'onglet <strong>Clients & crédits</strong> montre qui doit combien.</p>
+  <h3>Stock d'œufs</h3>
+  <p>Stock = bons œufs ramassés − œufs vendus ± corrections. Vous y déclarez aussi la <strong>casse</strong>, les <strong>pertes</strong>, les <strong>œufs consommés</strong>, et vous faites l'<strong>inventaire</strong> : comptez les vrais œufs, s'il en manque, l'écart part dans <em>Écarts & contrôles</em>.</p>
+  {% call ex() %}<p>20 plateaux + 10 œufs à 15 000 Ar le plateau = 610 œufs × 500 Ar = <strong>305 000 Ar</strong>. Payé 200 000 Ar → reste à recevoir <strong>105 000 Ar</strong>.</p>{% endcall %}
+</section>
+
+<section class="card g-sec" id="ecarts">
+  <h2>10. Écarts & contrôles</h2>
+  <p>Tout ce qui manque ou ne colle pas, au même endroit : écarts d'inventaire (matières, provende, œufs), pertes déclarées, poules disparues ou écarts de comptage, <strong>mortalité anormale</strong> (plus de 3 fois la moyenne du lot, au moins 3 morts), <strong>baisse de ponte</strong>.</p>
+  <ul>
+    <li>Pour chaque écart : la date, l'avant → après, l'écart, sa <strong>valeur en Ariary</strong>, l'explication et qui l'a saisi.</li>
+    <li>Les lignes <span class="text-danger">en rouge</span> n'ont pas d'explication : écrivez-la dans la case <em>À expliquer…</em> puis ✓. Vos associés sont prévenus.</li>
+    <li>Filtres : période, dates, domaine (cliquez sur une carte), seulement les écarts sans explication.</li>
+  </ul>
+</section>
+
+<section class="card g-sec" id="rapports">
+  <h2>11. Rapports</h2>
+  <p>Les diagnostics de la ferme, en schémas (bouton <em>Imprimer</em> pour une version papier ou PDF) :</p>
+  <ul>
+    <li><strong>💰 L'argent</strong> : ventes et dépenses chaque mois, et le <strong>résultat cumulé</strong> (quand la courbe passe au-dessus de 0, l'investissement est remboursé).</li>
+    <li><strong>🐔 Rentabilité de chaque lot</strong> : ventes − dépenses depuis le jour 1, coût d'un œuf, seuil de rentabilité, et <strong>jusqu'à quand le lot reste rentable</strong>.</li>
+    <li><strong>🔎 Détail d'un lot</strong> : œufs et provende semaine par semaine, taux de ponte réel et estimé, marge chaque semaine (valeur des œufs − provende), provende encore à donner.</li>
+    <li><strong>📈 Pics, creux et moyennes</strong> mois par mois : œufs par jour, prix du plateau, mortalité, ventes.</li>
+  </ul>
+  {% call tip() %}L'estimation de la suite se corrige toute seule chaque jour avec vos vrais ramassages : plus vous saisissez, plus elle est juste.{% endcall %}
+</section>
+
+<section class="card g-sec" id="discussion">
+  <h2>12. Discussion et signalements</h2>
+  <p>La Discussion (💬 en haut) sert à parler entre associés. Le logiciel y écrit aussi tout seul (en doré) chaque action importante : achats, fabrications, ventes, écarts, corrections, annulations. Sur chaque achat, lot, vente… il y a une zone <em>Commentaires</em> : vos associés la voient aussi dans la Discussion.</p>
+</section>
+
+<section class="card g-sec" id="admin">
+  <h2>13. Administration</h2>
+  <h3>Utilisateurs et droits</h3>
+  <p>Créez un compte pour chaque personne (soigneur, vendeur, caissier…). Chaque rôle a des droits de départ, que vous pouvez changer partie par partie : <strong>Aucun accès</strong> · <strong>Voir</strong> · <strong>Voir et saisir</strong> · <strong>Tout</strong> (y compris supprimer). Vous pouvez aussi désactiver un compte ou remettre un mot de passe à zéro.</p>
+  <h3>Paramètres</h3>
+  <p>Nom et logo de la ferme, couleurs, thème, monnaie, comptes d'argent (caisse, mobile money, propriétaires…), e-mail d'envoi pour les mots de passe oubliés, déconnexion automatique.</p>
+  <h3>Sauvegardes</h3>
+  <p>Une sauvegarde est faite <strong>automatiquement chaque jour</strong>. Vous pouvez en créer une, la <strong>télécharger</strong> pour la garder sur votre téléphone ou ordinateur, et <strong>restaurer</strong> (avec votre mot de passe). Vous y trouvez aussi <em>Effacer les données de test</em> (avant de commencer pour de vrai) et <em>Tout effacer</em>.</p>
+  {% call warn() %}Téléchargez une sauvegarde au moins une fois par semaine et gardez-la en lieu sûr.{% endcall %}
+  <h3>Journal d'activité</h3>
+  <p>Qui a fait quoi, et quand. Rien ne peut y être effacé.</p>
+</section>
+
+<section class="card g-sec" id="moteur">
+  <h2>14. Le moteur : comment le logiciel calcule</h2>
+  <p>Aucune formule à retenir : le logiciel fait tout. Voici ce qu'il fait « sous le capot », pour pouvoir l'expliquer.</p>
+  <div class="g-engine">
+    <div><h3>📦 Le stock</h3><p>Le logiciel ne garde pas « un chiffre de stock » : il garde <strong>chaque mouvement</strong> (achat +, fabrication −, perte −, inventaire ±). Le stock = la somme de tous les mouvements. C'est pour ça qu'on peut toujours voir l'avant → après et corriger une erreur sans tout casser.</p></div>
+    <div><h3>💵 Le prix moyen</h3><p>Chaque achat met à jour le prix moyen d'une matière. Exemple : 100 kg à 1 000 Ar + 100 kg à 1 200 Ar → prix moyen 1 100 Ar/kg. Ce prix sert au coût de la provende et à la valeur du stock.</p></div>
+    <div><h3>🏭 Le coût d'une provende</h3><p>Coût d'un kg = somme (quantité de chaque matière × son prix moyen) ÷ poids total. Exemple : 55 kg de maïs à 1 330 + 35 kg de soja à 3 200 + … = 207 900 Ar pour 100 kg → <strong>2 079 Ar/kg</strong>.</p></div>
+    <div><h3>📅 L'âge et la semaine</h3><p>Semaine d'âge = (jours depuis l'arrivée + âge à l'arrivée) ÷ 7, arrondi au-dessus. Jours 1 à 7 = semaine 1, jours 8 à 14 = semaine 2…</p></div>
+    <div><h3>🌾 La provende du jour</h3><p>Poules vivantes × grammes du programme pour leur semaine. 400 × 115 g = <strong>46 kg</strong>.</p></div>
+    <div><h3>🔮 La provende à venir</h3><p>Pour chaque semaine jusqu'à la réforme : poules × grammes × jours, en enlevant chaque semaine la mortalité observée. On additionne toutes les semaines et tous les lots, au prix actuel de chaque provende.</p></div>
+    <div><h3>⏳ Combien de jours dure un stock</h3><p>Stock ÷ consommation par jour. 1 684 kg ÷ 121,7 kg/jour = <strong>14 jours</strong>. Pour les matières : d'après ce qui a été utilisé en provende les 30 derniers jours.</p></div>
+    <div><h3>🥚 Le taux de ponte</h3><p>(Bons œufs + cassés) ÷ poules présentes ce jour-là × 100. La « baisse » compare avec la moyenne des 7 jours d'avant.</p></div>
+    <div><h3>🥚 Le stock d'œufs</h3><p>Bons œufs ramassés − œufs vendus ± corrections (casse, pertes, inventaire).</p></div>
+    <div><h3>⚖️ Les écarts</h3><p>Écart = compté − stock du logiciel. Sa valeur = écart × prix moyen (ou prix du poussin, ou prix moyen de vente des œufs).</p></div>
+    <div><h3>💰 Le bénéfice d'un lot</h3><p>Ventes de ses œufs (directes + sa part des ventes sans lot, selon ses œufs) − (poussins + provende mangée).</p></div>
+    <div><h3>🎯 Le seuil de rentabilité</h3><p>Le taux de ponte minimum pour que les œufs paient la provende = grammes par poule × prix du kg ÷ prix d'un œuf. 115 g × 1 733 Ar/kg ÷ 500 Ar = <strong>40 %</strong>. En dessous, le lot coûte plus qu'il ne rapporte.</p></div>
+    <div><h3>📉 L'estimation de la ponte</h3><p>La courbe normale d'une pondeuse (montée en 8 semaines, pic vers 93 %, puis lente baisse) est ajustée au niveau réel de votre lot. Le logiciel en déduit la marge future et la semaine où le lot ne sera plus rentable.</p></div>
+    <div><h3>🔺 Pics, creux, moyennes</h3><p>▲ = la plus haute valeur de la période, ▼ = la plus basse, pointillés = la moyenne. Ils se recalculent à chaque saisie.</p></div>
+  </div>
+</section>
+
+<section class="card g-sec" id="questions">
+  <h2>15. Questions fréquentes</h2>
+  <dl class="g-faq">
+    <dt>J'ai fait une erreur de saisie.</dt><dd>Ouvrez la saisie (achat, vente, fabrication, ramassage…) et utilisez <em>Corriger</em> ou <em>Annuler</em>. Pour le ramassage, enregistrez simplement de nouveau le même jour.</dd>
+    <dt>Le logiciel refuse ma distribution de provende.</dt><dd>Il n'y a pas assez de cette provende en stock : fabriquez-en d'abord (Provenderie → Fabriquer).</dd>
+    <dt>Le logiciel refuse ma vente d'œufs.</dt><dd>Il n'y a pas assez d'œufs en stock à cette date : saisissez d'abord le ramassage, ou corrigez le stock d'œufs.</dd>
+    <dt>Un lot ne reçoit pas de provende proposée.</dt><dd>Le lot n'a pas de programme, ou le programme ne prévoit rien pour son âge, ou le programme est archivé. Ouvrez le lot → <em>Modifier</em>.</dd>
+    <dt>Mes poules pondent plus tôt (ou plus tard) que prévu.</dt><dd>Ouvrez le lot → <em>Modifier</em> → changez la semaine de « Début de ponte prévu ».</dd>
+    <dt>Un chiffre me paraît bizarre.</dt><dd>Ouvrez le bandeau 📖 au-dessus : le calcul y est écrit. Puis regardez l'historique avant → après.</dd>
+    <dt>J'ai oublié mon mot de passe.</dt><dd>Sur la page de connexion : <em>Mot de passe oublié ?</em> (question secrète ou e-mail), ou demandez à un administrateur de le remettre à zéro.</dd>
+    <dt>Le logiciel m'a déconnecté.</dt><dd>Après un moment sans activité, il se déconnecte pour votre sécurité. Reconnectez-vous : rien n'est perdu.</dd>
+  </dl>
+</section>
+
+</div>
+</div>
+{% endblock %}

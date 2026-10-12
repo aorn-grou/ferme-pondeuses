@@ -33,11 +33,12 @@
   function barsLine(box, data) {
     box.innerHTML = "";
     const W = Math.max(320, box.clientWidth || 600), H = box.clientHeight || 260;
-    const m = { l: 52, r: 12, t: 22, b: 28 };
     const n = data.labels.length;
     if (!n) return;
     const vals = data.bars.concat(data.line).filter((v) => v != null);
     const max = niceMax(Math.max(1, ...vals));
+    const yLab = (fmt(max) + (data.unit ? " " + data.unit : "")).length;
+    const m = { l: Math.max(52, 14 + yLab * 6.4), r: 12, t: 22, b: 28 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b, step = iw / n;
     const x = (i) => m.l + step * i + step / 2, y = (v) => m.t + ih - (v / max) * ih;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img" }, box);
@@ -70,7 +71,8 @@
     const nowIdx = data.labels.indexOf(data.now);
     if (nowIdx >= 0) {
       el("line", { x1: x(nowIdx), x2: x(nowIdx), y1: m.t, y2: m.t + ih, stroke: gold, "stroke-dasharray": "4 4" }, svg);
-      const t = el("text", { x: x(nowIdx), y: m.t - 6, "text-anchor": "middle", "font-size": 11, "font-weight": 700, fill: gold }, svg);
+      const nx = x(nowIdx), anchor = nx > W - 60 ? "end" : (nx < m.l + 40 ? "start" : "middle");
+      const t = el("text", { x: anchor === "end" ? Math.min(nx, W - 2) : nx, y: m.t - 6, "text-anchor": anchor, "font-size": 11, "font-weight": 700, fill: gold }, svg);
       t.textContent = data.nowLabel || "Aujourd'hui";
     }
     // info-bulle au survol / au toucher
@@ -111,7 +113,9 @@
     });
   }
 
-  const PALETTE = ["#2e7d32", "#c9971c", "#1f6fa8", "#a33b8f", "#c0352b", "#0f8a80", "#6b4fbb", "#7a5c2e"];
+  /* Couleurs des séries (une par lot), vérifiées pour les daltoniens, en mode clair et sombre :
+     toujours dans le même ordre, définies dans app.css (--c1 … --c8). */
+  const PALETTE = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => css("--c" + i, "#2e7d32"));
 
   /* Plusieurs courbes (ex. taux de ponte de chaque lot), avec pic ▲ et creux ▼ de chacune */
   function multi(box, data) {
@@ -144,7 +148,7 @@
       el("text", { x: x(nowIdx), y: m.t + ih - 4, "text-anchor": "middle", "font-size": 10, fill: muted }, svg).textContent = "aujourd'hui";
     }
     data.series.forEach((s, k) => {
-      const col = s.color || PALETTE[k % PALETTE.length];
+      const col = s.color || PALETTE[Math.min(k, PALETTE.length - 1)];
       s._col = col;
       let d = "", pen = false;
       s.values.forEach((v, i) => {
@@ -177,7 +181,7 @@
     const bars = data.bars.map((v) => v || 0), line = data.line;
     const maxB = niceMax(Math.max(1, ...bars)), maxL = data.lineMax || niceMax(Math.max(1, ...line.filter((v) => v != null)));
     const rLab = (fmt(maxL) + (data.lineUnit === "%" ? " %" : "")).length;
-    const m = { l: 50, r: Math.max(46, 12 + rLab * 6.6), t: 22, b: 26 };
+    const m = { l: Math.max(50, 14 + fmt(maxB).length * 6.4), r: Math.max(46, 12 + rLab * 6.6), t: 22, b: 26 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b, step = iw / n;
     const x = (i) => m.l + step * i + step / 2, yB = (v) => m.t + ih - (v / maxB) * ih, yL = (v) => m.t + ih - (v / maxL) * ih;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img" }, box);

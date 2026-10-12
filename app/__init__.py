@@ -152,6 +152,10 @@ def create_app(test_config=None):
         return {
             "logo_url": logo_url,
             "is_demo": bool(g.get("demo")),
+            "guide_anchor": {"matieres": "matieres", "provenderie": "provenderie", "lots": "lots", "oeufs": "oeufs",
+                             "ventes": "ventes", "controles": "ecarts", "rapports": "rapports", "discussion": "discussion",
+                             "users": "admin", "settings": "admin", "backups": "admin"}.get(request.blueprint or "", "tableau")
+            if request.endpoint != "lots.feeding_day" else "alimentation",
             "module_url": module_url,
             "unread_messages": unread_count() if user and not (user["must_change_password"] or not user["setup_done"]) else 0,
             "comments_for": comments_for,

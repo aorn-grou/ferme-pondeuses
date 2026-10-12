@@ -32,6 +32,12 @@ def dashboard():
                            role=role_label(g.user["role"]), d=build(), today=today())
 
 
+@bp.route("/guide")
+@login_required
+def guide():
+    return render_template("main/guide.html")
+
+
 @bp.route("/module/<key>")
 @login_required
 def module(key):

@@ -68,7 +68,7 @@
 {% if chart %}
 <section class="card top-gap">
   <div class="card-head"><h2>{{ icon('chart', 20) }} Taux de ponte de chaque lot (%)</h2>
-    <span class="legend-inline">{% for s in chart.rates.series %}<span><i class="sw" style="background: {{ ['#2e7d32', '#c9971c', '#1f6fa8', '#a33b8f', '#c0352b', '#0f8a80', '#6b4fbb', '#7a5c2e'][loop.index0 % 8] }}"></i> {{ s.name }}</span>{% endfor %}</span></div>
+    <span class="legend-inline">{% for s in chart.rates.series %}<span><i class="sw" style="background: var(--c{{ [loop.index, 8]|min }})"></i> {{ s.name }}</span>{% endfor %}</span></div>
   <details class="calc-banner fold" open data-fold="egg-rates"><summary>📖 Comment lire ce graphique <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body"><span>Chaque ligne de couleur = un lot. Plus la ligne est <strong>haute</strong>, plus les poules de ce lot ont pondu ce jour-là (100 % = toutes).</span>
     {% for x in chart.lots_sum %}<span class="calc-steps">• <strong>{{ x.name }}</strong> : dernier jour <strong>{{ x.last[0]|round(1) }} %</strong> ({{ x.last[1] }}) · ▲ meilleur <strong class="text-ok">{{ x.hi[0]|round(1) }} %</strong> le {{ x.hi[1] }} · ▼ plus bas <strong class="text-danger">{{ x.lo[0]|round(1) }} %</strong> le {{ x.lo[1] }}</span>{% endfor %}
     <small>Passez la souris (ou touchez) sur le graphique pour voir le chiffre de chaque jour.</small></div></details>

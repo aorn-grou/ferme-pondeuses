@@ -63,6 +63,7 @@
       <button class="icon-btn menu-btn" type="button" data-menu-open aria-label="Ouvrir le menu" aria-controls="sidebar">{{ icon('menu', 22) }}</button>
       <div class="topbar-title">{% block topbar_title %}{{ self.title() }}{% endblock %}</div>
       <div class="topbar-actions">
+        <a class="icon-btn help-btn" href="{{ url_for('main.guide') }}#{{ guide_anchor }}" aria-label="Guide d'utilisation" title="Aide : comment utiliser cette page">{{ icon('help', 20) }}</a>
         <button class="icon-btn" type="button" data-theme-toggle aria-label="Changer le thème" title="Thème : automatique / clair / sombre">
           <span class="theme-ico theme-auto">{{ icon('monitor') }}</span>
           <span class="theme-ico theme-light">{{ icon('sun') }}</span>
@@ -93,6 +94,7 @@
               <small>{{ role_label(current_user.role) }}</small>
             </div>
             <a href="{{ url_for('auth.profile') }}">{{ icon('user', 18) }} Mon profil</a>
+            <a href="{{ url_for('main.guide') }}">{{ icon('book', 18) }} Guide d'utilisation</a>
             <form method="post" action="{{ url_for('auth.logout') }}">
               {{ csrf() }}
               <button type="submit">{{ icon('logout', 18) }} Se déconnecter</button>

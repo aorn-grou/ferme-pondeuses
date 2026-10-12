@@ -156,9 +156,41 @@ def index():
         totals[key] = {"emoji": emoji, "label": label, "count": len(sub),
                        "loss": sum(i["value"] for i in sub if i["value"] < 0),
                        "unexplained": sum(1 for i in sub if not i["explained"])}
-    return render_template("controles/index.html", items=items, totals=totals, period=period, domain=domain,
+    diag = _diagnostic(items)
+    return render_template("controles/index.html", items=items, totals=totals, period=period, domain=domain, diag=diag,
                            du=du, au=au, unexplained=sum(1 for i in items if not i["explained"]),
                            loss=sum(i["value"] for i in items if i["value"] < 0))
+
+
+def _diagnostic(items):
+    """Schémas : pertes par semaine (12 dernières semaines) et causes les plus fréquentes."""
+    losses = [i for i in items if (i["value"] or 0) < 0]
+    end = Date.fromisoformat(today())
+    monday = end - timedelta(days=end.weekday())
+    starts = [monday - timedelta(weeks=11 - k) for k in range(12)]
+    weekly = [0.0] * 12
+    count = [0] * 12
+    for i in losses:
+        d = Date.fromisoformat(i["date"])
+        for k in range(11, -1, -1):
+            if d >= starts[k]:
+                weekly[k] += -i["value"]
+                count[k] += 1
+                break
+    labels = [f"{s:%d/%m}" for s in starts]
+    tips = [f"{c} écart(s)" for c in count]
+    causes = {}
+    for i in losses:
+        key = (i["why"] or "").strip().capitalize() if i["explained"] else "⚠️ Sans explication"
+        c = causes.setdefault(key, {"value": 0.0, "count": 0})
+        c["value"] += -i["value"]
+        c["count"] += 1
+    top = sorted(causes.items(), key=lambda kv: -kv[1]["value"])[:6]
+    biggest = max((v["value"] for _, v in top), default=0) or 1
+    return {"chart": {"labels": labels, "bars": [round(v) for v in weekly], "line": [None] * 12, "unit": "Ar",
+                      "barLabel": "Pertes", "barColor": "#c0352b", "tips": tips, "now": labels[-1], "nowLabel": "Cette semaine"},
+            "has": any(weekly), "causes": [{"name": n, "pct": v["value"] / biggest * 100, **v} for n, v in top],
+            "total": sum(-i["value"] for i in losses)}
 
 
 TABLES = {"stock_moves": "matieres", "feed_moves": "provenderie", "lot_events": "lots", "egg_collections": "oeufs", "egg_moves": "ventes"}
