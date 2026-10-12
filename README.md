@@ -51,3 +51,18 @@ Point d'entrée WSGI : `wsgi.py` (variable `application`).
 ```
 python -m unittest discover tests
 ```
+
+## Version de démonstration (vitrine)
+
+Une ferme d'exemple (6 mois de données) que les visiteurs peuvent essayer sans toucher aux vraies données :
+
+```
+cd ~/ferme-pondeuses && python3 demo_build.py
+```
+
+puis **Reload** dans l'onglet Web. Lien à partager : `https://<votre-site>/demo/` (aussi le bouton « Découvrir le logiciel » sur la page de connexion).
+La démo a sa propre base, se remet à zéro chaque jour, et bloque les comptes, sauvegardes et paramètres.
+
+## Guide d'utilisation
+
+Dans le logiciel : bouton **?** en haut à droite (ouvre l'aide de la page en cours) ou menu du compte → *Guide d'utilisation*. Bouton *Imprimer le guide* pour le PDF.

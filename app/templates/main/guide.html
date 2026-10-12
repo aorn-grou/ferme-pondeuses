@@ -182,7 +182,10 @@
     <li>Pour chaque écart : la date, l'avant → après, l'écart, sa <strong>valeur en Ariary</strong>, l'explication et qui l'a saisi.</li>
     <li>Les lignes <span class="text-danger">en rouge</span> n'ont pas d'explication : écrivez-la dans la case <em>À expliquer…</em> puis ✓. Vos associés sont prévenus.</li>
     <li>Filtres : période, dates, domaine (cliquez sur une carte), seulement les écarts sans explication.</li>
+    <li><strong>Pertes par semaine</strong> : une barre par semaine = la valeur de tout ce qui a été perdu. Une barre très haute = une semaine à surveiller.</li>
+    <li><strong>D'où viennent les pertes ?</strong> : les explications écrites, de la plus coûteuse à la moins coûteuse. La barre hachurée « Sans explication » doit diminuer.</li>
   </ul>
+  {% call tip() %}Une même cause qui revient souvent (ex. « Rats » ou « Casse au transport ») montre ce qu'il faut améliorer à la ferme.{% endcall %}
 </section>
 
 <section class="card g-sec" id="rapports">
@@ -218,6 +221,18 @@
 <section class="card g-sec" id="moteur">
   <h2>14. Le moteur : comment le logiciel calcule</h2>
   <p>Aucune formule à retenir : le logiciel fait tout. Voici ce qu'il fait « sous le capot », pour pouvoir l'expliquer.</p>
+  <h3>Le chemin de la ferme, de l'achat à l'argent</h3>
+  <div class="g-flow" role="img" aria-label="Achats, matières premières, fabrication, provende, lots de poules, œufs, ventes, caisse">
+    <div class="gf-step"><span>🛒</span><strong>Achats</strong><small>maïs, soja… entrent</small></div><i>→</i>
+    <div class="gf-step"><span>📦</span><strong>Matières premières</strong><small>stock + prix moyen</small></div><i>→</i>
+    <div class="gf-step"><span>🏭</span><strong>Fabrication</strong><small>formule × quantité</small></div><i>→</i>
+    <div class="gf-step"><span>🌾</span><strong>Provende</strong><small>stock + coût du kg</small></div><i>→</i>
+    <div class="gf-step"><span>🐔</span><strong>Lots</strong><small>âge → provende du jour</small></div><i>→</i>
+    <div class="gf-step"><span>🥚</span><strong>Œufs</strong><small>ramassage, taux de ponte</small></div><i>→</i>
+    <div class="gf-step"><span>💰</span><strong>Ventes</strong><small>stock d'œufs − ventes</small></div><i>→</i>
+    <div class="gf-step"><span>👛</span><strong>Caisse</strong><small>argent qui entre et sort</small></div>
+  </div>
+  <p class="muted small">À chaque flèche, le logiciel enlève d'un côté et ajoute de l'autre. Les inventaires vérifient chaque étape : ce qui manque part dans <em>Écarts & contrôles</em>.</p>
   <div class="g-engine">
     <div><h3>📦 Le stock</h3><p>Le logiciel ne garde pas « un chiffre de stock » : il garde <strong>chaque mouvement</strong> (achat +, fabrication −, perte −, inventaire ±). Le stock = la somme de tous les mouvements. C'est pour ça qu'on peut toujours voir l'avant → après et corriger une erreur sans tout casser.</p></div>
     <div><h3>💵 Le prix moyen</h3><p>Chaque achat met à jour le prix moyen d'une matière. Exemple : 100 kg à 1 000 Ar + 100 kg à 1 200 Ar → prix moyen 1 100 Ar/kg. Ce prix sert au coût de la provende et à la valeur du stock.</p></div>
@@ -246,6 +261,7 @@
     <dt>Mes poules pondent plus tôt (ou plus tard) que prévu.</dt><dd>Ouvrez le lot → <em>Modifier</em> → changez la semaine de « Début de ponte prévu ».</dd>
     <dt>Un chiffre me paraît bizarre.</dt><dd>Ouvrez le bandeau 📖 au-dessus : le calcul y est écrit. Puis regardez l'historique avant → après.</dd>
     <dt>J'ai oublié mon mot de passe.</dt><dd>Sur la page de connexion : <em>Mot de passe oublié ?</em> (question secrète ou e-mail), ou demandez à un administrateur de le remettre à zéro.</dd>
+    <dt>À quoi sert la version de démonstration ?</dt><dd>Sur la page de connexion, <em>Découvrir le logiciel</em> ouvre une ferme d'exemple (6 mois de données) où chacun peut tout essayer sans risque, dans le rôle de son choix. Elle est séparée de vos vraies données et se remet à zéro chaque jour.</dd>
     <dt>Le logiciel m'a déconnecté.</dt><dd>Après un moment sans activité, il se déconnecte pour votre sécurité. Reconnectez-vous : rien n'est perdu.</dd>
   </dl>
 </section>

@@ -1014,7 +1014,7 @@ details.calc-banner.fold:not([open]) { padding-top: .5rem; padding-bottom: .5rem
 .g-engine h3 { margin: 0 0 .3rem; } .g-engine p { margin: 0; font-size: .93rem; }
 .g-faq dt { font-weight: 700; margin-top: .8rem; } .g-faq dd { margin: .2rem 0 0; }
 @media (max-width: 900px) { .guide { grid-template-columns: 1fr; } .g-toc { position: static; } .g-table th { white-space: normal; width: 35%; } }
-@media print { .g-toc { display: none; } .guide { display: block; } .g-sec { break-inside: auto; margin-bottom: 1rem; } .help-btn { display: none; } }
+@media print { .g-toc, .demo-banner, .help-btn { display: none !important; } .guide { display: block; } .g-sec { break-inside: auto; margin-bottom: 1rem; } .help-btn { display: none; } }
 
 /* Couleurs des séries de graphiques (validées daltoniens, clair et sombre) */
 :root { --c1: #2e7d32; --c2: #1f6fa8; --c3: #d4570a; --c4: #7b3fbf; --c5: #b07d10; --c6: #00897b; --c7: #c0352b; --c8: #a33b8f; }
@@ -1026,3 +1026,10 @@ details.calc-banner.fold:not([open]) { padding-top: .5rem; padding-bottom: .5rem
 .cause-bar { height: 10px; border-radius: 99px; background: var(--border); overflow: hidden; }
 .cause-bar span { display: block; height: 100%; border-radius: 99px; background: #c0352b; }
 .cause-bar span.warn { background: repeating-linear-gradient(135deg, #c0352b 0 6px, #e08a83 6px 10px); }
+/* Guide : chemin de la ferme */
+.g-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: .4rem; margin: .5rem 0; }
+.g-flow > i { align-self: center; font-style: normal; color: var(--gold, #c9971c); font-weight: 800; }
+.gf-step { flex: 1 1 110px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .1rem; padding: .6rem .5rem; border-radius: 12px; background: var(--surface-2, #faf6ea); border: 1px solid var(--border); }
+.gf-step span { font-size: 1.4rem; } .gf-step strong { font-size: .9rem; } .gf-step small { font-size: .76rem; color: var(--text-2, #5d6a5f); }
+@media (max-width: 760px) { .g-flow { flex-direction: column; } .g-flow > i { transform: rotate(90deg); } }
+@media print { .g-engine > div, .gf-step, .g-ex, .g-tip, .g-warn, .g-table tr, .g-faq dt, .g-faq dd { break-inside: avoid; } .g-flow { flex-direction: row !important; } .g-flow > i { transform: none !important; } .gf-step { flex: 1 1 90px; } }
