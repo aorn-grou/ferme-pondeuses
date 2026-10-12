@@ -332,3 +332,12 @@ class TestMigration(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMenuModules(unittest.TestCase):
+    def test_built_modules_have_a_page(self):
+        """Chaque module « prêt » du menu doit ouvrir sa vraie page (pas « en cours de fabrication »)."""
+        from app.security import MODULE_ENDPOINTS, MODULES
+        for key, *_rest, built in MODULES:
+            if built:
+                self.assertIn(key, MODULE_ENDPOINTS, f"module {key} prêt mais sans page dans le menu")

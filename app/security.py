@@ -51,6 +51,7 @@ MODULE_ENDPOINTS = {
     "oeufs": "oeufs.index",
     "ventes": "ventes.index",
     "rapports": "rapports.index",
+    "sanitaire": "sanitaire.index",
 }
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
 MENU_GROUPS = ["Pilotage", "Production", "Élevage", "Ventes", "Finances", "Administration"]
