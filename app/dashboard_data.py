@@ -133,9 +133,19 @@ def build():
                         "stock": egg_stock(),
                         "weeks": _weeks(_series("SELECT date AS d, SUM(total) AS v FROM sales WHERE date >= ? GROUP BY date", days56))}
 
+    # --- Rentabilité des lots (résumé des Rapports) ------------------------
+    if can("rapports") and out.get("lots") and out["lots"]["cards"]:
+        from .reports import lot_report
+
+        out["profit"] = [lot_report(c["lot"]) for c in out["lots"]["cards"]]
+
     # --- Provende ------------------------------------------------------------
     if can("provenderie") or can("alimentation"):
         given = _series("SELECT date AS d, SUM(quantity) AS v FROM feedings WHERE date >= ? GROUP BY date", days30)
+        out["feed_labels"] = labels30
+        if given and given[-1] == 0:  # provende d'aujourd'hui pas encore donnée : pas de faux 0 sur la courbe
+            given = given[:-1]
+            out["feed_labels"] = labels30[:-1]
         made = _series("SELECT date AS d, SUM(quantity) AS v FROM productions WHERE date >= ? GROUP BY date", days30)
         given56 = _series("SELECT date AS d, SUM(quantity) AS v FROM feedings WHERE date >= ? GROUP BY date", days56)
         # besoin par jour de chaque provende : ce que les lots doivent manger aujourd'hui, sinon la moyenne donnée

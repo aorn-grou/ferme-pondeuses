@@ -725,10 +725,10 @@
     const parse = (v) => parseFloat(String(v || "").replace(/\s/g, "").replace(",", ".")) || 0;
     const fmt = (n, d = 1) => n.toLocaleString("fr-FR", { maximumFractionDigits: d });
     [birds, grams].forEach((el) => {
-      try { const v = localStorage.getItem("duree-" + el.dataset.key); if (v && !el.value) el.value = v; } catch (e) { /* rien */ }
+      if (el.dataset.key) try { const v = localStorage.getItem("duree-" + el.dataset.key); if (v && !el.value) el.value = v; } catch (e) { /* rien */ }
     });
     const update = () => {
-      [birds, grams].forEach((el) => { try { localStorage.setItem("duree-" + el.dataset.key, el.value); } catch (e) { /* rien */ } });
+      [birds, grams].forEach((el) => { if (el.dataset.key) try { localStorage.setItem("duree-" + el.dataset.key, el.value); } catch (e) { /* rien */ } });
       const perDay = parse(birds.value) * parse(grams.value) / 1000;
       const cells = { per: row.querySelector("[data-per-day]"), days: row.querySelector("[data-days]"), end: row.querySelector("[data-end]") };
       if (perDay <= 0) { cells.per.textContent = "—"; cells.days.textContent = "—"; cells.end.textContent = "—"; row.classList.remove("ending-soon"); return; }
@@ -762,4 +762,23 @@ document.querySelectorAll("details[data-fold]").forEach((d) => {
   const key = "fold:" + d.dataset.fold;
   try { if (localStorage.getItem(key) === "0") d.open = false; } catch (e) { /* stockage indisponible */ }
   d.addEventListener("toggle", () => { try { localStorage.setItem(key, d.open ? "1" : "0"); } catch (e) { /* rien */ } });
+});
+
+/* Longues listes : on montre les dernières lignes, le reste avec « Voir tout » */
+document.querySelectorAll("table[data-limit]").forEach((table) => {
+  const limit = parseInt(table.dataset.limit, 10) || 8;
+  const rows = [...table.querySelectorAll("tbody > tr:not(.total-row)")];
+  if (rows.length <= limit + 2) return;
+  rows.slice(limit).forEach((r) => { r.hidden = true; });
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "btn ghost sm show-more";
+  btn.textContent = `Voir tout (${rows.length} lignes)`;
+  btn.addEventListener("click", () => {
+    const open = btn.dataset.open === "1";
+    rows.slice(limit).forEach((r) => { r.hidden = open; });
+    btn.dataset.open = open ? "0" : "1";
+    btn.textContent = open ? `Voir tout (${rows.length} lignes)` : "Voir moins";
+  });
+  const wrap = document.createElement("div"); wrap.className = "show-more-wrap"; wrap.appendChild(btn);
+  table.after(wrap);
 });

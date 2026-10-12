@@ -26,12 +26,11 @@
 
 <div class="card flush top-gap">
   <table class="table responsive">
-    <thead><tr><th>Matière</th><th>Catégorie</th><th class="right">Stock</th><th class="right">Prix moyen</th><th class="right">Valeur</th><th>Dernier inventaire</th><th>Autonomie</th><th>État</th></tr></thead>
+    <thead><tr><th>Matière</th><th class="right">Stock</th><th class="right">Prix moyen</th><th class="right">Valeur</th><th>Dernier inventaire</th><th>Autonomie</th><th>État</th></tr></thead>
     <tbody>
     {% for m in materials %}
       <tr class="clickable" data-href="{{ url_for('matieres.material', material_id=m.id) }}">
-        <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=m.id) }}"><strong>{{ m.name }}</strong></a>{% if m.notes %}<small class="muted block" title="{{ m.notes }}">📝 {{ m.notes|truncate(60) }}</small>{% endif %}</td>
-        <td data-label="Catégorie">{{ m.category or '—' }}</td>
+        <td data-label="Matière"><a href="{{ url_for('matieres.material', material_id=m.id) }}"><strong>{{ m.name }}</strong></a><small class="muted block">{{ m.category or 'sans catégorie' }}</small>{% if m.notes %}<small class="muted block" title="{{ m.notes }}">📝 {{ m.notes|truncate(60) }}</small>{% endif %}</td>
         <td data-label="Stock" class="right"><strong>{{ m.stock|qty(m.unit) }}</strong>
           {% set lm = last_move.get(m.id) %}
           {% if lm %}<span class="last-move {{ 'neg' if lm.quantity < 0 else 'pos' }}" title="Dernier mouvement le {{ lm.date|date_fr }}">
@@ -45,8 +44,8 @@
             {{ lg.before|qty }} → {{ lg.after|qty }} <strong>({{ '+' if lg.quantity > 0 }}{{ lg.quantity|qty(m.unit) }})</strong></span>
             <small class="muted block">le {{ lg.date|date_fr }}</small>
           {% else %}<span class="muted">—</span>{% endif %}</td>
-        <td data-label="Autonomie">{% if m.autonomy_days is not none %}≈ {{ m.autonomy_days|round(0)|int }} jour(s)
-          <small class="muted block">{{ m.used_30|qty(m.unit) }} utilisés en provende (30 j)</small>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td data-label="Autonomie">{% if m.autonomy_days is not none %}<strong class="nowrap">≈ {{ m.autonomy_days|round(0)|int }} j</strong>
+          <small class="muted block nowrap">{{ m.used_30|qty(m.unit) }} / 30 j</small>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td data-label="État">
           {% if m.status == 'empty' %}<span class="badge badge-danger">Épuisé</span>
           {% elif m.status == 'low' %}<span class="badge badge-warn">Stock bas</span>

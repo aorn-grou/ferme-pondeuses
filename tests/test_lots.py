@@ -220,3 +220,22 @@ class TestVentes(StockBase):
             self.assertEqual(egg_stock(), 175)
         for url in ["/ventes/", "/ventes/stock", "/ventes/clients", f"/ventes/clients/{client['id']}", "/"]:
             self.assertEqual(self.client.get(url).status_code, 200, url)
+
+
+class TestRapportsEtDemo(StockBase):
+    def test_demo_build_and_reports(self):
+        from app.demo import build
+        summary = build(self.app, days=60, seed=3)
+        self.assertGreater(summary["eggs"], 0)
+        self.assertGreater(summary["sales"], 0)
+        c = self.app.test_client()
+        with c.session_transaction() as s:
+            s["_csrf"] = "t"
+        c.post("/connexion", data={"_csrf": "t", "username": "proprietaire", "password": "Demo2026"})
+        for url in ["/", "/rapports/", "/rapports/?lot=1", "/lots/1", "/oeufs/", "/ventes/", "/ventes/stock",
+                    "/controles/", "/matieres/", "/provenderie/", "/provenderie/historique"]:
+            res = c.get(url)
+            self.assertEqual(res.status_code, 200, url)
+        page = c.get("/rapports/").get_data(as_text=True)
+        self.assertIn("Rentabilité de chaque lot", page)
+        self.assertIn("Bénéfice ou perte de chaque lot", c.get("/").get_data(as_text=True))

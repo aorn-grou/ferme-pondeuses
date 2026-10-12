@@ -19,7 +19,7 @@
   <div class="stat"><span class="stat-label">Coût moyen / kg</span><strong class="stat-value small">{{ (totals.cost / totals.qty if totals.qty else 0)|money }}</strong></div>
 </div>
 <div class="card flush top-gap">
-  <table class="table responsive">
+  <table class="table responsive" data-limit="15">
     <thead><tr><th>Date</th><th>Provende</th><th class="right">Quantité</th><th class="right">Coût total</th><th class="right">Coût / kg</th><th>Par</th><th class="right">Détail</th></tr></thead>
     <tbody>
     {% for p in rows %}

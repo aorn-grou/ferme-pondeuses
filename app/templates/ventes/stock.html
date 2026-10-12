@@ -43,7 +43,7 @@
 
 <section class="card flush top-gap">
   <div class="card-head padded"><h2>{{ icon('clock', 20) }} Historique : avant → après</h2></div>
-  <table class="table responsive">
+  <table class="table responsive" data-limit="15">
     <thead><tr><th>Date</th><th>Quoi</th><th class="right">Avant</th><th class="right">Mouvement</th><th class="right">Après</th><th>Remarque</th><th>Par</th><th></th></tr></thead>
     <tbody>{% for r in ledger %}
       <tr class="{{ 'row-alert' if r.kind in ('inventaire', 'perte', 'casse') and r.qty < 0 and not r.notes }}">

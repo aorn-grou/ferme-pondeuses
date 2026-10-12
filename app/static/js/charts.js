@@ -17,6 +17,19 @@
     return 10 * p;
   }
 
+  /* Échelle « ronde » de min à max (4 intervalles), aussi pour les nombres négatifs */
+  function niceRange(lo, hi) {
+    if (hi <= lo) hi = lo + 1;
+    const raw = (hi - lo) / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    let step = 10 * p;
+    for (const k of [1, 2, 2.5, 5, 10]) if (k * p >= raw) { step = k * p; break; }
+    const min = Math.floor(lo / step) * step;
+    let max = min + step * 4;
+    while (max < hi) { max += step; }
+    return { min, max, ticks: Math.round((max - min) / step) };
+  }
+  const anchor = (i, n) => (i === n - 1 ? "end" : i === 0 ? "start" : "middle");
+
   function barsLine(box, data) {
     box.innerHTML = "";
     const W = Math.max(320, box.clientWidth || 600), H = box.clientHeight || 260;
@@ -107,18 +120,29 @@
     const m = { l: 46, r: 14, t: 22, b: 26 }, n = data.labels.length;
     if (!n || !data.series.length) return;
     const all = data.series.flatMap((s) => s.values.filter((v) => v != null));
-    const max = data.max || niceMax(Math.max(1, ...all)), iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const x = (i) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1)), y = (v) => m.t + ih - (v / max) * ih;
+    const lowest = Math.min(0, ...all);
+    const rg = data.max && lowest >= 0 ? { min: 0, max: data.max, ticks: 4 } : niceRange(lowest, Math.max(1, ...all));
+    const max = rg.max, min = rg.min, TK = rg.ticks;
+    const big = Math.max(Math.abs(max), Math.abs(min));
+    m.l = Math.max(m.l, 14 + (fmt(big).length + (data.unit === "%" ? 2 : 0)) * 6.4);
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const x = (i) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1)), y = (v) => m.t + ih - ((v - min) / (max - min)) * ih;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img" }, box);
     const grid = css("--border", "#e8e2cf"), muted = css("--text-2", "#5d6a5f");
-    for (let k = 0; k <= 4; k++) {
-      const v = (max / 4) * k, yy = y(v);
+    for (let k = 0; k <= TK; k++) {
+      const v = min + ((max - min) / TK) * k, yy = y(v);
       el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: grid }, svg);
       el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: muted }, svg).textContent = fmt(v) + (data.unit === "%" ? " %" : "");
     }
+    if (min < 0) el("line", { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: muted, "stroke-width": 1.2 }, svg);
     const every = Math.ceil(n / Math.max(3, Math.floor(iw / 62)));
-    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i > every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
+    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i > every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": anchor(i, n), "font-size": 11, fill: muted }, svg).textContent = lab; });
     drawMarks(svg, data.marks, data.labels, x, m.t, ih);
+    const nowIdx = data.now ? data.labels.indexOf(data.now) : -1;
+    if (nowIdx >= 0) {
+      el("line", { x1: x(nowIdx), x2: x(nowIdx), y1: m.t, y2: m.t + ih, stroke: muted, "stroke-dasharray": "3 3" }, svg);
+      el("text", { x: x(nowIdx), y: m.t + ih - 4, "text-anchor": "middle", "font-size": 10, fill: muted }, svg).textContent = "aujourd'hui";
+    }
     data.series.forEach((s, k) => {
       const col = s.color || PALETTE[k % PALETTE.length];
       s._col = col;
@@ -128,9 +152,9 @@
         d += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1) + " ";
         pen = true;
       });
-      el("path", { d, fill: "none", stroke: col, "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      el("path", { d, fill: "none", stroke: col, "stroke-width": s.thin ? 1.5 : 2.5, "stroke-dasharray": s.dash ? "6 4" : "none", "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
       const vals = s.values.map((v, i) => [v, i]).filter((p) => p[0] != null);
-      if (vals.length > 1 && data.peaks !== false) {
+      if (vals.length > 1 && data.peaks !== false && !s.dash) {
         const hi = vals.reduce((a, b) => (b[0] > a[0] ? b : a)), lo = vals.reduce((a, b) => (b[0] < a[0] ? b : a));
         [[hi, -9, "▲"], [lo, 17, "▼"]].forEach(([p, o, sym]) => {
           if (sym === "▼" && lo[0] === hi[0]) return;
@@ -166,7 +190,7 @@
       el("text", { x: W - m.r + 6, y: yy + 4, "font-size": 11, fill: cL }, svg).textContent = fmt((maxL / 4) * k) + (data.lineUnit === "%" ? " %" : "");
     }
     const every = Math.ceil(n / Math.max(3, Math.floor(iw / 54)));
-    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i > every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
+    data.labels.forEach((lab, i) => { if ((i % every === 0 && n - 1 - i > every / 2) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": anchor(i, n), "font-size": 11, fill: muted }, svg).textContent = lab; });
     const bw = Math.max(2, Math.min(18, step * 0.62));
     bars.forEach((v, i) => { if (v > 0) el("rect", { x: x(i) - bw / 2, y: yB(v), width: bw, height: Math.max(1, m.t + ih - yB(v)), rx: 2, fill: cB }, svg); });
     drawMarks(svg, data.marks, data.labels, x, m.t, ih);
@@ -196,23 +220,26 @@
     const m = { l: 48, r: 14, t: 24, b: 26 }, n = data.labels.length;
     if (!n) return;
     const vals = data.values.map((v) => v || 0);
-    const max = niceMax(Math.max(1, ...vals)), iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const x = (i) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1)), y = (v) => m.t + ih - (v / max) * ih;
+    const rg = niceRange(Math.min(0, ...vals), Math.max(1, ...vals)), max = rg.max, min = rg.min, TK = rg.ticks;
+    m.l = Math.max(m.l, 14 + fmt(Math.max(max, -min)).length * 6.4);
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const x = (i) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1)), y = (v) => m.t + ih - ((v - min) / (max - min)) * ih;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, role: "img" }, box);
     const grid = css("--border", "#e8e2cf"), muted = css("--text-2", "#5d6a5f");
     const col = data.color || "#3a8a2e", gold = css("--gold", "#c9971c");
-    for (let k = 0; k <= 4; k++) {
-      const v = (max / 4) * k, yy = y(v);
+    for (let k = 0; k <= TK; k++) {
+      const v = min + ((max - min) / TK) * k, yy = y(v);
       el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: grid }, svg);
       el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: muted }, svg).textContent = fmt(v);
     }
+    if (min < 0) el("line", { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: muted, "stroke-width": 1.2 }, svg);
     const every = Math.ceil(n / Math.max(3, Math.floor(iw / 62)));
-    data.labels.forEach((lab, i) => { if ((i % every === 0 && (n - 1 - i > every / 2 || i === n - 1)) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted }, svg).textContent = lab; });
+    data.labels.forEach((lab, i) => { if ((i % every === 0 && (n - 1 - i > every / 2 || i === n - 1)) || i === n - 1) el("text", { x: x(i), y: H - 6, "text-anchor": anchor(i, n), "font-size": 11, fill: muted }, svg).textContent = lab; });
     const pts = vals.map((v, i) => [x(i), y(v)]);
     const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
-    el("path", { d: d + ` L${pts[n - 1][0]} ${m.t + ih} L${pts[0][0]} ${m.t + ih} Z`, fill: col, "fill-opacity": 0.13 }, svg);
+    el("path", { d: d + ` L${pts[n - 1][0]} ${y(Math.max(0, min))} L${pts[0][0]} ${y(Math.max(0, min))} Z`, fill: col, "fill-opacity": 0.13 }, svg);
     el("path", { d, fill: "none", stroke: col, "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
-    const nonZero = vals.filter((v) => v > 0);
+    const nonZero = data.allowNegative ? vals : vals.filter((v) => v > 0);
     if (nonZero.length) {
       const avg = vals.reduce((a, b) => a + b, 0) / n;
       el("line", { x1: m.l, x2: W - m.r, y1: y(avg), y2: y(avg), stroke: gold, "stroke-dasharray": "6 4", "stroke-width": 1.5 }, svg);

@@ -52,7 +52,7 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
-    from . import auth, backups, controls, discussion, eggs, lots, main, matieres, provenderie, sales, settings, users
+    from . import auth, backups, controls, discussion, eggs, lots, main, matieres, provenderie, reports, sales, settings, users
 
     app.register_blueprint(discussion.bp)
 
@@ -62,6 +62,7 @@ def create_app(test_config=None):
     app.register_blueprint(controls.bp)
     app.register_blueprint(eggs.bp)
     app.register_blueprint(sales.bp)
+    app.register_blueprint(reports.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
     app.register_blueprint(users.bp)

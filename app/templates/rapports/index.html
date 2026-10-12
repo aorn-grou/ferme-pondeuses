@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Rapports{% endblock %}
+{% macro explain(key, title='Comment lire ce graphique') %}<details class="calc-banner fold" open data-fold="rep-{{ key }}"><summary>📖 {{ title }} <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">{{ caller() }}</div></details>{% endmacro %}
+{% block content %}
+{% call page_head('Rapports', "Les diagnostics de la ferme en schémas : argent, rentabilité de chaque lot, pics, creux et moyennes. Tout est calculé à partir de vos saisies.", 'chart') %}
+  <button class="btn ghost" type="button" onclick="window.print()">{{ icon('download', 18) }} Imprimer</button>
+{% endcall %}
+
+<nav class="tabs rep-nav" aria-label="Sections">
+  <a class="tab" href="#argent">💰 Argent</a>
+  <a class="tab" href="#lots">🐔 Rentabilité des lots</a>
+  {% if current %}<a class="tab" href="#lot">🔎 Détail d'un lot</a>{% endif %}
+  <a class="tab" href="#tendances">📈 Pics, creux et moyennes</a>
+</nav>
+
+{# ======================= ARGENT ======================= #}
+{% set M = money %}
+<section id="argent" class="top-gap">
+  <h2 class="section-title">💰 L'argent de la ferme, mois par mois</h2>
+  <div class="kpis top-gap-sm">
+    <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('cart', 18) }}</span><span class="tag tag-green">entrées</span></div>
+      <div class="kpi-val">{{ M.totals.sales|money }}</div><div class="kpi-lab">Ventes (œufs et autres) sur la période</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('wallet', 18) }}</span><span class="tag tag-red">sorties</span></div>
+      <div class="kpi-val">{{ M.totals.out|money }}</div><div class="kpi-lab">Achats {{ M.totals.buys|money }} · poussins {{ M.totals.chicks|money }}{% if M.totals.other %} · autres {{ M.totals.other|money }}{% endif %}</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-ic {{ 'ic-green' if M.totals.result >= 0 else 'ic-red' }}">{{ icon('chart', 18) }}</span>
+      <span class="tag {{ 'tag-green' if M.totals.result >= 0 else 'tag-red' }}">{{ 'bénéfice' if M.totals.result >= 0 else 'perte' }}</span></div>
+      <div class="kpi-val {{ 'text-ok' if M.totals.result >= 0 else 'text-danger' }}">{{ '+' if M.totals.result > 0 }}{{ M.totals.result|money }}</div><div class="kpi-lab">Résultat = ventes − dépenses</div></div>
+  </div>
+  {% if M.rows %}
+  <div class="dash-grid top-gap">
+    <section class="card">
+      <div class="card-head"><h2>{{ icon('chart', 20) }} Ventes et dépenses par mois</h2>
+        <span class="legend-inline"><span><i class="sw" style="background:#2e7d32"></i> Ventes</span><span><i class="sw" style="background:#c0352b"></i> Dépenses</span></span></div>
+      {% call explain('money') %}<span>La ligne <strong class="text-ok">verte</strong> = l'argent qui entre (ventes). La ligne <strong class="text-danger">rouge</strong> = l'argent qui sort (achats de matières, poussins…). Quand le vert est <strong>au-dessus</strong> du rouge, le mois est en bénéfice.</span>
+        <small>Au début d'un élevage, c'est normal d'être en perte : on achète les poussins et la provende avant les premiers œufs.</small>{% endcall %}
+      <div class="chart-box" data-chart-type="multi" data-chart='{{ M.chart|tojson }}'></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>{{ icon('wallet', 20) }} Résultat cumulé depuis le début</h2></div>
+      {% call explain('cum') %}<span>Chaque point = tout ce qui est entré <strong>moins</strong> tout ce qui est sorti, depuis le premier mois. Sous la ligne 0 : la ferme n'a pas encore remboursé ses dépenses. <strong>Quand la courbe passe au-dessus de 0, l'investissement est remboursé.</strong></span>{% endcall %}
+      <div class="chart-box" data-chart-type="line" data-chart='{{ M.cum_chart|tojson }}'></div>
+    </section>
+  </div>
+  <details class="card flush top-gap"><summary class="card-head padded clickable-summary"><h2>{{ icon('list', 20) }} Le détail mois par mois</h2><small class="muted">cliquez pour ouvrir</small></summary>
+    <table class="table responsive">
+      <thead><tr><th>Mois</th><th class="right">Ventes</th><th class="right">Achats matières</th><th class="right">Poussins</th><th class="right">Résultat</th><th class="right">Cumulé</th></tr></thead>
+      <tbody>{% for r in M.rows %}<tr><td data-label="Mois"><strong>{{ r.label }}</strong></td><td data-label="Ventes" class="right">{{ r.sales|money }}</td>
+        <td data-label="Achats matières" class="right">{{ r.buys|money }}</td><td data-label="Poussins" class="right">{{ r.chicks|money }}</td>
+        <td data-label="Résultat" class="right"><strong class="{{ 'text-ok' if r.result >= 0 else 'text-danger' }}">{{ '+' if r.result > 0 }}{{ r.result|money }}</strong></td>
+        <td data-label="Cumulé" class="right {{ 'text-ok' if r.cum >= 0 else 'text-danger' }}">{{ r.cum|money }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </details>
+  {% else %}<p class="muted top-gap-sm">Pas encore de ventes ni d'achats.</p>{% endif %}
+</section>
+
+{# ======================= LOTS ======================= #}
+{% if reports %}
+<section id="lots" class="top-gap">
+  <h2 class="section-title">🐔 Rentabilité de chaque lot</h2>
+  {% call explain('lots', 'Comment lire ce tableau') %}<span>Pour chaque lot, depuis son arrivée : <strong>ventes</strong> (ses œufs vendus) − <strong>dépenses</strong> (poussins + provende mangée) = <strong>bénéfice ou perte</strong>.</span>
+    <span><strong>Coût d'un œuf</strong> = provende mangée depuis le début de la ponte ÷ œufs pondus. <strong>Seuil</strong> = le taux de ponte minimum pour que les œufs paient la provende (en dessous, le lot coûte plus qu'il ne rapporte).</span>
+    <small>Les ventes sans lot précisé sont partagées entre les lots selon leurs œufs. Les autres dépenses (salaires, médicaments…) viendront avec le module Dépenses.</small>{% endcall %}
+  <section class="card flush top-gap-sm">
+    <table class="table responsive">
+      <thead><tr><th>Lot</th><th class="right">Poules</th><th class="right">Ponte (7 j)</th><th class="right">Œufs</th><th class="right">Coût d'un œuf</th><th class="right">Ventes</th><th class="right">Dépenses</th><th class="right">Résultat</th><th>Rentable jusqu'à</th></tr></thead>
+      <tbody>{% for r in reports %}{% set l = r.lot %}
+        <tr class="clickable" data-href="{{ url_for('rapports.index', lot=l.id) }}#lot">
+          <td data-label="Lot"><a href="{{ url_for('rapports.index', lot=l.id) }}#lot"><strong>{{ l.name }}</strong></a><small class="muted block">semaine {{ r.week }}{% if l.status != 'actif' %} · terminé{% endif %}</small></td>
+          <td data-label="Poules" class="right">{{ r.s.birds|num }}<small class="muted block">mortalité {{ r.mortality|round(1) }} %</small></td>
+          <td data-label="Ponte (7 j)" class="right">{% if r.eggs.avg7 is not none %}<strong>{{ r.eggs.avg7|round(1) }} %</strong>{% if r.threshold %}<small class="muted block">seuil {{ r.threshold|round(0)|int }} %</small>{% endif %}{% else %}<span class="muted">pas encore</span>{% endif %}</td>
+          <td data-label="Œufs" class="right">{{ r.eggs.laid|num }}</td>
+          <td data-label="Coût d'un œuf" class="right">{{ (r.feed_per_egg|money) if r.feed_per_egg is not none else '—' }}{% if r.feed_per_egg is not none %}<small class="muted block">vendu {{ r.price|money }}</small>{% endif %}</td>
+          <td data-label="Ventes" class="right">{{ r.rev.total|money }}</td>
+          <td data-label="Dépenses" class="right">{{ r.costs|money }}</td>
+          <td data-label="Résultat" class="right"><strong class="{{ 'text-ok' if r.result >= 0 else 'text-danger' }}">{{ '+' if r.result > 0 }}{{ r.result|money }}</strong></td>
+          <td data-label="Rentable jusqu'à">{% if l.status != 'actif' %}<span class="muted">—</span>{% elif r.end_profit %}<span class="badge badge-warn">semaine {{ r.end_profit.week }}</span><small class="muted block">{{ r.end_profit.date|date_fr }}</small>{% else %}<span class="badge badge-ok">jusqu'à la réforme</span><small class="muted block">S{{ l.reform_week }}</small>{% endif %}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </section>
+</section>
+
+{% if current %}{% set R = current %}{% set l = R.lot %}
+<section id="lot" class="top-gap">
+  <div class="section-head"><h2 class="section-title">🔎 {{ l.name }} : depuis le jour 1</h2>
+    <div class="chips">{% for r in reports %}<a class="chip {{ 'active' if r.lot.id == l.id }}" href="{{ url_for('rapports.index', lot=r.lot.id) }}#lot">{{ r.lot.name }}</a>{% endfor %}</div></div>
+  <div class="egg-kpis top-gap-sm">
+    <div><span>Âge</span><strong>Semaine {{ R.week }}</strong><small>arrivé le {{ l.arrival_date|date_fr }} · réforme S{{ l.reform_week }}</small></div>
+    <div><span>Ponte</span><strong>{{ (R.eggs.avg7|round(1) ~ ' %') if R.eggs.avg7 is not none else '—' }}</strong><small>{% if R.rate_peaks %}▲ {{ R.rate_peaks.hi|round(1) }} % ({{ R.rate_peaks.hi_at }}) · moy. {{ R.rate_peaks.avg|round(1) }} %{% else %}début prévu S{{ l.laying_week }}{% endif %}</small></div>
+    <div><span>Provende par œuf</span><strong>{{ (R.g_per_egg|round(0)|int ~ ' g') if R.g_per_egg else '—' }}</strong><small>{{ (R.feed_per_egg|money ~ ' de provende par œuf') if R.feed_per_egg is not none else 'pas encore d\'œufs' }}</small></div>
+    <div><span>Bénéfice / perte</span><strong class="{{ 'text-ok' if R.result >= 0 else 'text-danger' }}">{{ '+' if R.result > 0 }}{{ R.result|money }}</strong><small>ventes {{ R.rev.total|money }} − dépenses {{ R.costs|money }}</small></div>
+    {% if l.status == 'actif' %}<div><span>Provende encore à donner</span><strong>{{ R.feed_until_end|round(0)|qty('kg') }}</strong><small>jusqu'à {{ ('la fin de rentabilité (S' ~ R.end_profit.week ~ ')') if R.end_profit else 'la réforme' }}</small></div>{% endif %}
+    {% if R.threshold %}<div><span>Seuil de rentabilité</span><strong>{{ R.threshold|round(0)|int }} %</strong><small>taux de ponte qui paie juste la provende</small></div>{% endif %}
+  </div>
+
+  <div class="dash-grid top-gap">
+    <section class="card">
+      <div class="card-head"><h2>{{ icon('chart', 20) }} Œufs et provende, semaine par semaine</h2></div>
+      {% call explain('eggs-feed') %}<span><strong class="text-ok">Barres vertes</strong> = kg de provende mangés chaque semaine (échelle de gauche). <strong class="text-gold">Ligne dorée</strong> = œufs pondus chaque semaine (échelle de droite).</span>
+        <span>Avant la ponte, il n'y a que des barres : le lot coûte. Après le début de ponte (🥚), la ligne monte : les œufs commencent à payer la provende.</span>{% endcall %}
+      <div class="chart-box" data-chart-type="combo" data-chart='{{ R.eggs_vs_feed|tojson }}'></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>{{ icon('egg', 20) }} Taux de ponte : réel et estimation</h2></div>
+      {% call explain('rate') %}<span><strong class="text-ok">Ligne verte</strong> = taux de ponte réel par semaine. <strong class="text-gold">Pointillés dorés</strong> = estimation pour la suite (courbe normale d'une pondeuse, ajustée à votre lot). <strong class="text-danger">Pointillés rouges</strong> = seuil : en dessous, les œufs ne paient plus la provende.</span>
+        <small>C'est une estimation : elle se corrige toute seule chaque jour avec vos vrais ramassages.</small>{% endcall %}
+      <div class="chart-box" data-chart-type="multi" data-chart='{{ R.rate_chart|tojson }}'></div>
+    </section>
+  </div>
+  <section class="card top-gap">
+    <div class="card-head"><h2>{{ icon('wallet', 20) }} Marge chaque semaine : valeur des œufs − provende</h2></div>
+    {% call explain('margin') %}<span>Chaque point = ce que les œufs de la semaine rapportent ({{ R.price|money }} l'œuf) <strong>moins</strong> la provende mangée cette semaine-là. <strong>Au-dessus de 0</strong> : le lot gagne de l'argent. <strong>En dessous</strong> : il en perd.</span>
+      <span>{% if R.end_profit %}⚠️ D'après l'estimation, ce lot <strong>ne sera plus rentable vers la semaine {{ R.end_profit.week }}</strong> (le {{ R.end_profit.date|date_fr }}) : pensez à préparer sa réforme et le lot suivant.{% elif l.status == 'actif' %}✅ D'après l'estimation, ce lot reste <strong>rentable jusqu'à sa réforme</strong> (semaine {{ l.reform_week }}).{% endif %}</span>{% endcall %}
+    <div class="chart-box" data-chart-type="multi" data-chart='{{ R.margin_chart|tojson }}'></div>
+  </section>
+</section>
+{% endif %}
+{% endif %}
+
+{# ======================= TENDANCES ======================= #}
+{% set T = trends %}
+{% if T.rows %}
+<section id="tendances" class="top-gap">
+  <h2 class="section-title">📈 Pics, creux et moyennes, mois par mois</h2>
+  {% call explain('trends', 'Comment lire ces graphiques') %}<span>Chaque point = la moyenne d'un mois. <strong class="text-ok">▲</strong> = le meilleur mois, <strong class="text-danger">▼</strong> = le plus faible, les <strong>pointillés</strong> = la moyenne de toute la période. Passez la souris sur un point pour voir le chiffre.</span>{% if T.partial %}<small>* = mois en cours, pas encore terminé (ses totaux sont donc plus bas : il n'est pas compté dans les ▲ ▼ des ventes et des morts).</small>{% endif %}{% endcall %}
+  <div class="dash-grid top-gap-sm">
+    {% for key, title, chart, fmtunit, P in [('eggs', '🥚 Œufs pondus par jour', T.eggs_chart, ' œufs/jour', T.eggs), ('price', '💵 Prix moyen du plateau', T.price_chart, ' Ar', T.price), ('deaths', '🐔 Poules mortes par mois', T.deaths_chart, ' morts', T.deaths)] %}
+    <section class="card">
+      <div class="card-head"><h2>{{ title }}</h2></div>
+      {% if P %}<div class="peak-row"><span class="pk up">▲ {{ P.hi|round(0)|int|num }}{{ fmtunit }}<small>{{ P.hi_at }}</small></span><span class="pk down">▼ {{ P.lo|round(0)|int|num }}{{ fmtunit }}<small>{{ P.lo_at }}</small></span><span class="pk avg">moy. {{ P.avg|round(0)|int|num }}{{ fmtunit }}<small>{{ P.count }} mois</small></span></div>{% endif %}
+      <div class="chart-box sm" data-chart-type="line" data-chart='{{ chart|tojson }}'></div>
+    </section>
+    {% endfor %}
+    <section class="card">
+      <div class="card-head"><h2>💰 Ventes par mois</h2></div>
+      {% if T.sales %}<div class="peak-row"><span class="pk up">▲ {{ T.sales.hi|money }}<small>{{ T.sales.hi_at }}</small></span><span class="pk down">▼ {{ T.sales.lo|money }}<small>{{ T.sales.lo_at }}</small></span><span class="pk avg">moy. {{ T.sales.avg|money }}<small>{{ T.sales.count }} mois</small></span></div>{% endif %}
+      <div class="chart-box sm" data-chart-type="line" data-chart='{{ T.sales_chart|tojson }}'></div>
+    </section>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endblock %}

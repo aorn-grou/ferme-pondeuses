@@ -206,7 +206,7 @@ def material(material_id):
     item = _material(material_id)
     stock = material_stock(material_id)
     moves = query(
-        """SELECT s.*, u.username FROM stock_moves s LEFT JOIN users u ON u.id = s.created_by
+        """SELECT s.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM stock_moves s LEFT JOIN users u ON u.id = s.created_by
            WHERE s.material_id = ? ORDER BY s.date DESC, s.id DESC LIMIT 200""",
         (material_id,),
     )
@@ -902,7 +902,7 @@ def purchase_edit(purchase_id):
 @bp.route("/achats/<int:purchase_id>")
 @require("matieres", VIEW)
 def purchase(purchase_id):
-    item = query("""SELECT p.*, s.name AS supplier, a.name AS account, u.username
+    item = query("""SELECT p.*, s.name AS supplier, a.name AS account, COALESCE(NULLIF(u.full_name, ''), u.username) AS username
                     FROM purchases p LEFT JOIN suppliers s ON s.id = p.supplier_id
                     LEFT JOIN accounts a ON a.id = p.account_id LEFT JOIN users u ON u.id = p.created_by
                     WHERE p.id = ?""", (purchase_id,), one=True)

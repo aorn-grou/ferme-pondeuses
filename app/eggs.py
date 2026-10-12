@@ -141,6 +141,10 @@ def farm_chart(lots, days=60):
     for s in series:
         s["values"], s["extra"] = s["values"][cut:], s["extra"][cut:]
     labels, totals = labels[cut:], totals[cut:]
+    if len(totals) > 1 and totals[-1] == 0:  # aujourd'hui pas encore saisi : on ne dessine pas un faux 0
+        labels, totals = labels[:-1], totals[:-1]
+        for s in series:
+            s["values"], s["extra"] = s["values"][:-1], s["extra"][:-1]
     marks = [m for m in marks if m["at"] in labels]
     filled = [(v, labels[i]) for i, v in enumerate(totals) if v > 0]
     summary = None

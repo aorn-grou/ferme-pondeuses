@@ -41,6 +41,23 @@ def _active_formulas():
 # ---------------------------------------------------------------------------
 # Tableau du stock de provende
 # ---------------------------------------------------------------------------
+def _lot_feed_today():
+    """D'après les lots : combien de poules mangent chaque provende aujourd'hui, et combien de grammes en moyenne."""
+    from .lots import suggestion
+
+    lot_birds, lot_kg = {}, {}
+    for lot in query("SELECT * FROM lots WHERE status = 'actif'"):
+        sug = suggestion(lot)
+        if sug["formula_id"]:
+            lot_birds[sug["formula_id"]] = lot_birds.get(sug["formula_id"], 0) + sug["birds"]
+            lot_kg[sug["formula_id"]] = lot_kg.get(sug["formula_id"], 0) + sug["kg"]
+    grams = _program_grams()
+    for fid, birds in lot_birds.items():
+        if birds:
+            grams[fid] = lot_kg[fid] * 1000 / birds
+    return grams, lot_birds
+
+
 @bp.route("/")
 @require("provenderie", VIEW)
 def index():
@@ -58,8 +75,9 @@ def index():
         "alerts": sum(1 for f in formulas if f["status"] in ("low", "empty") and (f["alert_threshold"] or f["used_30"])),
     }
     programs = query("SELECT COUNT(*) AS n FROM feed_programs WHERE active = 1", one=True)["n"]
+    grams, lot_birds = _lot_feed_today()
     return render_template("provenderie/index.html", formulas=formulas, summary=summary, recent=recent,
-                           programs=programs, grams=_program_grams())
+                           programs=programs, grams=grams, lot_birds=lot_birds)
 
 
 # ---------------------------------------------------------------------------
@@ -489,7 +507,7 @@ def productions():
         where.append("p.formula_id = ?")
         params.append(formula_id)
     clause = ("WHERE " + " AND ".join(where)) if where else ""
-    rows = query(f"""SELECT p.*, f.name AS formula, u.username FROM productions p JOIN formulas f ON f.id = p.formula_id
+    rows = query(f"""SELECT p.*, f.name AS formula, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM productions p JOIN formulas f ON f.id = p.formula_id
                      LEFT JOIN users u ON u.id = p.created_by {clause} ORDER BY p.date DESC, p.id DESC LIMIT 300""", params)
     totals = {"qty": sum(r["quantity"] for r in rows), "cost": sum(r["cost_total"] for r in rows)}
     return render_template("provenderie/productions.html", rows=rows, totals=totals, start=start, end=end,
@@ -499,7 +517,7 @@ def productions():
 @bp.route("/fabrications/<int:production_id>")
 @require("provenderie", VIEW)
 def production(production_id):
-    item = query("""SELECT p.*, f.name AS formula, u.username FROM productions p JOIN formulas f ON f.id = p.formula_id
+    item = query("""SELECT p.*, f.name AS formula, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM productions p JOIN formulas f ON f.id = p.formula_id
                     LEFT JOIN users u ON u.id = p.created_by WHERE p.id = ?""", (production_id,), one=True)
     if item is None:
         abort(404)
@@ -671,7 +689,7 @@ def movement():
 @require("provenderie", VIEW)
 def feed_history(formula_id):
     item = _formula(formula_id)
-    moves = query("""SELECT s.*, u.username FROM feed_moves s LEFT JOIN users u ON u.id = s.created_by
+    moves = query("""SELECT s.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM feed_moves s LEFT JOIN users u ON u.id = s.created_by
                      WHERE s.formula_id = ? ORDER BY s.date DESC, s.id DESC LIMIT 200""", (formula_id,))
     return render_template("provenderie/feed_history.html", item=item, moves=moves, stock=feed_stock(formula_id),
                            kinds=FEED_KINDS)
@@ -687,8 +705,9 @@ def feed_history_all():
                                since=f["du"] if valid_date(f["du"]) else None,
                                until=f["au"] if valid_date(f["au"]) else None)
     formulas = query("SELECT id, name FROM formulas ORDER BY name")
+    lf = _lot_feed_today()
     return render_template("provenderie/history.html", moves=moves, filters=f, formulas=formulas, kinds=FEED_KINDS,
-                           overview=formulas_overview(), grams=_program_grams())
+                           overview=formulas_overview(), grams=lf[0], lot_birds=lf[1])
 
 
 def _program_grams():

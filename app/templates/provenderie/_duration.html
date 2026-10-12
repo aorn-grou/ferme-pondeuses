@@ -3,7 +3,7 @@
   <h2>{{ icon('clock', 20) }} Combien de temps va durer la provende ?</h2>
   <p class="muted">Écrivez le nombre de poules qui mangent chaque provende et combien de grammes une poule mange par jour.
     Le logiciel calcule la consommation par jour et la <strong>date où le stock sera fini</strong>.
-    <em>Avec le module Lots, ces chiffres seront remplis tout seuls d'après vos lots.</em></p>
+    {% if lot_birds %}<strong>Les chiffres sont remplis tout seuls d'après vos lots d'aujourd'hui</strong> (vous pouvez les changer pour faire une simulation).{% endif %}</p>
   <table class="table responsive duration-table" data-duration>
     <thead><tr><th>Provende</th><th class="right">En stock</th><th>Nombre de poules</th><th>g / poule / jour</th><th class="right">Par jour</th><th class="right">Durée</th><th>Fini le</th></tr></thead>
     <tbody>
@@ -11,8 +11,8 @@
       <tr data-duration-row data-stock="{{ f.stock }}">
         <td data-label="Provende"><strong>{{ f.name }}</strong>{% if f.phase %}<small class="muted block">{{ f.phase }}</small>{% endif %}</td>
         <td data-label="En stock" class="right">{{ f.stock|qty('kg') }}</td>
-        <td data-label="Nombre de poules"><input class="input" inputmode="numeric" placeholder="ex. 500" data-birds data-key="poules-{{ f.id }}"></td>
-        <td data-label="g / poule / jour"><input class="input" inputmode="decimal" placeholder="ex. 115" value="{{ grams.get(f.id)|round(0)|int if grams.get(f.id) else '' }}" data-grams data-key="grammes-{{ f.id }}"></td>
+        <td data-label="Nombre de poules"><input class="input" inputmode="numeric" placeholder="ex. 500" value="{{ lot_birds.get(f.id, '') if lot_birds else '' }}" data-birds {% if not lot_birds %}data-key="poules-{{ f.id }}"{% endif %}></td>
+        <td data-label="g / poule / jour"><input class="input" inputmode="decimal" placeholder="ex. 115" value="{{ grams.get(f.id)|round(1) if grams.get(f.id) else '' }}" data-grams {% if not lot_birds %}data-key="grammes-{{ f.id }}"{% endif %}></td>
         <td data-label="Par jour" class="right" data-per-day>—</td>
         <td data-label="Durée" class="right"><strong data-days>—</strong></td>
         <td data-label="Fini le" data-end>—</td>

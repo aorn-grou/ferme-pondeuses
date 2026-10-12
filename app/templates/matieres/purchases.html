@@ -20,7 +20,7 @@
   <div class="stat"><span class="stat-label">Reste (crédit)</span><strong class="stat-value small">{{ (totals.total - totals.paid)|money }}</strong></div>
 </div>
 <div class="card flush top-gap">
-  <table class="table responsive">
+  <table class="table responsive" data-limit="15">
     <thead><tr><th>Date</th><th>Achat</th><th>Fournisseur</th><th>Matières</th><th class="right">Total</th><th class="right">Payé</th></tr></thead>
     <tbody>
     {% for p in rows %}

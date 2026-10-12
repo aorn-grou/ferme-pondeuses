@@ -65,17 +65,17 @@ def egg_stock(until=None):
 def egg_ledger(since=None):
     """Tous les mouvements du stock d'œufs, avec le stock avant et après chacun."""
     rows = []
-    for c in query("SELECT e.*, l.name AS lot, u.username FROM egg_collections e JOIN lots l ON l.id = e.lot_id "
+    for c in query("SELECT e.*, l.name AS lot, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM egg_collections e JOIN lots l ON l.id = e.lot_id "
                    "LEFT JOIN users u ON u.id = e.created_by"):
         rows.append({"date": c["date"], "order": 0, "id": c["id"], "kind": "ramassage", "qty": c["good"],
                      "label": f"Ramassage {c['lot']}", "notes": c["notes"] or "", "by": c["username"],
                      "url": url_for("oeufs.index", date=c["date"])})
-    for s in query("SELECT s.*, c.name AS client, u.username FROM sales s LEFT JOIN clients c ON c.id = s.client_id "
+    for s in query("SELECT s.*, c.name AS client, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM sales s LEFT JOIN clients c ON c.id = s.client_id "
                    "LEFT JOIN users u ON u.id = s.created_by WHERE s.is_eggs = 1"):
         rows.append({"date": s["date"], "order": 1, "id": s["id"], "kind": "vente", "qty": -s["quantity"],
                      "label": f"Vente n°{s['id']}" + (f" · {s['client']}" if s["client"] else ""), "notes": s["notes"] or "",
                      "by": s["username"], "url": url_for("ventes.sale", sale_id=s["id"])})
-    for m in query("SELECT m.*, u.username FROM egg_moves m LEFT JOIN users u ON u.id = m.created_by"):
+    for m in query("SELECT m.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM egg_moves m LEFT JOIN users u ON u.id = m.created_by"):
         rows.append({"date": m["date"], "order": 2, "id": m["id"], "kind": m["kind"], "qty": m["quantity"],
                      "label": MOVE_KINDS.get(m["kind"], m["kind"]), "notes": m["notes"] or "", "by": m["username"],
                      "url": None, "move": m})
@@ -140,7 +140,7 @@ def sales_rows(since=None, until=None, client_id=None):
     if client_id:
         where.append("s.client_id = ?")
         params.append(client_id)
-    rows = query(f"""SELECT s.*, c.name AS client, l.name AS lot, u.username,
+    rows = query(f"""SELECT s.*, c.name AS client, l.name AS lot, COALESCE(NULLIF(u.full_name, ''), u.username) AS username,
                             s.paid + COALESCE((SELECT SUM(p.amount) FROM sale_payments p WHERE p.sale_id = s.id), 0) AS paid_total
                      FROM sales s LEFT JOIN clients c ON c.id = s.client_id LEFT JOIN lots l ON l.id = s.lot_id
                      LEFT JOIN users u ON u.id = s.created_by
@@ -294,7 +294,7 @@ def sale(sale_id):
     if not rows:
         abort(404)
     item = rows[0]
-    payments = query("""SELECT p.*, a.name AS account, u.username FROM sale_payments p LEFT JOIN accounts a ON a.id = p.account_id
+    payments = query("""SELECT p.*, a.name AS account, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM sale_payments p LEFT JOIN accounts a ON a.id = p.account_id
                         LEFT JOIN users u ON u.id = p.created_by WHERE p.sale_id = ? ORDER BY p.date, p.id""", (sale_id,))
     account = query("SELECT name FROM accounts WHERE id = ?", (item["account_id"] or 0,), one=True)
     return render_template("ventes/sale.html", item=item, payments=payments, accounts=accounts(), today=today(),

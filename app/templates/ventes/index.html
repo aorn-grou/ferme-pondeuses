@@ -32,7 +32,7 @@
   <div class="card-head padded"><h2>{{ icon('list', 20) }} Ventes</h2>
     <form method="get" class="inline-form"><select class="input sm" name="periode" onchange="this.form.submit()">
       {% for k, v in [('7', '7 jours'), ('30', '30 jours'), ('90', '3 mois'), ('365', '1 an'), ('tout', 'Tout')] %}<option value="{{ k }}" {% if period == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></form></div>
-  <table class="table responsive">
+  <table class="table responsive" data-limit="15">
     <thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Quoi</th><th class="right">Total</th><th class="right">Payé</th><th class="right">Reste</th></tr></thead>
     <tbody>{% for r in rows %}
       <tr class="clickable" data-href="{{ url_for('ventes.sale', sale_id=r.id) }}">

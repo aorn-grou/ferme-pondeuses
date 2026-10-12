@@ -27,7 +27,7 @@ MODULES = [
     ("caisse", "Caisse & propriétaires", "wallet", "Finances", "Caisses, apports et retraits des propriétaires, clôture.", False),
     ("personnel", "Personnel & salaires", "users", "Finances", "Employés, présences, avances et salaires.", False),
     ("immobilisations", "Immobilisations", "building", "Finances", "Bâtiments et matériel, amortissement.", False),
-    ("rapports", "Rapports", "chart", "Pilotage", "Rapports détaillés, export PDF et Excel.", False),
+    ("rapports", "Rapports", "chart", "Pilotage", "Diagnostics en schémas : argent, rentabilité des lots, pics et moyennes.", True),
     ("imports", "Import Excel", "upload", "Administration", "Modèles Excel à compléter et import des données.", False),
     ("utilisateurs", "Utilisateurs", "user-cog", "Administration", "Comptes, rôles et droits d'accès.", True),
     ("parametres", "Paramètres", "settings", "Administration", "Nom, logo, couleurs de la société, e-mail.", True),
@@ -50,6 +50,7 @@ MODULE_ENDPOINTS = {
     "alimentation": "lots.feeding_day",
     "oeufs": "oeufs.index",
     "ventes": "ventes.index",
+    "rapports": "rapports.index",
 }
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
 MENU_GROUPS = ["Pilotage", "Production", "Élevage", "Ventes", "Finances", "Administration"]

@@ -12,7 +12,7 @@
 </div>
 <section class="card flush top-gap">
   <div class="card-head padded"><h2>{{ icon('cart', 20) }} Ventes</h2></div>
-  <table class="table responsive"><thead><tr><th>Date</th><th>N°</th><th>Quoi</th><th class="right">Total</th><th class="right">Reste</th></tr></thead>
+  <table class="table responsive" data-limit="15"><thead><tr><th>Date</th><th>N°</th><th>Quoi</th><th class="right">Total</th><th class="right">Reste</th></tr></thead>
     <tbody>{% for r in rows %}<tr class="clickable" data-href="{{ url_for('ventes.sale', sale_id=r.id) }}"><td data-label="Date">{{ r.date|date_fr }}</td><td data-label="N°"><a href="{{ url_for('ventes.sale', sale_id=r.id) }}">n°{{ r.id }}</a></td>
       <td data-label="Quoi">{% if r.is_eggs %}🥚 {{ fmt_eggs(r.quantity) }}{% else %}{{ r.product }} · {{ r.input_qty }}{% endif %}</td><td data-label="Total" class="right">{{ r.total|money }}</td>
       <td data-label="Reste" class="right">{% if r.due > 0.5 %}<span class="badge badge-danger">{{ r.due|money }}</span>{% else %}<span class="badge badge-ok">payé</span>{% endif %}</td></tr>

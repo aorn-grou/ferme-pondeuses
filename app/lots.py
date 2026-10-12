@@ -253,9 +253,9 @@ def index():
 def lot(lot_id):
     item = _lot(lot_id)
     summary, cons = lot_summary(item)
-    events = query("""SELECT e.*, u.username FROM lot_events e LEFT JOIN users u ON u.id = e.created_by
+    events = query("""SELECT e.*, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM lot_events e LEFT JOIN users u ON u.id = e.created_by
                       WHERE e.lot_id = ? ORDER BY e.date DESC, e.id DESC""", (lot_id,))
-    feedings = query("""SELECT fd.*, f.name AS formula, u.username FROM feedings fd
+    feedings = query("""SELECT fd.*, f.name AS formula, COALESCE(NULLIF(u.full_name, ''), u.username) AS username FROM feedings fd
                         LEFT JOIN formulas f ON f.id = fd.formula_id LEFT JOIN users u ON u.id = fd.created_by
                         WHERE fd.lot_id = ? ORDER BY fd.date DESC, fd.id DESC LIMIT 120""", (lot_id,))
     chart = weekly_series(item, cons, summary["forecast"]) if "forecast" in summary else None

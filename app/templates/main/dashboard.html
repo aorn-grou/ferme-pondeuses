@@ -116,7 +116,7 @@
   <section class="card">
     <div class="card-head"><h2>{{ icon('wheat', 20) }} Provende donnée aux poules · 30 jours</h2>
       <span class="legend-inline"><span><i class="sw sw-green"></i> kg / jour</span><span><i class="sw sw-gold-dash"></i> moyenne</span></span></div>
-    <div class="chart-box sm" data-chart-type="line" data-chart='{{ {"labels": d.labels30, "values": F.given, "unit": "kg", "color": "#3a8a2e"}|tojson }}'></div>
+    <div class="chart-box sm" data-chart-type="line" data-chart='{{ {"labels": d.feed_labels, "values": F.given, "unit": "kg", "color": "#3a8a2e"}|tojson }}'></div>
     <p class="hint">Total du mois : <strong>{{ F.given_month|qty('kg') }}</strong>. ▲ jour le plus fort · ▼ jour le plus faible.</p>
   </section>
   <section class="card">
@@ -125,6 +125,23 @@
     <p class="hint">Total du mois : <strong>{{ F.made_month|qty('kg') }}</strong>.</p>
   </section>
 </div>
+{% endif %}
+
+{# ---------- Rentabilité des lots ---------- #}
+{% if d.profit %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Bénéfice ou perte de chaque lot, depuis le jour 1</h2><a class="btn ghost sm" href="{{ url_for('rapports.index') }}#lots">Tous les rapports</a></div>
+  <div class="profit-grid">
+    {% for r in d.profit %}{% set l = r.lot %}
+    <a class="profit-card {{ 'pos' if r.result >= 0 else 'neg' }}" href="{{ url_for('rapports.index', lot=l.id) }}#lot">
+      <div class="pc-top"><strong>{{ l.name }}</strong><span class="muted small">S{{ r.week }}</span></div>
+      <div class="pc-val">{{ '+' if r.result > 0 }}{{ r.result|money }}</div>
+      <div class="pc-bar"><span class="in" style="width: {{ ([r.rev.total / ([r.rev.total, r.costs]|max or 1) * 100, 100]|min)|round(0) }}%"></span></div>
+      <small>ventes {{ r.rev.total|money }} · dépenses {{ r.costs|money }}</small>
+      <small>{% if r.eggs.avg7 is not none %}ponte {{ r.eggs.avg7|round(0)|int }} % (seuil {{ r.threshold|round(0)|int if r.threshold else '—' }} %) · {% endif %}{% if r.end_profit %}<b class="text-danger">plus rentable vers S{{ r.end_profit.week }}</b>{% elif r.eggs.laid %}<b class="text-ok">rentable jusqu'à la réforme</b>{% else %}en élevage : pas encore d'œufs{% endif %}</small>
+    </a>{% endfor %}
+  </div>
+</section>
 {% endif %}
 
 {# ---------- Provende à venir jusqu'aux réformes ---------- #}

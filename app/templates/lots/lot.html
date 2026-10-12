@@ -160,7 +160,7 @@
 </section>
 {% if events %}
 <div class="card flush">
-  <table class="table responsive">
+  <table class="table responsive" data-limit="8">
     <thead><tr><th>Date</th><th>Quoi</th><th class="right">Poules</th><th>Remarque</th><th>Par</th><th class="right">Actions</th></tr></thead>
     <tbody>{% for e in events %}
       <tr><td data-label="Date" class="nowrap">{{ e.date|date_fr }}</td><td data-label="Quoi">{{ kinds.get(e.kind, (e.kind,))[0] }}</td>
@@ -174,7 +174,7 @@
 
 <section class="card flush top-gap">
   <div class="card-head padded"><h2>{{ icon('clock', 20) }} Provende donnée à ce lot</h2></div>
-  <table class="table responsive">
+  <table class="table responsive" data-limit="8">
     <thead><tr><th>Date</th><th>Provende</th><th class="right">Quantité</th><th class="right">Par poule</th><th class="right">Coût</th><th>Par</th><th class="right">Actions</th></tr></thead>
     <tbody>{% for fd in feedings %}
       <tr><td data-label="Date" class="nowrap">{{ fd.date|date_fr }}</td><td data-label="Provende">{{ fd.formula }}</td>

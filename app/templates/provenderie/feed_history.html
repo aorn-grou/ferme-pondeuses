@@ -7,7 +7,7 @@
   {% if can('provenderie', 2) %}<a class="btn ghost" href="{{ url_for('provenderie.movement', formule=item.id) }}">Perte / inventaire</a>{% endif %}
 {% endcall %}
 <div class="card flush">
-  <table class="table responsive">
+  <table class="table responsive" data-limit="15">
     <thead><tr><th>Date</th><th>Type</th><th class="right">Quantité</th><th>Par</th><th class="right">Actions</th></tr></thead>
     <tbody>
     {% for mv in moves %}
