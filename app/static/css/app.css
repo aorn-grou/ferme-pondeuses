@@ -985,3 +985,13 @@ details.calc-banner.fold:not([open]) { padding-top: .5rem; padding-bottom: .5rem
 .profit-card .pc-bar { height: 8px; border-radius: 99px; background: rgba(192,53,43,.18); overflow: hidden; }
 .profit-card .pc-bar .in { display: block; height: 100%; background: #2e7d32; border-radius: 99px; }
 .profit-card small { color: var(--text-2, #5d6a5f); font-size: .8rem; }
+/* Démonstration */
+.demo-link { display: flex; gap: .7rem; align-items: center; margin-top: 1rem; padding: .8rem 1rem; border-radius: 14px; background: linear-gradient(135deg, rgba(201,151,28,.16), rgba(46,125,50,.12)); border: 1px solid rgba(201,151,28,.35); color: inherit; text-decoration: none; font-size: 1.6rem; }
+.demo-link span { display: flex; flex-direction: column; font-size: 1rem; } .demo-link small { color: var(--text-2, #5d6a5f); font-size: .82rem; }
+.demo-roles { display: flex; flex-direction: column; gap: .55rem; margin: .6rem 0; }
+.demo-role { width: 100%; display: flex; align-items: center; gap: .8rem; padding: .75rem .9rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface, #fff); cursor: pointer; text-align: left; font: inherit; color: inherit; transition: transform .1s, box-shadow .1s; }
+.demo-role:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.08); border-color: var(--gold, #c9971c); }
+.demo-role .dr-ic { font-size: 1.6rem; } .demo-role span:nth-child(2) { display: flex; flex-direction: column; flex: 1; } .demo-role small { color: var(--text-2, #5d6a5f); }
+.demo-role .dr-go { font-size: 1.2rem; color: var(--gold, #c9971c); font-weight: 800; }
+.demo-banner { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; margin-bottom: 1rem; padding: .7rem 1rem; border-radius: 14px; background: linear-gradient(135deg, #0e3b20, #1d6b35); color: #f6e7b8; }
+.demo-banner span { flex: 1; min-width: 200px; } .demo-banner strong { color: #fff; }

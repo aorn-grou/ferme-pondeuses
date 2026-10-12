@@ -62,6 +62,23 @@ def _laying_rate(age_week, laying_week, rng):
     return max(0.0, min(0.97, base + rng.uniform(-0.025, 0.025)))
 
 
+class _ctx:
+    """Contexte de l'application qui travaille sur la base de démo."""
+
+    def __init__(self, app):
+        self.c = app.app_context()
+
+    def __enter__(self):
+        from flask import g
+
+        self.c.__enter__()
+        g.demo = True
+        return self
+
+    def __exit__(self, *exc):
+        return self.c.__exit__(*exc)
+
+
 class _Client:
     """Navigateur simulé : passe par les vraies pages du logiciel."""
 
@@ -70,10 +87,12 @@ class _Client:
         self.c = app.test_client()
         with self.c.session_transaction() as s:
             s["_csrf"] = "demo"
+            s["demo"] = True
 
     def post(self, url, data, ok=(302,)):
         with self.c.session_transaction() as s:  # la connexion renouvelle la session
             s.setdefault("_csrf", "demo")
+            s["demo"] = True
             token = s["_csrf"]
         data = dict(data)
         data["_csrf"] = token
@@ -101,7 +120,7 @@ def build(app, days=180, seed=7):
     br = _Client(app)
 
     # --- comptes ------------------------------------------------------------
-    with app.app_context():
+    with _ctx(app):
         conn = get_db()
         conn.execute("DELETE FROM users WHERE username != 'super-adm'")
         conn.execute("UPDATE users SET username = ?, full_name = ?, password_hash = ?, must_change_password = 0, "
@@ -117,7 +136,7 @@ def build(app, days=180, seed=7):
         conn.commit()
     br.post("/connexion", {"username": DEMO_USERS[0][0], "password": DEMO_PASSWORD})
 
-    with app.app_context():
+    with _ctx(app):
         caisse = query("SELECT id FROM accounts WHERE name = 'Caisse de la ferme'", one=True)["id"]
         proprio = query("SELECT id FROM accounts WHERE name LIKE 'Rakoto%'", one=True)["id"]
         mobile = query("SELECT id FROM accounts WHERE name = 'Mobile money'", one=True)["id"]
@@ -127,7 +146,7 @@ def build(app, days=180, seed=7):
     for name, cat, unit, threshold, price, supplier in MATERIALS:
         br.post("/matieres/matiere/nouvelle", {"name": name, "category_name": cat, "unit": unit,
                                                "alert_threshold": str(threshold), "notes": ""})
-        with app.app_context():
+        with _ctx(app):
             mat_ids[name] = query("SELECT id FROM materials WHERE name = ?", (name,), one=True)["id"]
         prices[name], suppliers[name] = price, supplier
 
@@ -146,7 +165,7 @@ def build(app, days=180, seed=7):
                 "material_id": [str(mat_ids[n]) for n, _ in items], "quantity": [str(k) for _, k in items],
                 "unit_price": [str(p) for p in unit_prices]})
 
-    with app.app_context():  # argent de départ apporté par les propriétaires
+    with _ctx(app):  # argent de départ apporté par les propriétaires
         conn = get_db()
         conn.execute("""INSERT INTO cash_movements (date, account_id, amount, kind, label, ref_type, created_at)
                         VALUES (?, ?, 12000000, 'apport', 'Apport de départ des propriétaires', '', datetime('now'))""",
@@ -160,13 +179,13 @@ def build(app, days=180, seed=7):
             "name": fname, "base_qty": "100", "notes": "",
             "material_id": [str(mat_ids[m]) for m in recipe], "quantity": [str(q) for q in recipe.values()],
             "qty_unit": ["kg"] * len(recipe)})
-        with app.app_context():
+        with _ctx(app):
             formula_ids[fname] = query("SELECT id FROM formulas WHERE name = ?", (fname,), one=True)["id"]
     br.post("/provenderie/programmes/nouveau", {
         "name": "Programme pondeuses", "notes": "Exemple : une provende par période, les grammes augmentent avec l'âge.",
         "week_from": [str(a) for a, _, _, _ in PROGRAM], "week_to": [str(b) for _, b, _, _ in PROGRAM],
         "formula_id": [str(formula_ids[f]) for _, _, f, _ in PROGRAM], "grams_per_bird": [str(g) for *_, g in PROGRAM]})
-    with app.app_context():
+    with _ctx(app):
         prog = query("SELECT id FROM feed_programs", one=True)["id"]
 
     # --- lots en escalier ----------------------------------------------------
@@ -184,7 +203,7 @@ def build(app, days=180, seed=7):
             "breed": "Isa Brown", "building": building, "program_id": str(prog), "reform_week": "80", "laying_week": str(laying),
             "egg_price": "500", "supplier": "Couvoir Rabe", "chick_price": "3500", "other_costs": "60000",
             "paid": "", "account_id": str(proprio), "notes": ""})
-        with app.app_context():
+        with _ctx(app):
             created[name] = query("SELECT * FROM lots WHERE name = ?", (name,), one=True)
 
     for name, ago, count, building, laying in lots_plan:
@@ -205,7 +224,7 @@ def build(app, days=180, seed=7):
         for name, ago, count, building, laying in lots_plan:
             if name not in created and today - timedelta(days=ago) == day:
                 create_lot(name, day, count, building, laying)
-        with app.app_context():
+        with _ctx(app):
             lots = query("SELECT * FROM lots WHERE status = 'actif' AND arrival_date <= ?", (d,))
             sugs = {l["id"]: suggestion(l, d) for l in lots}
             need = {}
@@ -251,7 +270,7 @@ def build(app, days=180, seed=7):
             br.post(f"/lots/{l['id']}/effectif", {"kind": "mort", "quantity": "9", "date": d, "notes": ""})
         # ramassage des œufs
         rows = {"date": d, "lot_id": [], "trays": [], "eggs": [], "broken": [], "notes": []}
-        with app.app_context():
+        with _ctx(app):
             for l in lots:
                 rate = _laying_rate(lot_week(l, d), l["laying_week"] or 18, rng)
                 note = ""
@@ -272,7 +291,7 @@ def build(app, days=180, seed=7):
         if rows["lot_id"]:
             br.post("/oeufs/", rows)
         # ventes (presque tous les jours, par plateaux)
-        with app.app_context():
+        with _ctx(app):
             stock = egg_stock(d)
         if stock >= 300 and rng.random() < 0.8:
             trays = int(stock * rng.uniform(0.5, 0.85)) // 30
@@ -287,12 +306,12 @@ def build(app, days=180, seed=7):
                     "paid": "0" if r < 0.12 else "", "account_id": str(caisse if rng.random() < 0.7 else mobile), "lot_id": "",
                     "notes": ""})
                 if r < 0.12:
-                    with app.app_context():
+                    with _ctx(app):
                         client_debt_sales.append((query("SELECT MAX(id) AS i FROM sales", one=True)["i"], day))
         # les clients paient leurs crédits 5 à 12 jours plus tard
         for sale_id, sold_day in list(client_debt_sales):
             if (day - sold_day).days >= rng.randint(5, 12) and day < today - timedelta(days=3):
-                with app.app_context():
+                with _ctx(app):
                     s = query("SELECT total FROM sales WHERE id = ?", (sale_id,), one=True)
                 if s:
                     br.post(f"/ventes/{sale_id}/encaisser", {"amount": str(int(s["total"])), "date": d, "account_id": str(caisse)})
@@ -304,7 +323,7 @@ def build(app, days=180, seed=7):
                                          "paid": "", "account_id": str(caisse), "lot_id": "", "notes": ""})
         # inventaires le 1er du mois : petits écarts, parfois expliqués
         if day.day == 1 and k > 5:
-            with app.app_context():
+            with _ctx(app):
                 mats = query("SELECT id, name FROM materials WHERE active = 1")
                 counts = {m["id"]: query("SELECT COALESCE(SUM(quantity), 0) AS q FROM stock_moves WHERE material_id = ?",
                                          (m["id"],), one=True)["q"] for m in mats}
@@ -314,7 +333,7 @@ def build(app, days=180, seed=7):
                 data[f"count_{m['id']}"] = f"{max(0, counts[m['id']] + gap):.1f}".replace(".", ",")
                 data[f"why_{m['id']}"] = rng.choice(["Rats", "Humidité", "Erreur de pesée", ""]) if gap else ""
             br.post("/matieres/inventaire", data, ok=(200, 302))
-            with app.app_context():
+            with _ctx(app):
                 st = egg_stock(d)
             if st > 60:
                 lost = rng.choice([0, 6, 12, 30])
@@ -322,13 +341,13 @@ def build(app, days=180, seed=7):
                                           "date": d, "notes": rng.choice(["Casse au stockage", ""]) if lost else ""})
         # cassés déclarés de temps en temps
         if rng.random() < 0.05:
-            with app.app_context():
+            with _ctx(app):
                 st = egg_stock(d)
             if st > 30:
                 br.post("/ventes/stock", {"kind": "casse", "trays": "0", "eggs": str(rng.randint(3, 12)), "date": d,
                                           "notes": "Casse au transport"})
     # quelques crédits encore en cours, une vente récente à crédit
-    with app.app_context():
+    with _ctx(app):
         st = egg_stock()
     if st > 300:
         br.post("/ventes/nouvelle", {"date": today.isoformat(), "client_id": "__new__:Hôtel Les Flamboyants", "product": "Œufs",
@@ -336,7 +355,11 @@ def build(app, days=180, seed=7):
                                      "account_id": str(caisse), "lot_id": "", "notes": "Livré à l'hôtel, le reste à la fin du mois"})
     # messages d'exemple dans la Discussion
     br.post("/discussion/envoyer", {"body": "Bonjour Rasoa, la ponte du Lot A remonte bien après la chaleur 👍"}, ok=(200, 302))
-    with app.app_context():
+    with _ctx(app):  # les visiteurs ne voient pas 60 messages « non lus » en arrivant
+        conn = get_db()
+        conn.execute("UPDATE users SET last_seen_message = COALESCE((SELECT MAX(id) FROM messages), 0) - 3")
+        conn.commit()
+    with _ctx(app):
         return {"lots": query("SELECT COUNT(*) AS n FROM lots", one=True)["n"],
                 "eggs": query("SELECT COALESCE(SUM(good), 0) AS n FROM egg_collections", one=True)["n"],
                 "sales": query("SELECT COUNT(*) AS n FROM sales", one=True)["n"],
@@ -360,64 +383,162 @@ def shift_dates(conn, days):
             if c in DATE_COLS:
                 conn.execute(f"UPDATE {table} SET {c} = date({c}, ?) WHERE {c} != '' AND {c} IS NOT NULL", (f"{days:+d} days",))
             elif c in STAMP_COLS:
-                conn.execute(f"UPDATE {table} SET {c} = strftime('%Y-%m-%dT%H:%M:%S', {c}, ?) || CASE WHEN {c} LIKE '%+00:00' THEN '+00:00' ELSE '' END "
-                             f"WHERE {c} != '' AND {c} IS NOT NULL", (f"{days:+d} days",))
+                conn.execute(f"UPDATE {table} SET {c} = datetime({c}, ?) WHERE {c} != '' AND {c} IS NOT NULL", (f"{days:+d} days",))
     conn.commit()
+
+
+def demo_dir(app):
+    return os.path.dirname(app.config["DEMO_DATABASE"])
+
+
+def available(app):
+    return os.path.exists(os.path.join(demo_dir(app), SNAPSHOT))
 
 
 def reset_if_needed(app):
-    """Appelé avant chaque page sur le site de démo : une fois par jour, on remet les données d'exemple."""
-    from .db import get_setting
-
-    data_dir = os.path.dirname(app.config["DATABASE"])
-    snap = os.path.join(data_dir, SNAPSHOT)
-    if not os.path.exists(snap):
-        return
+    """Appelé avant chaque page d'un visiteur de la démo : une fois par jour, on remet les données d'exemple."""
+    path = app.config["DEMO_DATABASE"]
+    stamp = os.path.join(demo_dir(app), "demo-day.txt")
     today = Date.today().isoformat()
-    if get_setting("demo_day") == today:
-        return
+    try:
+        with open(stamp, encoding="utf-8") as fh:
+            if fh.read().strip() == today and os.path.exists(path):
+                return
+    except OSError:
+        pass
     reset(app)
+    with open(stamp, "w", encoding="utf-8") as fh:
+        fh.write(today)
 
 
 def reset(app):
-    from .backups import restore_from
-    from .db import get_db
+    """Recharge la copie de démo et avance ses dates pour que « aujourd'hui » soit vraiment aujourd'hui."""
+    from .db import close_db
 
-    data_dir = os.path.dirname(app.config["DATABASE"])
-    snap = os.path.join(data_dir, SNAPSHOT)
-    restore_from(snap)
-    conn = get_db()
+    close_db()
+    snap = os.path.join(demo_dir(app), SNAPSHOT)
+    tmp = app.config["DEMO_DATABASE"] + ".tmp"
+    shutil.copyfile(snap, tmp)
+    conn = sqlite3.connect(tmp)
     built = conn.execute("SELECT value FROM settings WHERE key = 'demo_built'").fetchone()
     built_day = Date.fromisoformat(built[0]) if built else Date.today()
     shift_dates(conn, (Date.today() - built_day).days)
-    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('demo_day', ?)", (Date.today().isoformat(),))
-    conn.commit()
+    conn.execute("PRAGMA journal_mode = DELETE")
+    conn.close()
+    for suffix in ("", "-wal", "-shm"):
+        try:
+            os.remove(app.config["DEMO_DATABASE"] + suffix)
+        except OSError:
+            pass
+    os.replace(tmp, app.config["DEMO_DATABASE"])
 
 
 def build_snapshot(app, days=180):
-    """Construit la base de démo dans le dossier de données et en garde une copie (demo-snapshot.db)."""
-    db_path = app.config["DATABASE"]
-    data_dir = os.path.dirname(db_path)
-    for f in os.listdir(data_dir):
-        if f.startswith("ferme.db"):
-            os.remove(os.path.join(data_dir, f))
-    from .db import close_db, connect, ensure_super_admin, migrate, seed_defaults
+    """Construit la base de démo (dossier demo/) et en garde une copie (demo-snapshot.db)."""
+    from .db import connect, ensure_super_admin, migrate, seed_defaults
 
-    with app.app_context():
-        close_db()
-    conn = connect(db_path)
+    path = app.config["DEMO_DATABASE"]
+    os.makedirs(demo_dir(app), exist_ok=True)
+    for f in os.listdir(demo_dir(app)):
+        if f.startswith("ferme.db") or f == "demo-day.txt":
+            os.remove(os.path.join(demo_dir(app), f))
+    conn = connect(path)
     migrate(conn)
     ensure_super_admin(conn)
     seed_defaults(conn)
-    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('auto_backup', '0')")
     conn.commit()
     conn.close()
-    summary = build(app, days=days)
-    conn = sqlite3.connect(db_path)
+    app.config["DEMO_BUILDING"] = True
+    try:
+        summary = build(app, days=days)
+    finally:
+        app.config["DEMO_BUILDING"] = False
+    conn = sqlite3.connect(path, timeout=30)
     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('demo_built', ?)", (Date.today().isoformat(),))
-    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('demo_day', ?)", (Date.today().isoformat(),))
     conn.commit()
-    conn.execute("VACUUM")
+    snap_path = os.path.join(demo_dir(app), SNAPSHOT)
+    if os.path.exists(snap_path):
+        os.remove(snap_path)
+    snap = sqlite3.connect(snap_path)
+    conn.backup(snap)  # copie complète et cohérente (y compris ce qui est encore dans le journal)
     conn.close()
-    shutil.copyfile(db_path, os.path.join(data_dir, SNAPSHOT))
+    snap.execute("PRAGMA journal_mode = DELETE")
+    snap.execute("VACUUM")
+    snap.close()
+    with open(os.path.join(demo_dir(app), "demo-day.txt"), "w", encoding="utf-8") as fh:
+        fh.write(Date.today().isoformat())
     return summary
+
+
+# ---------------------------------------------------------------------------
+# Pages : entrer dans la démo, en sortir
+# ---------------------------------------------------------------------------
+from flask import Blueprint, current_app, flash, g, redirect, render_template, request, session, url_for  # noqa: E402
+
+bp = Blueprint("demo", __name__, url_prefix="/demo")
+
+# Ce qu'un visiteur ne peut pas faire dans la démo
+BLOCKED = {"users", "backups", "settings"}
+BLOCKED_ENDPOINTS = {"auth.profile", "auth.first_setup", "auth.forgot", "auth.forgot_email", "auth.forgot_question"}
+
+
+def guard():
+    """Appelé avant chaque page : choisit la base de démo et bloque les actions sensibles."""
+    g.demo = bool(session.get("demo"))
+    if not g.demo or current_app.config.get("DEMO_BUILDING"):
+        return None
+    if not available(current_app._get_current_object()):
+        session.clear()
+        g.demo = False
+        flash("La démonstration n'est pas disponible pour le moment.", "info")
+        return redirect(url_for("auth.login"))
+    reset_if_needed(current_app._get_current_object())
+    if request.method == "POST" and (request.blueprint in BLOCKED or request.endpoint in BLOCKED_ENDPOINTS):
+        flash("Dans la démonstration, cette action est désactivée (comptes, sauvegardes, paramètres). "
+              "Tout le reste peut être essayé librement.", "info")
+        return redirect(request.referrer or url_for("main.dashboard"))
+    if request.blueprint == "backups" and request.endpoint != "backups.index":
+        flash("Dans la démonstration, les sauvegardes sont désactivées.", "info")
+        return redirect(url_for("main.dashboard"))
+    return None
+
+
+@bp.route("/")
+def index():
+    return render_template("demo/index.html", users=DEMO_USERS, ready=available(current_app._get_current_object()))
+
+
+@bp.route("/entrer", methods=["POST"])
+def enter():
+    from datetime import datetime, timezone
+
+    from .db import query
+
+    app = current_app._get_current_object()
+    if not available(app):
+        flash("La démonstration n'est pas encore installée.", "error")
+        return redirect(url_for("demo.index"))
+    username = request.form.get("username", "")
+    if username not in {u[0] for u in DEMO_USERS}:
+        return redirect(url_for("demo.index"))
+    session.clear()
+    session["demo"] = True
+    g.demo = True
+    reset_if_needed(app)
+    user = query("SELECT * FROM users WHERE username = ? AND deleted = 0", (username,), one=True)
+    if user is None:
+        session.clear()
+        flash("Compte de démonstration introuvable.", "error")
+        return redirect(url_for("demo.index"))
+    session.permanent = True
+    session["user_id"] = user["id"]
+    session["last_seen"] = datetime.now(timezone.utc).timestamp()
+    flash(f"Bienvenue dans la démonstration ! Vous êtes connecté comme « {user['full_name']} ». "
+          "Essayez tout librement : les données sont remises à zéro chaque jour.", "success")
+    return redirect(url_for("main.dashboard"))
+
+
+@bp.route("/sortir", methods=["POST", "GET"])
+def leave():
+    session.clear()
+    return redirect(url_for("demo.index"))

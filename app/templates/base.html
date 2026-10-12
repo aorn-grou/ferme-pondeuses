@@ -103,6 +103,8 @@
     </header>
 
     <main class="content" id="contenu">
+      {% if is_demo %}<div class="demo-banner">🎬 <span><strong>Version de démonstration</strong> — les données sont des exemples, remises à zéro chaque jour. Essayez tout librement !</span>
+        <a class="btn gold sm" href="{{ url_for('demo.index') }}">Changer de rôle</a></div>{% endif %}
       {% include "_flashes.html" %}
       {% block content %}{% endblock %}
     </main>

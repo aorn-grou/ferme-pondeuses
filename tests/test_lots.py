@@ -224,18 +224,36 @@ class TestVentes(StockBase):
 
 class TestRapportsEtDemo(StockBase):
     def test_demo_build_and_reports(self):
-        from app.demo import build
-        summary = build(self.app, days=60, seed=3)
+        from app.demo import build_snapshot
+        summary = build_snapshot(self.app, days=60)
         self.assertGreater(summary["eggs"], 0)
         self.assertGreater(summary["sales"], 0)
+        # la vraie base n'a pas été touchée
+        self.assertEqual(self.one("SELECT COUNT(*) FROM lots")[0], 0)
         c = self.app.test_client()
-        with c.session_transaction() as s:
-            s["_csrf"] = "t"
-        c.post("/connexion", data={"_csrf": "t", "username": "proprietaire", "password": "Demo2026"})
+        with c.session_transaction() as sess:
+            sess["_csrf"] = "t"
+        self.assertIn("Choisissez qui vous voulez être", c.get("/demo/").get_data(as_text=True))
+        res = c.post("/demo/entrer", data={"_csrf": "t", "username": "proprietaire"})
+        self.assertEqual(res.status_code, 302)
         for url in ["/", "/rapports/", "/rapports/?lot=1", "/lots/1", "/oeufs/", "/ventes/", "/ventes/stock",
-                    "/controles/", "/matieres/", "/provenderie/", "/provenderie/historique"]:
+                    "/controles/", "/matieres/", "/provenderie/", "/provenderie/historique", "/discussion/"]:
             res = c.get(url)
             self.assertEqual(res.status_code, 200, url)
-        page = c.get("/rapports/").get_data(as_text=True)
-        self.assertIn("Rentabilité de chaque lot", page)
-        self.assertIn("Bénéfice ou perte de chaque lot", c.get("/").get_data(as_text=True))
+        dash = c.get("/").get_data(as_text=True)
+        self.assertIn("Version de démonstration", dash)
+        self.assertIn("Bénéfice ou perte de chaque lot", dash)
+        self.assertIn("Rentabilité de chaque lot", c.get("/rapports/").get_data(as_text=True))
+        # actions sensibles bloquées
+        with c.session_transaction() as sess:
+            tok = sess.get("_csrf")
+        res = c.post("/utilisateurs/nouveau", data={"_csrf": tok, "username": "pirate"}, follow_redirects=True)
+        self.assertIn("désactivée", res.get_data(as_text=True))
+        # une saisie dans la démo ne touche pas la vraie base
+        c.post("/ventes/nouvelle", data={"_csrf": tok, "date": date.today().isoformat(), "client_id": "", "product": "Fumier",
+                                         "qty": "1", "unit": "sac", "price": "5000", "price_unit": "unite", "paid": "",
+                                         "account_id": "1", "lot_id": "", "notes": ""})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM sales")[0], 0)
+        # sortir
+        c.post("/deconnexion", data={"_csrf": tok})
+        self.assertEqual(c.get("/").status_code, 302)

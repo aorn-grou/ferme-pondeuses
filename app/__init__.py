@@ -37,6 +37,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_path=instance_dir)
     app.config.update(
         DATABASE=os.path.join(instance_dir, "ferme.db"),
+        DEMO_DATABASE=os.path.join(instance_dir, "demo", "ferme.db"),
         BACKUP_DIR=os.path.join(instance_dir, "backups"),
         UPLOAD_DIR=os.path.join(instance_dir, "uploads"),
         MAX_CONTENT_LENGTH=64 * 1024 * 1024,
@@ -52,7 +53,7 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
-    from . import auth, backups, controls, discussion, eggs, lots, main, matieres, provenderie, reports, sales, settings, users
+    from . import auth, backups, controls, demo, discussion, eggs, lots, main, matieres, provenderie, reports, sales, settings, users
 
     app.register_blueprint(discussion.bp)
 
@@ -63,6 +64,7 @@ def create_app(test_config=None):
     app.register_blueprint(eggs.bp)
     app.register_blueprint(sales.bp)
     app.register_blueprint(reports.bp)
+    app.register_blueprint(demo.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
     app.register_blueprint(users.bp)
@@ -74,6 +76,9 @@ def create_app(test_config=None):
         if request.endpoint == "static":
             return None
         check_csrf()
+        blocked = demo.guard()
+        if blocked is not None:
+            return blocked
         g.user = None
         user_id = session.get("user_id")
         if user_id:
@@ -98,11 +103,18 @@ def create_app(test_config=None):
             allowed = {"auth.first_setup", "auth.logout", "main.set_theme", "settings.logo"}
             if (user["must_change_password"] or not user["setup_done"]) and request.endpoint not in allowed:
                 return redirect(url_for("auth.first_setup"))
-            backups.auto_backup_if_due()
+            if not g.get("demo"):
+                backups.auto_backup_if_due()
             from .free_entry import resolve_free_entries
 
             resolve_free_entries()
         return None
+
+    @app.cli.command("demo-build")
+    def demo_build():
+        """Construit la démonstration (6 mois de données d'exemple). Lancer : flask --app wsgi demo-build"""
+        summary = demo.build_snapshot(app)
+        print("Démonstration prête :", summary)
 
     @app.after_request
     def security_headers(response):
@@ -139,6 +151,7 @@ def create_app(test_config=None):
 
         return {
             "logo_url": logo_url,
+            "is_demo": bool(g.get("demo")),
             "module_url": module_url,
             "unread_messages": unread_count() if user and not (user["must_change_password"] or not user["setup_done"]) else 0,
             "comments_for": comments_for,

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf with context %}
+{% block title %}Démonstration{% endblock %}
+{% block auth_content %}
+<h2>Découvrir Androfia Farm</h2>
+<p class="muted">Une vraie ferme d'exemple vous attend : <strong>4 lots de poules</strong>, 6 mois de ramassage d'œufs, de provende, de ventes et d'achats. Tout se calcule et se dessine tout seul.</p>
+{% if ready %}
+<p><strong>Choisissez qui vous voulez être :</strong></p>
+<div class="demo-roles">
+  {% for username, name, role, desc in users %}
+  <form method="post" action="{{ url_for('demo.enter') }}">{{ csrf() }}<input type="hidden" name="username" value="{{ username }}">
+    <button class="demo-role" type="submit"><span class="dr-ic">{{ ['👑', '🤝', '🧑‍🌾', '🛒'][loop.index0] }}</span>
+      <span><strong>{{ name }}</strong><small>{{ desc }}</small></span><span class="dr-go">{{ icon('arrow-right', 18) if false else '→' }}</span></button></form>
+  {% endfor %}
+</div>
+<p class="hint">Vous pouvez tout essayer : saisir un ramassage, faire une vente, fabriquer de la provende… Les données sont remises à zéro chaque jour. Seuls les comptes, les sauvegardes et les paramètres sont bloqués.</p>
+{% else %}
+<div class="alert alert-info"><span>La démonstration n'est pas encore installée. Administrateur : dans la console, lancez <code>flask --app wsgi demo-build</code>.</span></div>
+{% endif %}
+<p class="center top-gap"><a href="{{ url_for('auth.login') }}">← J'ai un compte : me connecter</a></p>
+{% endblock %}

@@ -9,7 +9,7 @@ from flask import (
 )
 from werkzeug.security import check_password_hash
 
-from .db import TRANSACTION_TABLES, close_db, connect, ensure_super_admin, is_valid_database, migrate, seed_defaults
+from .db import db_path, TRANSACTION_TABLES, close_db, connect, ensure_super_admin, is_valid_database, migrate, seed_defaults
 from .security import admin_required, super_admin_required
 from .utils import get_setting, local_now, log_activity, set_setting
 
@@ -38,7 +38,7 @@ def create_backup(kind="manuel"):
         moment += timedelta(seconds=1)
         name = f"{kind}-{moment.strftime('%Y%m%d-%H%M%S')}.db"
         path = os.path.join(_backup_dir(), name)
-    source = connect(current_app.config["DATABASE"])
+    source = connect(db_path())
     target = sqlite3.connect(path)
     try:
         source.backup(target)
@@ -101,7 +101,7 @@ def _safe_path(name):
 def restore_from(path):
     close_db()
     source = sqlite3.connect(path)
-    target = connect(current_app.config["DATABASE"])
+    target = connect(db_path())
     try:
         source.backup(target)
         migrate(target)
@@ -220,7 +220,7 @@ def factory_reset():
     safety = create_backup("avant-reinitialisation")
     me = {k: g.user[k] for k in g.user.keys()}
     close_db()
-    conn = connect(current_app.config["DATABASE"])
+    conn = connect(db_path())
     try:
         tables = [r["name"] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]

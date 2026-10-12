@@ -362,6 +362,9 @@ def now_utc():
 
 
 def db_path():
+    """La base utilisée : la vraie, ou celle de la démo pour un visiteur qui essaie le logiciel."""
+    if g.get("demo"):
+        return current_app.config["DEMO_DATABASE"]
     return current_app.config["DATABASE"]
 
 

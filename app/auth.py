@@ -97,7 +97,11 @@ def login():
 def logout():
     if g.get("user"):
         log_activity("Déconnexion")
+    was_demo = g.get("demo")
     session.clear()
+    if was_demo:
+        flash("Vous avez quitté la démonstration. Merci de l'avoir essayée !", "info")
+        return redirect(url_for("demo.index"))
     flash("Vous êtes déconnecté.", "info")
     return redirect(url_for("auth.login"))
 
