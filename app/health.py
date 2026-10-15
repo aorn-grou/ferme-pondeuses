@@ -387,6 +387,38 @@ def event_move(event_id):
     return redirect(url_for("sanitaire.index") + f"#soin-{event_id}")
 
 
+@bp.route("/retards", methods=["POST"])
+@require("sanitaire", EDIT)
+def late_bulk():
+    """Régler d'un coup les soins en retard (ex. lot déjà là avant le logiciel : ses vaccins passés ont été faits)."""
+    f = request.form
+    lot_id = f.get("lot_id", "")
+    action = f.get("action")
+    reason = " ".join(f.get("reason", "").split())[:200]
+    late = [e for e in pending() if e["state"] == "late" and (lot_id == "tous" or str(e["lot_id"] or "") == lot_id)]
+    if not late:
+        flash("Aucun soin en retard à régler pour ce choix.", "info")
+        return redirect(url_for("sanitaire.index"))
+    if action == "annule" and not reason:
+        flash("Écrivez pourquoi ces soins ne seront pas faits.", "error")
+        return redirect(url_for("sanitaire.index") + "#retards")
+    with transaction() as conn:
+        for e in late:
+            if action == "fait":
+                conn.execute("""UPDATE health_events SET status = 'fait', done_date = due_date, done_by = ?,
+                                notes = CASE WHEN COALESCE(notes, '') = '' THEN ? ELSE notes END WHERE id = ?""",
+                             (g.user["id"], "Confirmé en groupe : soin passé déjà fait", e["id"]))
+            elif action == "annule":
+                conn.execute("UPDATE health_events SET status = 'annule', done_date = ?, done_by = ?, notes = ? WHERE id = ?",
+                             (today(), g.user["id"], reason, e["id"]))
+    names = sorted({e["lot"] or "tous les lots" for e in late})
+    what = "confirmés comme déjà faits (à leur date prévue)" if action == "fait" else f"annulés : « {reason} »"
+    log_activity("Soins en retard réglés en groupe", f"{len(late)} soin(s) {what}")
+    notify("", None, f"🩺 Suivi sanitaire — {len(late)} soin(s) en retard ({', '.join(names)}) {what}.")
+    flash(f"{len(late)} soin(s) en retard réglé(s). Les alertes rouges sont arrêtées ; ils sont dans l'historique.", "success")
+    return redirect(url_for("sanitaire.index"))
+
+
 @bp.route("/soin/<int:event_id>/supprimer", methods=["POST"])
 @require("sanitaire", MANAGE)
 def event_delete(event_id):

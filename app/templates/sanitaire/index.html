@@ -52,6 +52,26 @@
   </div>
 </section>
 
+{% set late = todo|selectattr('state', 'equalto', 'late')|list %}
+{% if late|length >= 2 and can('sanitaire', 2) %}
+<section class="card top-gap" id="retards">
+  <h2>{{ icon('check', 20) }} Régler plusieurs soins en retard d'un coup</h2>
+  <p class="muted">Utile pour un lot qui était déjà là avant le logiciel : ses vaccins passés ont été faits, mais le logiciel ne le savait pas.
+    Il y a <strong>{{ late|length }}</strong> soin(s) en retard.</p>
+  <form method="post" action="{{ url_for('sanitaire.late_bulk') }}" class="grid four top" data-confirm="Régler tous ces soins en retard d'un coup ?">{{ csrf() }}
+    <div class="field"><label>Pour quel lot ?</label><select class="input" name="lot_id">
+      <option value="tous">Tous les lots ({{ late|length }})</option>
+      {% for name, items in late|groupby('lot') %}<option value="{{ items[0].lot_id or '' }}">{{ name or 'Tous les lots (soins de la ferme)' }} ({{ items|length }})</option>{% endfor %}</select></div>
+    <div class="field span-2"><label>Que s'est-il passé ?</label>
+      <label class="check"><input type="radio" name="action" value="fait" checked> Ils ont déjà été faits (à leur date prévue)</label>
+      <label class="check"><input type="radio" name="action" value="annule"> Ils n'ont pas été faits et ne le seront pas</label>
+      <input class="input top-gap-sm" name="reason" maxlength="200" placeholder="Raison (obligatoire si pas faits) : ex. lot acheté déjà vacciné"></div>
+    <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 18) }} Régler ces soins</button></div>
+  </form>
+  <p class="hint">Les soins confirmés ainsi n'ont pas de coût. Pour un soin avec un coût, utilisez plutôt « Confirmer : c'est fait » sur sa carte.</p>
+</section>
+{% endif %}
+
 {# ---------- Nouveau soin ---------- #}
 {% if can('sanitaire', 2) %}
 <section class="card top-gap" id="nouveau">

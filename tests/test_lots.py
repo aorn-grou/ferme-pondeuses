@@ -340,3 +340,20 @@ class TestSanitaire(StockBase):
         for url in ["/sanitaire/", f"/sanitaire/?lot={lot['id']}", "/sanitaire/programmes", f"/sanitaire/programmes/{hp}",
                     f"/sanitaire/programmes/{hp}/modifier", "/sanitaire/programmes/nouveau?exemple=1", "/rapports/"]:
             self.assertEqual(self.client.get(url).status_code, 200, url)
+
+
+class TestSanitaireRetards(StockBase):
+    def test_bulk_late(self):
+        dem, ponte, prog = TestLots.setup_feed(self)
+        self.post("/sanitaire/programmes/nouveau", {"name": "Vaccins", "notes": "", "day_age": ["1", "7", "14", "60"], "title": ["Vac A", "Vac B", "Vac C", "Vac D"],
+                                                    "kind": ["vaccin"] * 4, "method": [""] * 4, "product": [""] * 4})
+        hp = self.one("SELECT id FROM health_programs")[0]
+        TestLots.new_lot(self, prog, (date.today() - timedelta(days=30)).isoformat(), count="100", paid="0", health_program_id=str(hp))
+        lot = self.one("SELECT id FROM lots")[0]
+        self.assertIn("Régler plusieurs soins en retard", self.client.get("/sanitaire/").get_data(as_text=True))
+        self.post("/sanitaire/retards", {"lot_id": str(lot), "action": "annule", "reason": ""})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM health_events WHERE status = 'prevu'")[0], 4)
+        self.post("/sanitaire/retards", {"lot_id": str(lot), "action": "fait"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM health_events WHERE status = 'fait'")[0], 3)
+        self.assertEqual(self.one("SELECT status FROM health_events WHERE title = 'Vac D'")[0], "prevu")
+        self.assertEqual(self.one("SELECT COUNT(*) FROM cash_movements WHERE kind = 'sanitaire'")[0], 0)
