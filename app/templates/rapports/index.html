@@ -22,7 +22,7 @@
     <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('cart', 18) }}</span><span class="tag tag-green">entrées</span></div>
       <div class="kpi-val">{{ M.totals.sales|money }}</div><div class="kpi-lab">Ventes (œufs et autres) sur la période</div></div>
     <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('wallet', 18) }}</span><span class="tag tag-red">sorties</span></div>
-      <div class="kpi-val">{{ M.totals.out|money }}</div><div class="kpi-lab">Achats {{ M.totals.buys|money }} · poussins {{ M.totals.chicks|money }}{% if M.totals.other %} · autres {{ M.totals.other|money }}{% endif %}</div></div>
+      <div class="kpi-val">{{ M.totals.out|money }}</div><div class="kpi-lab">Achats {{ M.totals.buys|money }} · poussins {{ M.totals.chicks|money }}{% if M.totals.other %} · dépenses & soins {{ M.totals.other|money }}{% endif %}{% if M.totals.salaries %} · salaires {{ M.totals.salaries|money }}{% endif %}{% if M.totals.wear %} · usure {{ M.totals.wear|money }}{% endif %}</div></div>
     <div class="kpi"><div class="kpi-top"><span class="kpi-ic {{ 'ic-green' if M.totals.result >= 0 else 'ic-red' }}">{{ icon('chart', 18) }}</span>
       <span class="tag {{ 'tag-green' if M.totals.result >= 0 else 'tag-red' }}">{{ 'bénéfice' if M.totals.result >= 0 else 'perte' }}</span></div>
       <div class="kpi-val {{ 'text-ok' if M.totals.result >= 0 else 'text-danger' }}">{{ '+' if M.totals.result > 0 }}{{ M.totals.result|money }}</div><div class="kpi-lab">Résultat = ventes − dépenses</div></div>
@@ -32,7 +32,7 @@
     <section class="card">
       <div class="card-head"><h2>{{ icon('chart', 20) }} Ventes et dépenses par mois</h2>
         <span class="legend-inline"><span><i class="sw" style="background:#2e7d32"></i> Ventes</span><span><i class="sw" style="background:#c0352b"></i> Dépenses</span></span></div>
-      {% call explain('money') %}<span>La ligne <strong class="text-ok">verte</strong> = l'argent qui entre (ventes). La ligne <strong class="text-danger">rouge</strong> = l'argent qui sort (achats de matières, poussins…). Quand le vert est <strong>au-dessus</strong> du rouge, le mois est en bénéfice.</span>
+      {% call explain('money') %}<span>La ligne <strong class="text-ok">verte</strong> = l'argent qui entre (ventes). La ligne <strong class="text-danger">rouge</strong> = l'argent qui sort (achats de matières, poussins, dépenses, soins, salaires, usure du matériel). Quand le vert est <strong>au-dessus</strong> du rouge, le mois est en bénéfice.</span>
         <small>Au début d'un élevage, c'est normal d'être en perte : on achète les poussins et la provende avant les premiers œufs.</small>{% endcall %}
       <div class="chart-box" data-chart-type="multi" data-chart='{{ M.chart|tojson }}'></div>
     </section>
@@ -44,9 +44,10 @@
   </div>
   <details class="card flush top-gap"><summary class="card-head padded clickable-summary"><h2>{{ icon('list', 20) }} Le détail mois par mois</h2><small class="muted">cliquez pour ouvrir</small></summary>
     <table class="table responsive">
-      <thead><tr><th>Mois</th><th class="right">Ventes</th><th class="right">Achats matières</th><th class="right">Poussins</th><th class="right">Résultat</th><th class="right">Cumulé</th></tr></thead>
+      <thead><tr><th>Mois</th><th class="right">Ventes</th><th class="right">Achats matières</th><th class="right">Poussins</th><th class="right">Dépenses & soins</th><th class="right">Salaires</th><th class="right">Usure</th><th class="right">Résultat</th><th class="right">Cumulé</th></tr></thead>
       <tbody>{% for r in M.rows %}<tr><td data-label="Mois"><strong>{{ r.label }}</strong></td><td data-label="Ventes" class="right">{{ r.sales|money }}</td>
         <td data-label="Achats matières" class="right">{{ r.buys|money }}</td><td data-label="Poussins" class="right">{{ r.chicks|money }}</td>
+        <td data-label="Dépenses & soins" class="right">{{ r.other|money }}</td><td data-label="Salaires" class="right">{{ r.salaries|money }}</td><td data-label="Usure" class="right">{{ r.wear|money }}</td>
         <td data-label="Résultat" class="right"><strong class="{{ 'text-ok' if r.result >= 0 else 'text-danger' }}">{{ '+' if r.result > 0 }}{{ r.result|money }}</strong></td>
         <td data-label="Cumulé" class="right {{ 'text-ok' if r.cum >= 0 else 'text-danger' }}">{{ r.cum|money }}</td></tr>{% endfor %}</tbody>
     </table>
@@ -58,9 +59,9 @@
 {% if reports %}
 <section id="lots" class="top-gap">
   <h2 class="section-title">🐔 Rentabilité de chaque lot</h2>
-  {% call explain('lots', 'Comment lire ce tableau') %}<span>Pour chaque lot, depuis son arrivée : <strong>ventes</strong> (ses œufs vendus) − <strong>dépenses</strong> (poussins + provende mangée) = <strong>bénéfice ou perte</strong>.</span>
+  {% call explain('lots', 'Comment lire ce tableau') %}<span>Pour chaque lot, depuis son arrivée : <strong>ventes</strong> (ses œufs vendus) − <strong>dépenses</strong> (poussins + provende mangée + soins + sa part des dépenses, des salaires et de l'usure du matériel) = <strong>bénéfice ou perte</strong>.</span>
     <span><strong>Coût d'un œuf</strong> = provende mangée depuis le début de la ponte ÷ œufs pondus. <strong>Seuil</strong> = le taux de ponte minimum pour que les œufs paient la provende (en dessous, le lot coûte plus qu'il ne rapporte).</span>
-    <small>Les ventes sans lot précisé sont partagées entre les lots selon leurs œufs. Les autres dépenses (salaires, médicaments…) viendront avec le module Dépenses.</small>{% endcall %}
+    <small>Les ventes d'œufs sans lot précisé sont partagées entre les lots selon leurs œufs. Les dépenses communes (électricité, salaires, usure…) sont partagées entre les lots présents selon leur nombre de poules.</small>{% endcall %}
   <section class="card flush top-gap-sm">
     <table class="table responsive">
       <thead><tr><th>Lot</th><th class="right">Poules</th><th class="right">Ponte (7 j)</th><th class="right">Œufs</th><th class="right">Coût d'un œuf</th><th class="right">Ventes</th><th class="right">Dépenses</th><th class="right">Résultat</th><th>Rentable jusqu'à</th></tr></thead>
@@ -88,7 +89,7 @@
     <div><span>Âge</span><strong>Semaine {{ R.week }}</strong><small>arrivé le {{ l.arrival_date|date_fr }} · réforme S{{ l.reform_week }}</small></div>
     <div><span>Ponte</span><strong>{{ (R.eggs.avg7|round(1) ~ ' %') if R.eggs.avg7 is not none else '—' }}</strong><small>{% if R.rate_peaks %}▲ {{ R.rate_peaks.hi|round(1) }} % ({{ R.rate_peaks.hi_at }}) · moy. {{ R.rate_peaks.avg|round(1) }} %{% else %}début prévu S{{ l.laying_week }}{% endif %}</small></div>
     <div><span>Provende par œuf</span><strong>{{ (R.g_per_egg|round(0)|int ~ ' g') if R.g_per_egg else '—' }}</strong><small>{{ (R.feed_per_egg|money ~ ' de provende par œuf') if R.feed_per_egg is not none else 'pas encore d\'œufs' }}</small></div>
-    <div><span>Bénéfice / perte</span><strong class="{{ 'text-ok' if R.result >= 0 else 'text-danger' }}">{{ '+' if R.result > 0 }}{{ R.result|money }}</strong><small>ventes {{ R.rev.total|money }} − dépenses {{ R.costs|money }}</small></div>
+    <div><span>Bénéfice / perte</span><strong class="{{ 'text-ok' if R.result >= 0 else 'text-danger' }}">{{ '+' if R.result > 0 }}{{ R.result|money }}</strong><small>ventes {{ R.rev.total|money }} − dépenses {{ R.costs|money }}<br>(poussins {{ R.detail.chicks|money }} · provende {{ R.detail.feed|money }}{% if R.detail.health %} · soins {{ R.detail.health|money }}{% endif %}{% if R.detail.expenses %} · dépenses {{ R.detail.expenses|money }}{% endif %}{% if R.detail.salaries %} · salaires {{ R.detail.salaries|money }}{% endif %}{% if R.detail.wear %} · usure {{ R.detail.wear|money }}{% endif %})</small></div>
     {% if l.status == 'actif' %}<div><span>Provende encore à donner</span><strong>{{ R.feed_until_end|round(0)|qty('kg') }}</strong><small>jusqu'à {{ ('la fin de rentabilité (S' ~ R.end_profit.week ~ ')') if R.end_profit else 'la réforme' }}</small></div>{% endif %}
     {% if R.threshold %}<div><span>Seuil de rentabilité</span><strong>{{ R.threshold|round(0)|int }} %</strong><small>taux de ponte qui paie juste la provende</small></div>{% endif %}
   </div>

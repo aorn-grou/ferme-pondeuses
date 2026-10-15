@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Caisse & propriétaires{% endblock %}
+{% block content %}
+{% call page_head('Caisse & propriétaires', "Où est l'argent, ce que chaque propriétaire a mis ou retiré, et ce qui lui revient.", 'wallet') %}
+  {% if can('caisse', 2) %}<a class="btn primary" href="#operations">{{ icon('plus', 18) }} Apport, retrait, comptage…</a>{% endif %}
+{% endcall %}
+
+<details class="calc-banner fold" open data-fold="cash-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>Le logiciel ne « tape » jamais un solde : <strong>solde d'une caisse = tout ce qui est entré − tout ce qui est sorti</strong>
+  (ventes, achats, dépenses, salaires… se notent tout seuls ici). Vous ajoutez seulement : les <strong>apports</strong> et <strong>retraits</strong> des propriétaires,
+  les <strong>transferts</strong> entre caisses, les <strong>autres entrées</strong> (prêt, subvention) et le <strong>comptage</strong> : comptez les billets,
+  le logiciel compare avec ce qu'il attend et la différence devient un écart à expliquer.</span></div></details>
+
+<div class="kpis top-gap-sm">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic {{ 'ic-green' if total >= 0 else 'ic-red' }}">{{ icon('wallet', 18) }}</span><span class="tag tag-green">total</span></div>
+    <div class="kpi-val {{ 'text-danger' if total < 0 }}">{{ total|money }}</div><div class="kpi-lab">Argent de la ferme (toutes les caisses)</div></div>
+  {% for b in cash if b.active or b.balance|abs > 0.5 %}
+  <a class="kpi" href="{{ url_for('caisse.account', account_id=b.id) }}"><div class="kpi-top"><span class="kpi-ic {{ 'ic-teal' if b.balance >= 0 else 'ic-red' }}">{{ icon('wallet', 18) }}</span>
+    {% if b.balance < -0.5 %}<span class="tag tag-red">négatif !</span>{% else %}<span class="tag tag-gold">{{ b.moves }} mouvement(s)</span>{% endif %}</div>
+    <div class="kpi-val {{ 'text-danger' if b.balance < 0 }}">{{ b.balance|money }}</div><div class="kpi-lab">{{ b.name }}</div></a>
+  {% endfor %}
+</div>
+
+{% if chart and chart['values']|length > 1 %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Argent dans les caisses · 90 jours</h2></div>
+  <details class="calc-banner fold" open data-fold="cash-chart"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>La courbe = l'argent total dans toutes les caisses, jour après jour. Elle monte avec les ventes et les apports, elle descend avec les achats, dépenses, salaires et retraits. Sous la ligne 0 = il manque de l'argent (une entrée oubliée ?).</span></div></details>
+  <div class="chart-box" data-chart-type="line" data-chart='{{ chart|tojson }}'></div>
+</section>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} Entrées et sorties par mois</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Mois</th><th class="right">Entrées (ventes…)</th><th class="right">Sorties (achats, dépenses…)</th><th class="right">Apports</th><th class="right">Retraits</th><th class="right">Différence</th></tr></thead>
+    <tbody>{% for r in flows %}{% set d = r.ins - r.outs + r.apports - r.retraits %}
+      <tr><td data-label="Mois">{{ r.label }}</td><td data-label="Entrées" class="right text-ok">{{ r.ins|money }}</td><td data-label="Sorties" class="right text-danger">{{ r.outs|money }}</td>
+        <td data-label="Apports" class="right">{{ r.apports|money }}</td><td data-label="Retraits" class="right">{{ r.retraits|money }}</td>
+        <td data-label="Différence" class="right"><strong class="{{ 'text-ok' if d >= 0 else 'text-danger' }}">{{ '+' if d > 0 }}{{ d|money }}</strong></td></tr>
+    {% endfor %}</tbody>
+  </table>
+  <p class="hint padded">Différence = ce que les caisses ont gagné (+) ou perdu (−) pendant le mois.</p>
+</section>
+
+{# ---------- Propriétaires ---------- #}
+{% if own.owners %}
+<section class="card top-gap" id="proprietaires">
+  <div class="card-head"><h2>{{ icon('users', 20) }} Les propriétaires</h2></div>
+  <details class="calc-banner fold" open data-fold="cash-owners"><summary>📖 Comment c'est calculé <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span><strong>A mis dans la ferme</strong> = ses apports + ce qu'il a payé de sa poche (achats « payés avec » son nom) − ses retraits.
+    <strong>Résultat de la ferme</strong> = toutes les ventes − tout ce qui a été consommé (poussins, provende mangée, soins, dépenses, salaires, usure du matériel) :
+    {{ own.result.sales|money }} − {{ own.result.costs|money }} = <strong class="{{ 'text-ok' if own.result.result >= 0 else 'text-danger' }}">{{ own.result.result|money }}</strong>.
+    <strong>Sa part</strong> = résultat × son pourcentage. <strong>Valeur de sa part</strong> = ce qu'il a mis + sa part du résultat.</span>
+    <small>Les matières et la provende encore en stock ne sont pas des dépenses : elles comptent quand elles sont mangées.</small></div></details>
+  <div class="grid two top-gap-sm">
+  {% for o in own.owners %}
+    <div class="owner-card">
+      <h3>{{ o.name }} <span class="tag tag-gold">{{ o.pct|round(1) }} %</span></h3>
+      <dl class="owner-dl">
+        <div><dt>Apports</dt><dd>{{ o.apports|money }}</dd></div>
+        <div><dt>Payé de sa poche pour la ferme</dt><dd>{{ o.paid_for_farm|money }}</dd></div>
+        <div><dt>Retraits</dt><dd>− {{ o.retraits|money }}</dd></div>
+        <div class="sum"><dt>A mis dans la ferme (net)</dt><dd><strong>{{ o.put|money }}</strong></dd></div>
+        <div><dt>Sa part du résultat ({{ o.pct|round(1) }} %)</dt><dd class="{{ 'text-ok' if o.result_part >= 0 else 'text-danger' }}">{{ '+' if o.result_part > 0 }}{{ o.result_part|money }}</dd></div>
+        <div class="sum"><dt>Valeur de sa part</dt><dd><strong>{{ o.worth|money }}</strong></dd></div>
+      </dl>
+      <a class="btn ghost sm" href="{{ url_for('caisse.account', account_id=o.id) }}">Voir le détail</a>
+    </div>
+  {% endfor %}
+  </div>
+  {% if can('caisse', 3) %}
+  <details class="hs-confirm top-gap-sm"><summary class="btn ghost sm">{{ icon('edit', 14) }} Changer les parts (%)</summary>
+    <form method="post" action="{{ url_for('caisse.shares') }}" class="inline-form wrap top-gap-sm">{{ csrf() }}
+      {% for o in own.owners %}<label>{{ o.name }} <input class="input sm" name="share_{{ o.id }}" inputmode="decimal" value="{{ o.pct|round(2) }}" style="width:6rem"> %</label>{% endfor %}
+      <button class="btn primary sm" type="submit">Enregistrer</button></form>
+    <p class="hint">Le total doit faire 100 %. {% if not own.shares_set %}Pour l'instant, les parts sont égales.{% endif %} Pour renommer un propriétaire : Paramètres → Comptes d'argent.</p></details>
+  {% endif %}
+</section>
+{% endif %}
+
+{# ---------- Opérations ---------- #}
+{% if can('caisse', 2) %}
+<section class="card top-gap" id="operations">
+  <h2>{{ icon('plus', 20) }} Enregistrer une opération</h2>
+  <div class="op-tabs" data-op-tabs>
+    {% for k, v in [('apport', '💵 Apport'), ('retrait', '💸 Retrait'), ('transfert', '🔁 Transfert'), ('entree', '➕ Autre entrée'), ('comptage', '🧮 Comptage de caisse'), ('depart', '🏁 Argent au départ')] %}
+    <button type="button" class="chip {{ 'active' if loop.first }}" data-op="{{ k }}">{{ v }}</button>{% endfor %}
+  </div>
+  <form method="post" action="{{ url_for('caisse.operation') }}" class="stack top-gap-sm" data-op-form>{{ csrf() }}
+    <input type="hidden" name="op" value="apport">
+    <p class="hint" data-op-help></p>
+    <div class="grid four top">
+      <div class="field"><label>Date *</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+      <div class="field" data-show="apport retrait"><label>Propriétaire</label><select class="input" name="owner_id">{% for o in owners %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}</select></div>
+      <div class="field" data-show="transfert"><label>De la caisse</label><select class="input" name="from_id">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+      <div class="field" data-show="apport retrait transfert entree comptage"><label data-label-account>Caisse</label><select class="input" name="account_id">{% for a in accounts %}<option value="{{ a.id }}" {% if loop.index == 2 %}data-second{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+      <div class="field" data-show="depart"><label>Compte</label><select class="input" name="account_id" disabled>{% for a in accounts + owners %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+      <div class="field" data-show="entree"><label>D'où vient l'argent ? *</label><input class="input" name="label" maxlength="100" placeholder="ex. prêt banque, subvention" list="dl-entree" data-combo>
+        <datalist id="dl-entree">{% for x in ['Prêt', 'Subvention', 'Remboursement', 'Vente de fumier', 'Autre'] %}<option value="{{ x }}">{% endfor %}</datalist></div>
+      <div class="field" data-show="apport retrait transfert entree depart"><label>Montant (Ar) *</label><input class="input" name="amount" inputmode="decimal" placeholder="ex. 500000"></div>
+      <div class="field" data-show="comptage"><label>Argent compté (Ar) *</label><input class="input" name="counted" inputmode="decimal" placeholder="ce que vous avez compté"></div>
+    </div>
+    <div class="field"><label data-label-notes>Remarque</label><input class="input" name="notes" maxlength="200" placeholder="facultatif"></div>
+    <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Derniers mouvements</h2></div>
+  <table class="table responsive" data-limit="12">
+    <thead><tr><th>Date</th><th>Compte</th><th>Quoi</th><th class="right">Montant</th><th></th></tr></thead>
+    <tbody>{% for m in recent %}
+      <tr><td data-label="Date" class="nowrap">{{ m.date|date_fr }}</td><td data-label="Compte"><a href="{{ url_for('caisse.account', account_id=m.account_id) }}">{{ m.account }}</a></td>
+        <td data-label="Quoi">{{ kinds.get(m.kind, m.kind) }}<small class="muted block">{{ m.label }}{% if m.notes %} · {{ m.notes }}{% endif %}</small></td>
+        <td data-label="Montant" class="right"><strong class="{{ 'text-ok' if m.amount > 0 else 'text-danger' }}">{{ '+' if m.amount > 0 }}{{ m.amount|money }}</strong></td>
+        <td class="right">{% if m.kind in manual and can('caisse', 3) %}<form method="post" action="{{ url_for('caisse.move_delete', move_id=m.id) }}" class="inline" data-confirm="Supprimer ce mouvement ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit" title="Supprimer">{{ icon('trash', 14) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="5" class="center muted">Aucun mouvement d'argent.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>
+<script>
+(() => {
+  const f = document.querySelector("[data-op-form]");
+  if (!f) return;
+  const help = {
+    apport: "Le propriétaire met de l'argent dans une caisse de la ferme. La caisse monte, et ce qu'il « a mis » augmente.",
+    retrait: "Le propriétaire prend de l'argent dans une caisse (pour lui). La caisse baisse, et ce qu'il « a mis » diminue.",
+    transfert: "On déplace de l'argent d'une caisse à une autre (ex. caisse → mobile money). Le total de la ferme ne change pas.",
+    entree: "Argent qui entre et qui n'est pas une vente (prêt, subvention…). Les ventes s'écrivent dans Ventes.",
+    comptage: "Comptez les billets de la caisse et écrivez le total. Le logiciel compare avec ce qu'il attend : la différence devient un écart à expliquer.",
+    depart: "À faire une seule fois au début : l'argent qui était déjà dans une caisse (ou déjà mis par un propriétaire) avant d'utiliser le logiciel."
+  };
+  const set = (op) => {
+    f.querySelector("[name=op]").value = op;
+    f.querySelector("[data-op-help]").textContent = help[op];
+    f.querySelectorAll("[data-show]").forEach((el) => {
+      const on = el.dataset.show.split(" ").includes(op);
+      el.hidden = !on; el.querySelectorAll("select,input").forEach((i) => (i.disabled = !on));
+    });
+    f.querySelector("[data-label-account]").textContent = op === "transfert" ? "Vers la caisse" : "Caisse";
+    f.querySelector("[data-label-notes]").textContent = op === "comptage" ? "Explication de l'écart (s'il y en a)" : "Remarque";
+    document.querySelectorAll("[data-op]").forEach((b) => b.classList.toggle("active", b.dataset.op === op));
+  };
+  document.querySelectorAll("[data-op]").forEach((b) => b.addEventListener("click", () => set(b.dataset.op)));
+  set(location.hash === "#comptage" ? "comptage" : "apport");
+})();
+</script>{% endblock %}

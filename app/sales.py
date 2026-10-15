@@ -166,7 +166,10 @@ def lot_revenue(lot):
     mine = query("SELECT COALESCE(SUM(good), 0) AS n FROM egg_collections WHERE lot_id = ?", (lot["id"],), one=True)["n"]
     allg = query("SELECT COALESCE(SUM(good), 0) AS n FROM egg_collections", one=True)["n"]
     share = (mine / allg) if allg else 0
-    return {"direct": direct, "shared": pool * share, "total": direct + pool * share, "share": share * 100}
+    # autres ventes marquées pour ce lot : poules de réforme, fumier…
+    other = query("SELECT COALESCE(SUM(total), 0) AS t FROM sales WHERE is_eggs = 0 AND lot_id = ?", (lot["id"],), one=True)["t"]
+    return {"direct": direct, "shared": pool * share, "other": other, "eggs": direct + pool * share,
+            "total": direct + pool * share + other, "share": share * 100}
 
 
 def _period_days(n):
@@ -345,12 +348,15 @@ def sale_delete(sale_id):
             conn.execute("DELETE FROM cash_movements WHERE ref_type = 'sale_payment' AND ref_id = ?", (pid,))
         conn.execute("DELETE FROM sale_payments WHERE sale_id = ?", (sale_id,))
         conn.execute("DELETE FROM cash_movements WHERE ref_type = 'sale' AND ref_id = ?", (sale_id,))
+        if item["lot_event_id"]:  # vente de poules de réforme : les poules reviennent dans le lot
+            conn.execute("DELETE FROM lot_events WHERE id = ?", (item["lot_event_id"],))
         conn.execute("DELETE FROM sales WHERE id = ?", (sale_id,))
     what = fmt_eggs(item["quantity"]) if item["is_eggs"] else item["product"]
     log_activity("Vente annulée", f"n°{sale_id} : {what} = {fmt_money(item['total'])}")
     notify("", None, f"↩️ Vente n°{sale_id} annulée ({what}, {fmt_money(item['total'])}) : "
            + ("les œufs reviennent en stock, " if item["is_eggs"] else "") + "l'argent est retiré de la caisse.")
-    flash("Vente annulée." + (" Les œufs sont revenus en stock." if item["is_eggs"] else ""), "success")
+    flash("Vente annulée." + (" Les œufs sont revenus en stock." if item["is_eggs"] else "")
+          + (" Les poules sont revenues dans le lot." if item["lot_event_id"] else ""), "success")
     return redirect(url_for("ventes.index"))
 
 

@@ -19,8 +19,13 @@ REF_TYPES = {
     "lot": ("lots", "Lot « {name} »", "lots.lot", "lot_id"),
     "sale": ("ventes", "Vente n°{id}", "ventes.sale", "sale_id"),
     "client": ("ventes", "Client « {name} »", "ventes.client", "client_id"),
+    "expense": ("depenses", "Dépense n°{id}", "depenses.item", "exp_id"),
+    "account": ("caisse", "Compte « {name} »", "caisse.account", "account_id"),
+    "employee": ("personnel", "Employé « {name} »", "personnel.employee", "employee_id"),
+    "asset": ("immobilisations", "Bien « {name} »", "immobilisations.asset", "asset_id"),
 }
-NAME_TABLES = {"material": "materials", "supplier": "suppliers", "formula": "formulas", "lot": "lots", "client": "clients"}
+NAME_TABLES = {"material": "materials", "supplier": "suppliers", "formula": "formulas", "lot": "lots", "client": "clients",
+               "account": "accounts", "employee": "employees", "asset": "assets"}
 
 
 def notify(ref_type, ref_id, body):

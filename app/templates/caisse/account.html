@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ acc.name }}{% endblock %}
+{% block content %}
+{% call page_head(acc.name, ("Compte d'un propriétaire : ce qu'il a mis (−) et retiré (+). Ce qu'il a mis = − le solde." if owner else "Tous les mouvements de cette caisse, avec le solde après chaque mouvement."), 'wallet') %}
+  <a class="btn ghost" href="{{ url_for('caisse.index') }}">← Caisse</a>
+{% endcall %}
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('wallet', 18) }}</span></div>
+    {% if owner %}<div class="kpi-val">{{ (-total)|money }}</div><div class="kpi-lab">A mis dans la ferme (net)</div>
+    {% else %}<div class="kpi-val {{ 'text-danger' if total < 0 }}">{{ total|money }}</div><div class="kpi-lab">Solde aujourd'hui</div>{% endif %}</div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('list', 18) }}</span></div><div class="kpi-val">{{ items|length }}</div><div class="kpi-lab">mouvements</div></div>
+</div>
+<section class="card flush top-gap">
+  <table class="table responsive" data-limit="30">
+    <thead><tr><th>Date</th><th>Quoi</th><th class="right">Entrée</th><th class="right">Sortie</th><th class="right">Solde après</th><th></th></tr></thead>
+    <tbody>{% for m in items %}
+      <tr><td data-label="Date" class="nowrap">{{ m.date|date_fr }}</td>
+        <td data-label="Quoi">{% if m.link %}<a href="{{ m.link }}">{{ kinds.get(m.kind, m.kind) }}</a>{% else %}{{ kinds.get(m.kind, m.kind) }}{% endif %}<small class="muted block">{{ m.label }}{% if m.notes %} · {{ m.notes }}{% endif %}{% if m.username %} · {{ m.username }}{% endif %}</small></td>
+        <td data-label="Entrée" class="right text-ok">{{ m.amount|money if m.amount > 0 else '' }}</td>
+        <td data-label="Sortie" class="right text-danger">{{ (-m.amount)|money if m.amount < 0 else '' }}</td>
+        <td data-label="Solde après" class="right"><strong class="{{ 'text-danger' if m.balance < 0 and not owner }}">{{ m.balance|money }}</strong></td>
+        <td class="right">{% if m.kind in manual and can('caisse', 3) %}<form method="post" action="{{ url_for('caisse.move_delete', move_id=m.id) }}" class="inline" data-confirm="Supprimer ce mouvement ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 14) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="6" class="center muted">Aucun mouvement.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

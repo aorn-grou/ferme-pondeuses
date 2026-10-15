@@ -23,6 +23,12 @@
     <li><a href="#oeufs">Œufs (ramassage)</a></li>
     <li><a href="#ventes">Ventes, clients et stock d'œufs</a></li>
     <li><a href="#sanitaire">Suivi sanitaire (vaccins, traitements)</a></li>
+    <li><a href="#reformes">Poules de réforme</a></li>
+    <li><a href="#depenses">Dépenses</a></li>
+    <li><a href="#caisse">Caisse & propriétaires</a></li>
+    <li><a href="#personnel">Personnel & salaires</a></li>
+    <li><a href="#immobilisations">Immobilisations (usure du matériel)</a></li>
+    <li><a href="#import">Import Excel</a></li>
     <li><a href="#ecarts">Écarts & contrôles</a></li>
     <li><a href="#rapports">Rapports</a></li>
     <li><a href="#discussion">Discussion et signalements</a></li>
@@ -201,9 +207,92 @@
   {% call ex() %}<p>Poussins arrivés le 1<sup>er</sup> mars, âge 1 jour. Programme : J14 Gumboro → prévu le <strong>14 mars</strong>. Alerte dès le <strong>7 mars</strong>. Si personne ne confirme, le 15 mars l'alerte devient rouge « en retard de 1 jour » et le reste jusqu'au clic sur <em>Confirmer : c'est fait</em>.</p>{% endcall %}
 </section>
 
+<section class="card g-sec" id="reformes">
+  <h2>11. Poules de réforme</h2>
+  <p>Une poule pond moins en vieillissant. Cette page vous dit <strong>quand</strong> vendre les vieilles poules, et enregistre la vente.</p>
+  <h3>Le conseil pour chaque lot</h3>
+  <ul>
+    <li>🔴 <strong>À réformer</strong> : le lot a atteint sa semaine de réforme, ou son taux de ponte est sous le <strong>seuil de rentabilité</strong> (ses œufs ne paient plus sa provende).</li>
+    <li>🟠 <strong>À surveiller</strong> : la réforme arrive dans moins de 4 semaines, ou la ponte est proche du seuil.</li>
+    <li>🟢 <strong>Rentable</strong> : rien à faire. Le logiciel conseille, c'est vous qui décidez.</li>
+  </ul>
+  <h3>Vendre des poules</h3>
+  <p>Choisissez le lot, le nombre de poules, le prix (<strong>par poule</strong>, <strong>par kg</strong> avec le poids total, ou <strong>le total</strong>), le client et le paiement (vide = tout payé, 0 = à crédit). En un clic : les poules <strong>sortent du lot</strong>, une <strong>vente</strong> est créée (elle apparaît aussi dans Ventes, avec son crédit), l'argent <strong>entre dans la caisse</strong> et compte dans les <strong>ventes du lot</strong>. Cochez « Terminer le lot » pour fermer le lot quand il n'a plus de poules.</p>
+  {% call ex() %}<p>400 poules vendues au kg : 720 kg × 7 000 Ar = <strong>5 040 000 Ar</strong>, soit 12 600 Ar la poule. Payé 0 → crédit suivi dans Clients & crédits.</p>{% endcall %}
+  {% call tip() %}Erreur ? Ouvrez la vente (Ventes) → <em>Annuler la vente</em> : les poules reviennent dans le lot et l'argent sort de la caisse.{% endcall %}
+</section>
+
+<section class="card g-sec" id="depenses">
+  <h2>12. Dépenses</h2>
+  <p>Tout ce qui n'est ni un achat de matières, ni des poussins, ni de la provende : électricité, eau, transport, réparations, litière, téléphone…</p>
+  <ul>
+    <li><strong>Quoi (poste)</strong> : écrivez librement ou choisissez dans la liste. <strong>Montant</strong> et <strong>Payé avec</strong> : l'argent sort de cette caisse.</li>
+    <li><strong>Pas encore payé</strong> : cochez la case. La dépense reste en rouge dans <em>À payer</em> (une dette) jusqu'au clic sur <strong>Payer</strong> ; à ce moment l'argent sort de la caisse.</li>
+    <li><strong>Pour quel lot ?</strong> Un lot → tout le coût va à ce lot. <strong>Commune</strong> → partagée entre les lots présents ce jour-là, selon leur nombre de poules.</li>
+  </ul>
+  <p>Les schémas montrent les dépenses <strong>par mois</strong> (une barre trop haute = un mois à regarder) et <strong>où part l'argent</strong> (les postes du plus cher au moins cher).</p>
+  {% call ex() %}<p>Électricité 90 000 Ar, commune. Lot A a 1 000 poules, Lot B 500 → Lot A paie 60 000 Ar, Lot B 30 000 Ar. Ces montants apparaissent dans le détail des dépenses de chaque lot et dans le coût d'un œuf.</p>{% endcall %}
+</section>
+
+<section class="card g-sec" id="caisse">
+  <h2>13. Caisse & propriétaires</h2>
+  <p>Où est l'argent, et ce que chaque propriétaire a mis ou retiré.</p>
+  <h3>Les soldes</h3>
+  <p>Le logiciel ne « tape » jamais un solde : <strong>solde = tout ce qui est entré − tout ce qui est sorti</strong>. Les ventes, achats, dépenses, salaires… s'écrivent tout seuls dans la bonne caisse. Cliquez sur une caisse pour voir chaque mouvement avec le solde après.</p>
+  <h3>Les opérations à faire ici</h3>
+  <ul>
+    <li>💵 <strong>Apport</strong> : un propriétaire met de l'argent dans une caisse. 💸 <strong>Retrait</strong> : il en prend pour lui.</li>
+    <li>🔁 <strong>Transfert</strong> : d'une caisse à une autre (mobile money → caisse). Le total ne change pas.</li>
+    <li>➕ <strong>Autre entrée</strong> : prêt, subvention… (pas une vente).</li>
+    <li>🧮 <strong>Comptage de caisse</strong> : comptez les billets et écrivez le total. Le logiciel compare avec ce qu'il attend ; la différence devient un <strong>écart</strong> à expliquer dans Écarts & contrôles.</li>
+    <li>🏁 <strong>Argent au départ</strong> : une seule fois, l'argent déjà présent avant d'utiliser le logiciel.</li>
+  </ul>
+  <h3>Les propriétaires</h3>
+  <p><strong>A mis dans la ferme</strong> = apports + ce qu'il a payé de sa poche (« payé avec : son nom ») − retraits. <strong>Résultat de la ferme</strong> = ventes − tout ce qui a été consommé (poussins, provende mangée, soins, dépenses, salaires, usure). <strong>Sa part</strong> = résultat × son pourcentage (bouton <em>Changer les parts</em>, total 100 %). <strong>Valeur de sa part</strong> = ce qu'il a mis + sa part du résultat.</p>
+  {% call ex() %}<p>Rakoto a apporté 1 000 000 Ar et retiré 100 000 Ar → il a mis <strong>900 000 Ar</strong>. La ferme a gagné 2 000 000 Ar, sa part est 60 % → +1 200 000 Ar. Valeur de sa part : <strong>2 100 000 Ar</strong>.</p>{% endcall %}
+</section>
+
+<section class="card g-sec" id="personnel">
+  <h2>14. Personnel & salaires</h2>
+  <ul>
+    <li><strong>Nouvel employé</strong> : nom, poste, salaire <strong>au mois</strong> ou <strong>à la journée</strong>, date d'arrivée.</li>
+    <li><strong>La fiche de paie du mois</strong> montre pour chacun : <em>dû</em>, <em>déjà payé</em>, <em>reste à payer</em>.
+      Au mois : le salaire complet (au prorata le mois d'arrivée ou de départ). À la journée : jours travaillés × prix d'une journée (jours du mois − absences).</li>
+    <li><strong>Payer / avance / prime</strong> : une <strong>avance</strong> est une partie du salaire payée plus tôt (elle diminue le reste à payer). Une <strong>prime</strong> s'ajoute en plus. L'argent sort de la caisse choisie.</li>
+    <li><strong>Absence</strong> : notée pour information (salaire au mois) ou retirée des jours payés (salaire à la journée).</li>
+    <li><strong>Il / elle ne travaille plus ici</strong> (sur la fiche de l'employé) : l'historique est gardé.</li>
+  </ul>
+  {% call ex() %}<p>Hery, 250 000 Ar par mois, a reçu une avance de 50 000 Ar le 15 → reste à payer <strong>200 000 Ar</strong> à la fin du mois. Koto, gardien à 8 000 Ar par jour, absent 2 jours en septembre (30 jours) → 28 × 8 000 = <strong>224 000 Ar</strong>.</p>{% endcall %}
+  <p>Les salaires sont partagés entre les lots comme une dépense commune. Le 5 du mois, une alerte rappelle les salaires du mois précédent pas encore payés.</p>
+</section>
+
+<section class="card g-sec" id="immobilisations">
+  <h2>15. Immobilisations (usure du matériel)</h2>
+  <p>Bâtiments, cages, abreuvoirs, groupe électrogène, moto… ils servent plusieurs années. On ne compte pas leur prix d'un coup : on compte leur <strong>usure</strong>, un peu chaque jour.</p>
+  <ul>
+    <li><strong>Usure par jour = (prix d'achat − valeur à la fin) ÷ (années × 365)</strong>. Le formulaire la calcule pendant que vous tapez.</li>
+    <li><strong>Payé avec</strong> une caisse : l'argent sort le jour de l'achat. <strong>Déjà payé avant le logiciel</strong> : seule l'usure compte.</li>
+    <li><strong>Sert à</strong> toute la ferme (usure partagée entre les lots) ou à un seul lot.</li>
+    <li><strong>Vendu / cassé</strong> : l'usure s'arrête à cette date ; si vendu, l'argent entre dans la caisse.</li>
+  </ul>
+  {% call ex() %}<p>Cages à 3 650 000 Ar pour 10 ans : 3 650 000 ÷ 3 650 jours = <strong>1 000 Ar par jour</strong>, environ 30 400 Ar par mois. Après 1 an, elles valent 3 285 000 Ar.</p>{% endcall %}
+</section>
+
+<section class="card g-sec" id="import">
+  <h2>16. Import Excel</h2>
+  <p>Pour reprendre d'un coup vos anciens cahiers ou fichiers : <strong>ramassage des œufs</strong>, <strong>ventes</strong>, <strong>dépenses</strong>, <strong>mortalité</strong>.</p>
+  <ol>
+    <li><strong>Télécharger le modèle</strong> : un fichier Excel avec les bonnes colonnes, un exemple en ligne 2 et un onglet « Mode d'emploi ».</li>
+    <li><strong>Le remplir</strong> : une ligne = une saisie. Les noms des lots doivent être écrits comme dans le logiciel.</li>
+    <li><strong>Vérifier le fichier</strong> : le logiciel montre chaque ligne en <span class="text-ok">vert ✅</span> (bonne) ou en <span class="text-danger">rouge ❌</span> avec la raison (lot inconnu, date illisible, jour déjà saisi…). <strong>Rien n'est encore enregistré.</strong></li>
+    <li><strong>Confirmer</strong> : seules les lignes vertes sont enregistrées, exactement comme si vous les aviez tapées (stock, caisse, alertes…).</li>
+  </ol>
+  {% call warn() %}Une erreur dans un import ? Dans « Imports déjà faits », <strong>Annuler cet import</strong> efface tout ce qu'il avait ajouté.{% endcall %}
+</section>
+
 <section class="card g-sec" id="ecarts">
-  <h2>11. Écarts & contrôles</h2>
-  <p>Tout ce qui manque ou ne colle pas, au même endroit : écarts d'inventaire (matières, provende, œufs), pertes déclarées, poules disparues ou écarts de comptage, <strong>mortalité anormale</strong> (plus de 3 fois la moyenne du lot, au moins 3 morts), <strong>baisse de ponte</strong>.</p>
+  <h2>17. Écarts & contrôles</h2>
+  <p>Tout ce qui manque ou ne colle pas, au même endroit : écarts d'inventaire (matières, provende, œufs), pertes déclarées, poules disparues ou écarts de comptage, <strong>mortalité anormale</strong> (plus de 3 fois la moyenne du lot, au moins 3 morts), <strong>baisse de ponte</strong>, <strong>écarts de caisse</strong> (comptage des billets).</p>
   <ul>
     <li>Pour chaque écart : la date, l'avant → après, l'écart, sa <strong>valeur en Ariary</strong>, l'explication et qui l'a saisi.</li>
     <li>Les lignes <span class="text-danger">en rouge</span> n'ont pas d'explication : écrivez-la dans la case <em>À expliquer…</em> puis ✓. Vos associés sont prévenus.</li>
@@ -215,11 +304,11 @@
 </section>
 
 <section class="card g-sec" id="rapports">
-  <h2>12. Rapports</h2>
+  <h2>18. Rapports</h2>
   <p>Les diagnostics de la ferme, en schémas (bouton <em>Imprimer</em> pour une version papier ou PDF) :</p>
   <ul>
-    <li><strong>💰 L'argent</strong> : ventes et dépenses chaque mois, et le <strong>résultat cumulé</strong> (quand la courbe passe au-dessus de 0, l'investissement est remboursé).</li>
-    <li><strong>🐔 Rentabilité de chaque lot</strong> : ventes − dépenses depuis le jour 1, coût d'un œuf, seuil de rentabilité, et <strong>jusqu'à quand le lot reste rentable</strong>.</li>
+    <li><strong>💰 L'argent</strong> : ventes et dépenses chaque mois (achats, poussins, dépenses & soins, salaires, usure du matériel), et le <strong>résultat cumulé</strong> (quand la courbe passe au-dessus de 0, l'investissement est remboursé).</li>
+    <li><strong>🐔 Rentabilité de chaque lot</strong> : ventes − toutes ses dépenses (avec sa part des dépenses communes, des salaires et de l'usure) depuis le jour 1, coût d'un œuf, seuil de rentabilité, et <strong>jusqu'à quand le lot reste rentable</strong>.</li>
     <li><strong>🔎 Détail d'un lot</strong> : œufs et provende semaine par semaine, taux de ponte réel et estimé, marge chaque semaine (valeur des œufs − provende), provende encore à donner.</li>
     <li><strong>📈 Pics, creux et moyennes</strong> mois par mois : œufs par jour, prix du plateau, mortalité, ventes.</li>
   </ul>
@@ -227,12 +316,12 @@
 </section>
 
 <section class="card g-sec" id="discussion">
-  <h2>13. Discussion et signalements</h2>
+  <h2>19. Discussion et signalements</h2>
   <p>La Discussion (💬 en haut) sert à parler entre associés. Le logiciel y écrit aussi tout seul (en doré) chaque action importante : achats, fabrications, ventes, écarts, corrections, annulations. Sur chaque achat, lot, vente… il y a une zone <em>Commentaires</em> : vos associés la voient aussi dans la Discussion.</p>
 </section>
 
 <section class="card g-sec" id="admin">
-  <h2>14. Administration</h2>
+  <h2>20. Administration</h2>
   <h3>Utilisateurs et droits</h3>
   <p>Créez un compte pour chaque personne (soigneur, vendeur, caissier…). Chaque rôle a des droits de départ, que vous pouvez changer partie par partie : <strong>Aucun accès</strong> · <strong>Voir</strong> · <strong>Voir et saisir</strong> · <strong>Tout</strong> (y compris supprimer). Vous pouvez aussi désactiver un compte ou remettre un mot de passe à zéro.</p>
   <h3>Paramètres</h3>
@@ -245,7 +334,7 @@
 </section>
 
 <section class="card g-sec" id="moteur">
-  <h2>15. Le moteur : comment le logiciel calcule</h2>
+  <h2>21. Le moteur : comment le logiciel calcule</h2>
   <p>Aucune formule à retenir : le logiciel fait tout. Voici ce qu'il fait « sous le capot », pour pouvoir l'expliquer.</p>
   <h3>Le chemin de la ferme, de l'achat à l'argent</h3>
   <div class="g-flow" role="img" aria-label="Achats, matières premières, fabrication, provende, lots de poules, œufs, ventes, caisse">
@@ -256,7 +345,8 @@
     <div class="gf-step"><span>🐔</span><strong>Lots</strong><small>âge → provende du jour</small></div><i>→</i>
     <div class="gf-step"><span>🥚</span><strong>Œufs</strong><small>ramassage, taux de ponte</small></div><i>→</i>
     <div class="gf-step"><span>💰</span><strong>Ventes</strong><small>stock d'œufs − ventes</small></div><i>→</i>
-    <div class="gf-step"><span>👛</span><strong>Caisse</strong><small>argent qui entre et sort</small></div>
+    <div class="gf-step"><span>👛</span><strong>Caisse</strong><small>argent qui entre et sort</small></div><i>→</i>
+    <div class="gf-step"><span>📊</span><strong>Résultat</strong><small>ventes − toutes les dépenses</small></div>
   </div>
   <p class="muted small">À chaque flèche, le logiciel enlève d'un côté et ajoute de l'autre. Les inventaires vérifient chaque étape : ce qui manque part dans <em>Écarts & contrôles</em>.</p>
   <div class="g-engine">
@@ -270,7 +360,10 @@
     <div><h3>🥚 Le taux de ponte</h3><p>(Bons œufs + cassés) ÷ poules présentes ce jour-là × 100. La « baisse » compare avec la moyenne des 7 jours d'avant.</p></div>
     <div><h3>🥚 Le stock d'œufs</h3><p>Bons œufs ramassés − œufs vendus ± corrections (casse, pertes, inventaire).</p></div>
     <div><h3>⚖️ Les écarts</h3><p>Écart = compté − stock du logiciel. Sa valeur = écart × prix moyen (ou prix du poussin, ou prix moyen de vente des œufs).</p></div>
-    <div><h3>💰 Le bénéfice d'un lot</h3><p>Ventes de ses œufs (directes + sa part des ventes sans lot, selon ses œufs) − (poussins + provende mangée).</p></div>
+    <div><h3>💰 Le bénéfice d'un lot</h3><p>Ventes du lot (ses œufs + sa part des ventes d'œufs sans lot, selon ses œufs + ses poules de réforme) − (poussins + provende mangée + soins + dépenses du lot + sa part des dépenses communes, des salaires et de l'usure du matériel).</p></div>
+    <div><h3>🤝 Le partage des dépenses communes</h3><p>Une dépense commune (électricité, salaires, usure…) est partagée entre les lots présents ce jour-là selon leur nombre de poules au départ. 90 000 Ar entre un lot de 1 000 poules et un lot de 500 → 60 000 et 30 000 Ar.</p></div>
+    <div><h3>🏗️ L'usure du matériel</h3><p>(Prix − valeur à la fin) ÷ (années × 365) chaque jour, jusqu'à la fin de la durée de vie ou la sortie du bien.</p></div>
+    <div><h3>👛 Les caisses et les propriétaires</h3><p>Solde d'une caisse = entrées − sorties. Ce qu'un propriétaire a mis = ses apports + ce qu'il a payé de sa poche − ses retraits. Sa part = résultat de la ferme × son %.</p></div>
     <div><h3>🎯 Le seuil de rentabilité</h3><p>Le taux de ponte minimum pour que les œufs paient la provende = grammes par poule × prix du kg ÷ prix d'un œuf. 115 g × 1 733 Ar/kg ÷ 500 Ar = <strong>40 %</strong>. En dessous, le lot coûte plus qu'il ne rapporte.</p></div>
     <div><h3>📉 L'estimation de la ponte</h3><p>La courbe normale d'une pondeuse (montée en 8 semaines, pic vers 93 %, puis lente baisse) est ajustée au niveau réel de votre lot. Le logiciel en déduit la marge future et la semaine où le lot ne sera plus rentable.</p></div>
     <div><h3>🔺 Pics, creux, moyennes</h3><p>▲ = la plus haute valeur de la période, ▼ = la plus basse, pointillés = la moyenne. Ils se recalculent à chaque saisie.</p></div>
@@ -278,7 +371,7 @@
 </section>
 
 <section class="card g-sec" id="questions">
-  <h2>16. Questions fréquentes</h2>
+  <h2>22. Questions fréquentes</h2>
   <dl class="g-faq">
     <dt>J'ai fait une erreur de saisie.</dt><dd>Ouvrez la saisie (achat, vente, fabrication, ramassage…) et utilisez <em>Corriger</em> ou <em>Annuler</em>. Pour le ramassage, enregistrez simplement de nouveau le même jour.</dd>
     <dt>Le logiciel refuse ma distribution de provende.</dt><dd>Il n'y a pas assez de cette provende en stock : fabriquez-en d'abord (Provenderie → Fabriquer).</dd>

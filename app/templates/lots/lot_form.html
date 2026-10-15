@@ -72,7 +72,7 @@
           {% for a in accounts %}<option value="{{ a.id }}" {% if values.account_id|string == a.id|string %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
     </div>
     {% else %}
-    <p class="hint">Le paiement des poussins se corrige dans la caisse (bientôt). Ici vous pouvez corriger les prix pour les calculs du lot.</p>
+    <p class="hint">Ici vous corrigez les prix pour les calculs du lot. L'argent déjà sorti pour les poussins ne change pas : pour corriger une caisse, faites un comptage dans Caisse &amp; propriétaires.</p>
     {% endif %}
   </section>
 

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Poules de réforme{% endblock %}
+{% block content %}
+{% call page_head('Poules de réforme', "Quand vendre les vieilles poules, et la vente elle-même : les poules sortent du lot, l'argent entre dans la caisse et compte dans le bénéfice du lot.", 'tag') %}
+  {% if can('reformes', 2) %}<a class="btn primary" href="#vendre">{{ icon('plus', 18) }} Vendre des poules</a>{% endif %}
+{% endcall %}
+<details class="calc-banner fold" open data-fold="ref-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>Une poule pondeuse pond moins en vieillissant. Le logiciel <strong>conseille</strong> (vous décidez) :
+  🔴 <strong>À réformer</strong> = le lot a atteint sa semaine de réforme, ou sa ponte ne paie plus sa provende (taux de ponte sous le <em>seuil de rentabilité</em>) ;
+  🟠 <strong>À surveiller</strong> = la réforme approche ou la ponte est proche du seuil ; 🟢 <strong>Rentable</strong>.
+  La <strong>vente</strong> enlève les poules du lot, crée une vente (avec crédit si le client paie plus tard) et ajoute l'argent aux ventes du lot.</span>
+  <small>Seuil de rentabilité = le taux de ponte qui paie juste la provende (grammes par poule et par jour × prix du kg ÷ prix d'un œuf). Il est expliqué dans Rapports.</small></div></details>
+
+<section class="card top-gap">
+  <h2>{{ icon('layers', 20) }} Conseil pour chaque lot</h2>
+  <div class="hs-list">
+  {% for a in items %}
+    <article class="hs-card {{ {'now': 'late', 'watch': 'soon', 'ok': 'done'}[a.state] }}" id="lot-{{ a.lot.id }}">
+      <div class="hs-head"><span class="hs-emoji">{{ {'now': '🔴', 'watch': '🟠', 'ok': '🟢'}[a.state] }}</span>
+        <div><a href="{{ url_for('lots.lot', lot_id=a.lot.id) }}"><strong>{{ a.lot.name }}</strong></a>
+          <small class="muted block">Semaine {{ a.week }} / réforme prévue S{{ a.reform_week }} · {{ a.birds|num }} poules · ponte {{ (a.rate|round(0)|int ~ ' %') if a.rate is not none else '—' }}{% if a.threshold %} · seuil {{ a.threshold|round(0)|int }} %{% endif %}</small></div>
+        <span class="hs-state {{ {'now': 'late', 'watch': 'soon', 'ok': 'done'}[a.state] }}">{{ {'now': 'À réformer', 'watch': 'À surveiller', 'ok': 'Rentable'}[a.state] }}</span></div>
+      <p class="small">Pourquoi : {{ a.reasons|join(' ; ') }}.{% if a.end_profit and a.state != 'now' %} D'après l'estimation, le lot ne sera plus rentable vers le {{ a.end_profit.date|date_fr }} (S{{ a.end_profit.week }}).{% endif %}</p>
+    </article>
+  {% else %}<p class="muted">Aucun lot actif.</p>{% endfor %}
+  </div>
+</section>
+
+{% if can('reformes', 2) %}
+<section class="card top-gap" id="vendre">
+  <h2>{{ icon('tag', 20) }} Vendre des poules de réforme</h2>
+  <form method="post" action="{{ url_for('reformes.sell') }}" class="stack" data-ref-form>{{ csrf() }}
+    <div class="grid four top">
+      <div class="field"><label>Lot *</label><select class="input" name="lot_id" required>{% for l in lots %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Date *</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+      <div class="field"><label>Nombre de poules *</label><input class="input" name="birds" inputmode="numeric" required data-n></div>
+      <div class="field"><label>Client</label><select class="input" name="client_id" data-free="client" data-placeholder="Écrivez le nom du client…" data-new-tip="Nouveau client : il sera créé.">
+        <option value="">— Client de passage —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="grid four top">
+      <div class="field"><label>Le prix est</label><select class="input" name="price_mode" data-mode><option value="poule">par poule</option><option value="kg">par kg (poids vif)</option><option value="total">le total pour toutes</option></select></div>
+      <div class="field"><label>Prix (Ar) *</label><input class="input" name="price" inputmode="decimal" required placeholder="{{ (last.unit_price|round(0)|int) if last else 'ex. 12000' }}" data-price></div>
+      <div class="field" data-weight hidden><label>Poids total (kg)</label><input class="input" name="weight" inputmode="decimal" data-w></div>
+      <div class="totals"><div class="grand"><span>Total</span><strong data-total>0 Ar</strong></div><small class="muted" data-detail></small></div>
+    </div>
+    <div class="grid four top">
+      <div class="field"><label>Payé maintenant (Ar)</label><input class="input" name="paid" inputmode="decimal" placeholder="= total"><p class="hint">Vide = tout payé · 0 = à crédit.</p></div>
+      <div class="field"><label>L'argent va dans</label><select class="input" name="account_id" data-free="compte">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+      <div class="field span-2"><label>Remarque</label><input class="input" name="notes" maxlength="200" placeholder="ex. poules légères, vendues au marché"></div>
+    </div>
+    <label class="check"><input type="checkbox" name="close" value="1" checked> Terminer le lot s'il ne reste plus aucune poule</label>
+    <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la vente</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card flush top-gap" id="ventes">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} Ventes de réforme</h2>
+    <span class="tag tag-gold">{{ tot.birds|num }} poules · {{ tot.total|money }}{% if tot.due > 0.5 %} · {{ tot.due|money }} à recevoir{% endif %}</span></div>
+  <table class="table responsive" data-limit="15">
+    <thead><tr><th>Date</th><th>Lot</th><th>Client</th><th class="right">Poules</th><th class="right">Prix / poule</th><th class="right">Total</th><th class="right">Reste</th></tr></thead>
+    <tbody>{% for s in sales %}
+      <tr class="clickable" data-href="{{ url_for('ventes.sale', sale_id=s.id) }}"><td data-label="Date">{{ s.date|date_fr }}</td><td data-label="Lot">{{ s.lot }}</td><td data-label="Client">{{ s.client or '—' }}</td>
+        <td data-label="Poules" class="right">{{ s.quantity|num }}</td><td data-label="Prix / poule" class="right">{{ s.unit_price|money }}</td>
+        <td data-label="Total" class="right"><strong>{{ s.total|money }}</strong></td>
+        <td data-label="Reste" class="right">{% if s.total - s.paid_total > 0.5 %}<span class="badge badge-danger">{{ (s.total - s.paid_total)|money }}</span>{% else %}<span class="badge badge-ok">payé</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Aucune vente de réforme.</td></tr>{% endfor %}</tbody>
+  </table>
+  <p class="hint padded">Pour annuler une vente (erreur), ouvrez-la : « Annuler la vente » remet aussi les poules dans le lot.</p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const f = document.querySelector("[data-ref-form]"); if (!f) return;
+  const num = (el) => parseFloat(String((el && el.value) || "").replace(/\s/g, "").replace(",", ".")) || 0;
+  const money = (v) => Math.round(v).toLocaleString("fr-FR") + " Ar";
+  const up = () => {
+    const mode = f.querySelector("[data-mode]").value, n = num(f.querySelector("[data-n]")), p = num(f.querySelector("[data-price]"));
+    f.querySelector("[data-weight]").hidden = mode !== "kg";
+    let t = mode === "poule" ? n * p : mode === "kg" ? num(f.querySelector("[data-w]")) * p : p;
+    f.querySelector("[data-total]").textContent = money(t);
+    f.querySelector("[data-detail]").textContent = n && t ? `soit ${money(t / n)} la poule` : "";
+  };
+  f.addEventListener("input", up); f.addEventListener("change", up); up();
+})();
+</script>{% endblock %}

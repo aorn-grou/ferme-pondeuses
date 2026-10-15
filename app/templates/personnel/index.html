@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Personnel & salaires{% endblock %}
+{% macro pay_form(e, s, kind='salaire') %}
+<form method="post" action="{{ url_for('personnel.payment_new') }}" class="grid four top top-gap-sm">{{ csrf() }}
+  <input type="hidden" name="employee_id" value="{{ e.id }}"><input type="hidden" name="month" value="{{ month }}">
+  <input type="hidden" name="next" value="{{ url_for('personnel.index', mois=month) }}">
+  <div class="field"><label>Quoi</label><select class="input" name="kind">{% for k, v in kinds.items() %}<option value="{{ k }}" {% if k == kind %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Montant (Ar)</label><input class="input" name="amount" inputmode="decimal" value="{{ s.rest|round(0)|int if s.rest > 0 else '' }}" required></div>
+  <div class="field"><label>Payé le</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}"></div>
+  <div class="field"><label>Avec</label><select class="input" name="account_id">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+  {% if e.pay_type == 'jour' %}<div class="field"><label>Jours payés</label><input class="input" name="days" inputmode="decimal" value="{{ s.worked|round(1) }}"></div>{% endif %}
+  <div class="field span-2"><label>Remarque</label><input class="input" name="notes" maxlength="200"></div>
+  <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">{{ icon('check', 16) }} Payer</button></div>
+</form>
+{% endmacro %}
+{% block content %}
+{% call page_head('Personnel & salaires', "Les employés, leurs absences, les avances, les primes et les salaires. Chaque paiement sort d'une caisse et compte dans le coût d'un œuf.", 'users') %}
+  {% if can('personnel', 2) %}<a class="btn primary" href="{{ url_for('personnel.employee_new') }}">{{ icon('plus', 18) }} Nouvel employé</a>{% endif %}
+{% endcall %}
+
+<details class="calc-banner fold" open data-fold="staff-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span><strong>Salaire au mois</strong> : le salaire complet est dû chaque mois (au prorata le mois d'arrivée ou de départ). <strong>Salaire à la journée</strong> : dû = jours travaillés × prix d'une journée
+  (jours travaillés = jours du mois − absences). Une <strong>avance</strong> est une partie du salaire payée plus tôt : elle diminue le <strong>reste à payer</strong>. Une <strong>prime</strong> s'ajoute en plus.
+  Tout paiement sort d'une caisse et est partagé entre les lots comme une dépense commune.</span></div></details>
+
+<form method="get" class="inline-form top-gap-sm"><label>Mois</label>
+  <select class="input sm" name="mois" onchange="this.form.submit()">{% for m in months %}<option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ mlabel(m) }}</option>{% endfor %}</select></form>
+
+<div class="kpis top-gap-sm">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('users', 18) }}</span></div><div class="kpi-val">{{ tot.count }}</div><div class="kpi-lab">employé(s) actif(s)</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('wallet', 18) }}</span><span class="tag tag-gold">{{ mlabel(month) }}</span></div><div class="kpi-val">{{ tot.due|money }}</div><div class="kpi-lab">Salaires dus ce mois</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('check', 18) }}</span></div><div class="kpi-val">{{ tot.paid|money }}</div><div class="kpi-lab">Déjà payé (salaires + avances){% if tot.prime %} · primes {{ tot.prime|money }}{% endif %}</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic {{ 'ic-red' if tot.rest > 0.5 else 'ic-green' }}">{{ icon('alert', 18) }}</span>{% if tot.rest > 0.5 %}<span class="tag tag-red">à payer</span>{% else %}<span class="tag tag-green">tout payé</span>{% endif %}</div><div class="kpi-val">{{ tot.rest|money }}</div><div class="kpi-lab">Reste à payer</div></div>
+</div>
+
+<section class="card top-gap">
+  <h2>{{ icon('list', 20) }} Fiche de paie · {{ mlabel(month) }}</h2>
+  <div class="hs-list">
+  {% for x in staff %}{% set e, s = x.e, x.s %}
+    <article class="hs-card {{ 'done' if s.rest <= 0.5 else 'soon' }}">
+      <div class="hs-head"><span class="hs-emoji">👷</span>
+        <div><a href="{{ url_for('personnel.employee', employee_id=e.id) }}"><strong>{{ e.name }}</strong></a>{% if not e.active %} <span class="badge badge-muted">parti</span>{% endif %}
+          <small class="muted block">{{ e.job or '—' }} · {{ e.salary|money }} par {{ 'jour' if e.pay_type == 'jour' else 'mois' }}{% if s.absent %} · {{ s.absent|round(1) }} jour(s) d'absence{% endif %}</small></div>
+        <span class="hs-state {{ 'done' if s.rest <= 0.5 else 'soon' }}">{% if s.rest > 0.5 %}Reste {{ s.rest|money }}{% else %}Payé ✅{% endif %}<small>dû {{ s.due|money }}</small></span></div>
+      <p class="muted small">Dû : {{ s.rule }} = <strong>{{ s.due|money }}</strong> · payé : salaire {{ s.salaire|money }} + avances {{ s.avance|money }}{% if s.prime %} · prime {{ s.prime|money }}{% endif %}</p>
+      {% if can('personnel', 2) %}<div class="hs-actions">
+        <details class="hs-confirm" {% if s.rest > 0.5 and loop.first and false %}open{% endif %}><summary class="btn primary sm">{{ icon('wallet', 14) }} Payer / avance / prime</summary>{{ pay_form(e, s) }}</details>
+        <details class="hs-confirm"><summary class="btn ghost sm">{{ icon('clock', 14) }} Absence</summary>
+          <form method="post" action="{{ url_for('personnel.absence_new') }}" class="grid four top top-gap-sm">{{ csrf() }}
+            <input type="hidden" name="employee_id" value="{{ e.id }}"><input type="hidden" name="next" value="{{ url_for('personnel.index', mois=month) }}">
+            <div class="field"><label>Date</label><input class="input" type="date" name="date" value="{{ today }}"></div>
+            <div class="field"><label>Jours</label><input class="input" name="days" value="1" inputmode="decimal"></div>
+            <div class="field"><label>Raison</label><input class="input" name="reason" maxlength="150" placeholder="ex. malade, congé"></div>
+            <div class="field"><label>&nbsp;</label><button class="btn ghost" type="submit">Enregistrer</button></div></form></details>
+      </div>{% endif %}
+    </article>
+  {% else %}<p class="muted">Aucun employé ce mois-ci.{% if can('personnel', 2) %} <a href="{{ url_for('personnel.employee_new') }}">Ajouter un employé</a>.{% endif %}</p>{% endfor %}
+  </div>
+</section>
+
+{% if has_chart %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Salaires payés par mois</h2></div>
+  <details class="calc-banner fold" open data-fold="staff-chart"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>Chaque barre = tout ce qui a été payé au personnel pour ce mois (salaires, avances, primes).</span></div></details>
+  <div class="chart-box" data-chart='{{ chart|tojson }}'></div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endblock %}

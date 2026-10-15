@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ 'Modifier ' ~ item.name if item else 'Nouvel employé' }}{% endblock %}
+{% block content %}
+{% call page_head(('Modifier ' ~ item.name) if item else 'Nouvel employé', "Le salaire peut être au mois ou à la journée.", 'users') %}
+  <a class="btn ghost" href="{{ url_for('personnel.index') }}">← Personnel</a>
+{% endcall %}
+<form method="post" class="card stack">{{ csrf() }}
+  <div class="grid three top">
+    <div class="field"><label>Nom *</label><input class="input" name="name" value="{{ v.name }}" required maxlength="80"></div>
+    <div class="field"><label>Poste</label><input class="input" name="job" value="{{ v.job }}" list="dl-jobs" maxlength="60" data-combo><datalist id="dl-jobs">{% for j in jobs %}<option value="{{ j }}">{% endfor %}</datalist></div>
+    <div class="field"><label>Téléphone</label><input class="input" name="phone" value="{{ v.phone }}" maxlength="30"></div>
+  </div>
+  <div class="grid three top">
+    <div class="field"><label>Payé</label><select class="input" name="pay_type"><option value="mois" {% if v.pay_type == 'mois' %}selected{% endif %}>au mois</option><option value="jour" {% if v.pay_type == 'jour' %}selected{% endif %}>à la journée</option></select></div>
+    <div class="field"><label>Salaire (Ar) *</label><input class="input" name="salary" inputmode="decimal" value="{{ v.salary|round(0)|int if v.salary not in ('', none) else '' }}" required placeholder="par mois ou par jour"></div>
+    <div class="field"><label>Arrivé le</label><input class="input" type="date" name="start_date" value="{{ v.start_date }}"></div>
+  </div>
+  <div class="field"><label>Remarque</label><textarea class="input" name="notes" rows="2" maxlength="300">{{ v.notes }}</textarea></div>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+</form>
+{% endblock %}

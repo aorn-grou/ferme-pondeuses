@@ -49,7 +49,7 @@
     <small class="muted">ventes {{ money.sales.total|money }} − dépenses {{ money.costs|money }}</small>
     {% elif eggs.laid %}<span class="stat-label">Bénéfice estimé à ce jour</span><strong class="stat-value small {{ 'text-ok' if money.result >= 0 else 'text-danger' }}">{{ '+' if money.result > 0 }}{{ money.result|money }}</strong>
     <small class="muted">œufs {{ money.eggs_value|money }} − dépenses {{ money.costs|money }} (pas encore de ventes)</small>
-    {% else %}<span class="stat-label">Rentabilité</span><strong class="stat-value small muted">pas encore d'œufs</strong><small class="muted">dépenses : {{ money.costs|money }} (poussins + provende)</small>{% endif %}</a>
+    {% else %}<span class="stat-label">Rentabilité</span><strong class="stat-value small muted">pas encore d'œufs</strong><small class="muted">dépenses à ce jour : {{ money.costs|money }}</small>{% endif %}</a>
 </div>
 
 {% if s.suggest and can('alimentation', 2) %}
@@ -111,11 +111,23 @@
   <p class="muted">{% if s.laying.phase == 'ponte' %}Ce lot devrait pondre depuis la semaine {{ s.laying.week }} : saisissez le ramassage pour voir le taux de ponte.{% else %}🐣 Ce lot est en élevage : ponte prévue <strong>semaine {{ s.laying.week }}</strong> (le {{ s.laying.date|date_fr }}). Si les premiers œufs arrivent avant, saisissez-les simplement : le logiciel les comptera.{% endif %}</p>
   {% endif %}
   {% if money.sales.total %}
-  <p class="hint">💰 <strong>Ventes de ce lot : {{ money.sales.total|money }}</strong> = ventes marquées « {{ item.name }} » {{ money.sales.direct|money }} + sa part des ventes sans lot {{ money.sales.shared|money }} ({{ money.sales.share|round(1) }} % des bons œufs de la ferme viennent de ce lot).
-    Bénéfice réel = ventes − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}{% if money.health %} + soins {{ money.health|money }}{% endif %}). Les autres dépenses viendront avec le module Dépenses.</p>
+  <p class="hint">💰 <strong>Ventes de ce lot : {{ money.sales.total|money }}</strong> = œufs marqués « {{ item.name }} » {{ money.sales.direct|money }} + sa part des ventes d'œufs sans lot {{ money.sales.shared|money }} ({{ money.sales.share|round(1) }} % des bons œufs de la ferme viennent de ce lot){% if money.sales.other %} + autres ventes du lot (poules de réforme…) {{ money.sales.other|money }}{% endif %}.
+    Bénéfice réel = ventes − dépenses {{ money.costs|money }}.</p>
   {% else %}
-  <p class="hint">Bénéfice estimé = œufs × {{ item.egg_price|money }} − (poussins {{ s.chick_cost|money }} + provende mangée {{ s.eaten_cost|money }}{% if money.health %} + soins {{ money.health|money }}{% endif %}). Dès qu'il y a des ventes, le vrai bénéfice remplace l'estimation.</p>
+  <p class="hint">Bénéfice estimé = œufs × {{ item.egg_price|money }} − dépenses {{ money.costs|money }}. Dès qu'il y a des ventes, le vrai bénéfice remplace l'estimation.</p>
   {% endif %}
+  {% set D = money.detail %}
+  <details class="calc-banner fold" data-fold="lot-costs"><summary>🧾 Le détail des dépenses du lot : {{ D.total|money }} <small>(cliquez pour ouvrir / fermer)</small></summary><div class="fold-body">
+    <div class="cost-lines">
+      <div><span>🐣 Poussins (achat + frais)</span><strong>{{ D.chicks|money }}</strong></div>
+      <div><span>🌾 Provende mangée</span><strong>{{ D.feed|money }}</strong></div>
+      <div><span>💉 Soins (vaccins, traitements)</span><strong>{{ D.health|money }}</strong></div>
+      <div><span>🧾 Dépenses (du lot + sa part des dépenses communes)</span><strong>{{ D.expenses|money }}</strong></div>
+      <div><span>👷 Sa part des salaires</span><strong>{{ D.salaries|money }}</strong></div>
+      <div><span>🏗️ Sa part de l'usure du matériel</span><strong>{{ D.wear|money }}</strong></div>
+      <div class="sum"><span>Total</span><strong>{{ D.total|money }}</strong></div>
+    </div>
+    <small>Les dépenses communes, les salaires et l'usure du matériel sont partagés entre les lots présents à la ferme ce jour-là, selon leur nombre de poules au départ.</small></div></details>
 </section>
 
 {% if chart %}

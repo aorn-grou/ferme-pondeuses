@@ -61,15 +61,19 @@ def money_by_month(n=12):
     buys = by("SELECT substr(date, 1, 7) AS k, SUM(total) AS v FROM purchases WHERE date >= ? GROUP BY k")
     chicks = by("SELECT substr(arrival_date, 1, 7) AS k, SUM(initial_count * chick_price + other_costs) AS v FROM lots "
                 "WHERE arrival_date >= ? GROUP BY k")
-    other = by("SELECT substr(date, 1, 7) AS k, -SUM(amount) AS v FROM cash_movements WHERE amount < 0 AND date >= ? "
-               "AND kind NOT IN ('achat', 'achat_poussins', 'reglement', 'reglement_fournisseur') AND COALESCE(ref_type, '') NOT IN ('purchase', 'lot', 'supplier_payment') GROUP BY k")
+    from .costs import by_month
+
+    ch = by_month(keys)
     rows, cum = [], 0
     for k in keys:
-        out = buys.get(k, 0) + chicks.get(k, 0) + other.get(k, 0)
+        c = ch[k]
+        other = c["depense"] + c["soin"]
+        out = buys.get(k, 0) + chicks.get(k, 0) + other + c["salaire"] + c["usure"]
         res = sales.get(k, 0) - out
         cum += res
         rows.append({"key": k, "label": _mlabel(k), "sales": sales.get(k, 0), "out": out, "buys": buys.get(k, 0),
-                     "chicks": chicks.get(k, 0), "other": other.get(k, 0), "result": res, "cum": cum})
+                     "chicks": chicks.get(k, 0), "other": other, "salaries": c["salaire"], "wear": c["usure"],
+                     "result": res, "cum": cum})
     # on enlève les mois vides du début
     while rows and not rows[0]["sales"] and not rows[0]["out"]:
         rows.pop(0)
@@ -84,7 +88,7 @@ def money_by_month(n=12):
     ], "peaks": False}
     cum_chart = {"labels": labels, "values": [round(r["cum"]) for r in rows], "unit": "Ar", "color": "#c9971c", "allowNegative": True}
     return {"rows": rows, "chart": chart, "cum_chart": cum_chart,
-            "totals": {k: sum(r[k] for r in rows) for k in ("sales", "out", "result", "buys", "chicks", "other")}}
+            "totals": {k: sum(r[k] for r in rows) for k in ("sales", "out", "result", "buys", "chicks", "other", "salaries", "wear")}}
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +132,7 @@ def lot_report(lot):
         w = lot_week(lot, e["date"])
         deaths[w] = deaths.get(w, 0) + e["n"]
 
-    price = (rev["total"] / eggs["good"]) if eggs["good"] and rev["total"] else (lot["egg_price"] or 0)
+    price = (rev["eggs"] / eggs["good"]) if eggs["good"] and rev["eggs"] else (lot["egg_price"] or 0)
     lw = lot["laying_week"] or 18
     # estimation de la suite (lots en cours) : courbe type ajustée au niveau réel du lot
     fc = forecast(lot) if lot["status"] == "actif" else {"weeks": []}
@@ -173,12 +177,13 @@ def lot_report(lot):
         {"name": "Taux réel", "values": [round(rate[w], 1) if w in rate else None for w in weeks], "color": "#2e7d32"},
         {"name": "Estimation", "values": [round(proj_rate[w], 1) if w in proj_rate else None for w in weeks], "color": "#c9971c", "dash": True},
     ] + ([{"name": "Seuil de rentabilité", "values": [round(threshold, 1)] * len(weeks), "color": "#c0352b", "dash": True, "thin": True}] if threshold else [])}
-    from .health import lot_health_cost
+    from .costs import lot_costs
 
-    costs = s["chick_cost"] + s["eaten_cost"] + lot_health_cost(lot["id"])
+    detail = lot_costs(lot)
+    costs = detail["total"]
     feed_since_lay = sum(feed_cost.get(w, 0) for w in weeks if w >= lw)
     return {
-        "lot": lot, "s": s, "eggs": eggs, "rev": rev, "price": price, "costs": costs, "result": rev["total"] - costs,
+        "lot": lot, "s": s, "eggs": eggs, "rev": rev, "price": price, "costs": costs, "detail": detail, "result": rev["total"] - costs,
         "feed_per_egg": (feed_since_lay / eggs["laid"]) if eggs["laid"] else None,
         "cost_per_egg": (costs / eggs["laid"]) if eggs["laid"] else None,
         "g_per_egg": (sum(feed_kg.get(w, 0) for w in weeks if w >= lw) * 1000 / eggs["laid"]) if eggs["laid"] else None,

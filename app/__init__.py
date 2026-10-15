@@ -14,7 +14,7 @@ from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.16.1"
+VERSION = "0.17.0"
 
 
 def _secret_key(instance_dir):
@@ -53,7 +53,10 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
-    from . import auth, backups, controls, demo, discussion, eggs, health, lots, main, matieres, provenderie, reports, sales, settings, users
+    from . import (
+        assets, auth, backups, cash, controls, demo, discussion, eggs, expenses, health, imports, lots, main, matieres, provenderie,
+        reforms, reports, sales, settings, staff, users,
+    )
 
     app.register_blueprint(discussion.bp)
 
@@ -64,6 +67,12 @@ def create_app(test_config=None):
     app.register_blueprint(eggs.bp)
     app.register_blueprint(sales.bp)
     app.register_blueprint(health.bp)
+    app.register_blueprint(expenses.bp)
+    app.register_blueprint(cash.bp)
+    app.register_blueprint(staff.bp)
+    app.register_blueprint(assets.bp)
+    app.register_blueprint(reforms.bp)
+    app.register_blueprint(imports.bp)
     app.register_blueprint(reports.bp)
     app.register_blueprint(demo.bp)
     app.register_blueprint(auth.bp)
@@ -155,6 +164,8 @@ def create_app(test_config=None):
             "is_demo": bool(g.get("demo")),
             "guide_anchor": {"matieres": "matieres", "provenderie": "provenderie", "lots": "lots", "oeufs": "oeufs",
                              "ventes": "ventes", "controles": "ecarts", "rapports": "rapports", "discussion": "discussion", "sanitaire": "sanitaire",
+                             "depenses": "depenses", "caisse": "caisse", "personnel": "personnel", "immobilisations": "immobilisations",
+                             "reformes": "reformes", "imports": "import",
                              "users": "admin", "settings": "admin", "backups": "admin"}.get(request.blueprint or "", "tableau")
             if request.endpoint != "lots.feeding_day" else "alimentation",
             "module_url": module_url,

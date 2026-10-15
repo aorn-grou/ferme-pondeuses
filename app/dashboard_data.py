@@ -188,11 +188,12 @@ def build():
             ref = max(m["alert_threshold"] * 3 if m["alert_threshold"] else 0, m["stock"], 1)
             m["fill"] = max(2, min(100, m["stock"] / ref * 100))
     if can("matieres") or can("caisse"):
-        out["accounts"] = query("""SELECT a.name, COALESCE(SUM(c.amount), 0) AS balance FROM accounts a
+        out["accounts"] = query("""SELECT a.id, a.name, a.kind, COALESCE(SUM(c.amount), 0) AS balance FROM accounts a
                                    LEFT JOIN cash_movements c ON c.account_id = a.id WHERE a.active = 1
                                    GROUP BY a.id ORDER BY a.sort, a.name""")
-        out["month_out"] = -query("SELECT COALESCE(SUM(amount), 0) AS t FROM cash_movements WHERE amount < 0 "
-                                  "AND substr(date, 1, 7) = ?", (today()[:7],), one=True)["t"]
+        out["month_out"] = -query("""SELECT COALESCE(SUM(c.amount), 0) AS t FROM cash_movements c JOIN accounts a ON a.id = c.account_id
+                                     WHERE c.amount < 0 AND a.kind != 'proprietaire' AND c.kind NOT IN ('transfert', 'retrait')
+                                     AND substr(c.date, 1, 7) = ?""", (today()[:7],), one=True)["t"]
 
     # --- Écarts à surveiller (vols, pertes, mortalité anormale) --------------
     if can("controles"):

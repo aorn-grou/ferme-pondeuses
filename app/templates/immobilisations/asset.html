@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% from "immobilisations/_form.html" import asset_fields, asset_js %}
+{% block title %}{{ a.name }}{% endblock %}
+{% block content %}
+{% call page_head(a.name, a.category ~ ' · acheté le ' ~ (a.purchase_date|date_fr) ~ ' · ' ~ (a.lot or 'toute la ferme'), 'building') %}
+  <a class="btn ghost" href="{{ url_for('immobilisations.index') }}">← Immobilisations</a>
+{% endcall %}
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('wallet', 18) }}</span></div><div class="kpi-val">{{ a.cost|money }}</div><div class="kpi-lab">Prix d'achat{% if a.account %} · payé avec {{ a.account }}{% endif %}</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('clock', 18) }}</span></div><div class="kpi-val">{{ st.used|money }}</div><div class="kpi-lab">Déjà usé ({{ st.progress|round(0)|int }} %)</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('chart', 18) }}</span></div><div class="kpi-val">{{ st.value|money }}</div><div class="kpi-lab">Valeur aujourd'hui</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('building', 18) }}</span></div><div class="kpi-val">{{ st.daily|money }}</div><div class="kpi-lab">par jour · {{ st.monthly|money }} par mois</div></div>
+</div>
+<section class="card top-gap">
+  <h2>{{ icon('chart', 20) }} Le calcul</h2>
+  <p>Usure par jour = (prix {{ a.cost|money }} − valeur à la fin {{ a.residual|money }}) ÷ ({{ a.life_years|round(1) }} an(s) × 365 jours) = <strong>{{ st.daily|money }}</strong>.
+     Depuis l'achat : {{ st.used_days }} jour(s) × {{ st.daily|money }} = <strong>{{ st.used|money }}</strong> déjà usés. {% if a.status == 'actif' %}Usé complètement le {{ st.end|date_fr }}.{% endif %}</p>
+  <div class="asset-bar big"><span style="width: {{ st.progress|round(1) }}%"></span></div>
+  <table class="table responsive top-gap-sm"><thead><tr><th>Année</th><th class="right">Usure de l'année</th><th class="right">Valeur à la fin de l'année</th></tr></thead>
+    <tbody>{% for y in years %}<tr><td data-label="Année">{{ y.n }}ʳᵉ année ({{ y.year }})</td><td data-label="Usure" class="right">{{ y.part|money }}</td><td data-label="Valeur" class="right">{{ y.left|money }}</td></tr>{% endfor %}</tbody></table>
+</section>
+{% if a.status != 'actif' %}<section class="card top-gap"><p>📤 Sorti le <strong>{{ a.end_date|date_fr }}</strong>{% if a.sale_price %}, vendu <strong>{{ a.sale_price|money }}</strong>{% endif %}. {{ a.notes }}</p></section>{% endif %}
+{% if can('immobilisations', 3) %}
+<section class="card top-gap">
+  <details class="hs-confirm"><summary class="btn ghost sm">{{ icon('edit', 14) }} Corriger</summary>
+    <form method="post" action="{{ url_for('immobilisations.edit', asset_id=a.id) }}" class="stack top-gap-sm">{{ csrf() }}
+      {{ asset_fields(a, cats, lots, accounts, today) }}
+      <div class="form-actions"><button class="btn primary" type="submit">Enregistrer</button></div></form></details>
+  <details class="hs-confirm"><summary class="btn ghost sm">{{ icon('upload', 14) }} {{ 'Vendu / cassé / plus utilisé' if a.status == 'actif' else 'Remettre en service' }}</summary>
+    <form method="post" action="{{ url_for('immobilisations.retire', asset_id=a.id) }}" class="grid four top top-gap-sm">{{ csrf() }}
+      {% if a.status == 'actif' %}
+      <div class="field"><label>Date</label><input class="input" type="date" name="end_date" value="{{ today }}" max="{{ today }}"></div>
+      <div class="field"><label>Vendu combien ? (Ar)</label><input class="input" name="sale_price" inputmode="decimal" placeholder="0 si cassé"></div>
+      <div class="field"><label>L'argent va dans</label><select class="input" name="account_id">{% for x in accounts %}<option value="{{ x.id }}">{{ x.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Raison</label><input class="input" name="reason" maxlength="150" placeholder="ex. vendu, cassé, volé"></div>
+      {% endif %}
+      <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Confirmer</button></div></form></details>
+  <form method="post" action="{{ url_for('immobilisations.delete', asset_id=a.id) }}" class="inline" data-confirm="Supprimer ce bien (erreur de saisie) ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 14) }} Supprimer</button></form>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}{{ asset_js(cats) }}{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Corriger une dépense{% endblock %}
+{% block content %}
+{% call page_head('Corriger la dépense n°' ~ item.id, "Changez ce qui est faux puis enregistrez. Si le montant ou la caisse change, l'argent de la caisse est recalculé.", 'receipt') %}
+  <a class="btn ghost" href="{{ url_for('depenses.index') }}">← Dépenses</a>
+{% endcall %}
+<form method="post" class="card stack">{{ csrf() }}
+  <div class="grid four top">
+    <div class="field"><label>Date *</label><input class="input" type="date" name="date" value="{{ item.date }}" max="{{ today }}" required></div>
+    <div class="field"><label>Quoi ? (poste) *</label><input class="input" name="category" list="dl-cats" required value="{{ item.category }}" data-combo>
+      <datalist id="dl-cats">{% for c in cats %}<option value="{{ c }}">{% endfor %}</datalist></div>
+    <div class="field"><label>Détail</label><input class="input" name="label" value="{{ item.label }}" maxlength="120"></div>
+    <div class="field"><label>Montant (Ar) *</label><input class="input" name="amount" inputmode="decimal" required value="{{ item.amount|round(2) }}"></div>
+  </div>
+  <div class="grid four top">
+    <div class="field"><label>Pour quel lot ?</label><select class="input" name="lot_id"><option value="">Commune (partagée entre les lots)</option>
+      {% for l in lots %}<option value="{{ l.id }}" {% if item.lot_id == l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Payé avec</label><select class="input" name="account_id">{% for a in accounts %}<option value="{{ a.id }}" {% if item.account_id == a.id %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Payé à</label><input class="input" name="beneficiary" value="{{ item.beneficiary }}" maxlength="80"></div>
+    <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="unpaid" value="1" {% if item.status == 'a_payer' %}checked{% endif %}> Pas encore payé</label></div>
+  </div>
+  <div class="field"><label>Remarque</label><input class="input" name="notes" value="{{ item.notes }}" maxlength="300"></div>
+  <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la correction</button></div>
+</form>
+{% endblock %}

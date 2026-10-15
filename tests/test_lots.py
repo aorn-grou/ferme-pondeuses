@@ -332,7 +332,7 @@ class TestSanitaire(StockBase):
         self.post("/sanitaire/soin/nouveau", {"title": "Vitamines", "kind": "vitamines", "due_date": date.today().isoformat(),
                                              "lot_id": [str(lot["id"])], "method": "Eau de boisson", "product": "", "notes": ""})
         self.assertIn("Vitamines", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True))
-        self.assertIn("soins 12", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True).replace(" ", " "))
+        self.assertIn("coût des soins : 12", self.client.get(f"/lots/{lot['id']}").get_data(as_text=True).replace(" ", " "))
         for url in ["/sanitaire/", f"/sanitaire/?lot={lot['id']}", "/sanitaire/programmes", f"/sanitaire/programmes/{hp}",
                     f"/sanitaire/programmes/{hp}/modifier", "/sanitaire/programmes/nouveau?exemple=1", "/rapports/"]:
             self.assertEqual(self.client.get(url).status_code, 200, url)

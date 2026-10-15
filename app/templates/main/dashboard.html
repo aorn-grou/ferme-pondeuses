@@ -37,7 +37,7 @@
 {% if d.controls %}{% set C = d.controls %}
 <a class="ctl-banner top-gap {{ 'bad' if C.unexplained or C.loss < 0 else 'good' }}" href="{{ url_for('controles.index') }}">
   <span class="ctl-banner-title">{{ icon('alert', 18) }} Écarts &amp; contrôles · 30 jours</span>
-  {% for key, t in C.by.items() if key != 'oeufs' or t.count %}
+  {% for key, t in C.by.items() if key not in ('oeufs', 'argent') or t.count %}
   <span class="ctl-pill {{ 'bad' if t.loss < 0 or t.unexplained }}">{{ t.emoji }} {{ t.label }} : <strong>{{ t.loss|money if t.loss else 'aucune perte' }}</strong>{% if t.unexplained %} · {{ t.unexplained }} sans explication{% endif %}</span>
   {% endfor %}
   <span class="ctl-go">Voir le détail →</span>
@@ -228,9 +228,12 @@
   <section class="card">
     <div class="card-head"><h2>{{ icon('wallet', 20) }} Argent par compte</h2>{% if d.month_out %}<span class="tag tag-red">sorti ce mois : {{ d.month_out|money }}</span>{% endif %}</div>
     <div class="money-list">
-      {% for a in d.accounts %}<div class="money-row"><span>{{ a.name }}</span><strong class="{{ 'text-danger' if a.balance < 0 else 'text-green' }}">{{ a.balance|money }}</strong></div>{% endfor %}
+      {% for a in d.accounts if a.kind != 'proprietaire' %}<a class="money-row" href="{{ url_for('caisse.account', account_id=a.id) if can('caisse') else '#' }}"><span>{{ a.name }}</span><strong class="{{ 'text-danger' if a.balance < 0 else 'text-green' }}">{{ a.balance|money }}</strong></a>{% endfor %}
+      {% set cash_total = d.accounts|rejectattr('kind', 'equalto', 'proprietaire')|sum(attribute='balance') %}
+      <div class="money-row sum"><span>Total des caisses</span><strong class="{{ 'text-danger' if cash_total < 0 else 'text-green' }}">{{ cash_total|money }}</strong></div>
+      {% for a in d.accounts if a.kind == 'proprietaire' %}<div class="money-row owner"><span>{{ a.name }} <small class="muted">a mis dans la ferme</small></span><strong>{{ (-a.balance)|money }}</strong></div>{% endfor %}
     </div>
-    <p class="hint">Sorties : achats et poussins · entrées : ventes. Les apports et retraits des propriétaires viendront avec le module Caisse.</p>
+    <p class="hint">Solde = entrées (ventes, apports) − sorties (achats, dépenses, salaires, retraits). {% if can('caisse') %}<a href="{{ url_for('caisse.index') }}">Détail, apports, retraits et comptage →</a>{% endif %}</p>
   </section>
   {% endif %}
   <section class="card">

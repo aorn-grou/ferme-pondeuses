@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Vérification de l'import{% endblock %}
+{% block content %}
+{% call page_head('Vérification : ' ~ spec.title, "Fichier « " ~ filename ~ " ». Rien n'est encore enregistré : regardez, puis confirmez.", 'upload') %}
+  <a class="btn ghost" href="{{ url_for('imports.index') }}">← Recommencer</a>
+{% endcall %}
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('check', 18) }}</span></div><div class="kpi-val text-ok">{{ ok }}</div><div class="kpi-lab">ligne(s) bonne(s) — seront enregistrées</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('alert', 18) }}</span></div><div class="kpi-val {{ 'text-danger' if bad }}">{{ bad }}</div><div class="kpi-lab">ligne(s) avec un problème — seront ignorées</div></div>
+</div>
+{% if bad %}<p class="hint top-gap-sm">💡 Pour les lignes rouges : corrigez-les dans Excel puis renvoyez le fichier, ou confirmez pour enregistrer seulement les lignes vertes. (Ne renvoyez pas les lignes vertes deux fois : elles seraient refusées comme « déjà saisies » ou en double.)</p>{% endif %}
+<section class="card flush top-gap">
+  <table class="table responsive" data-limit="40">
+    <thead><tr><th>Ligne</th><th>Date</th><th>Ce qui sera enregistré</th><th>État</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr class="{{ 'row-ok' if r.ok else 'row-bad' }}"><td data-label="Ligne">{{ r.n }}</td><td data-label="Date">{{ r.data.date|date_fr if r.data.date else '?' }}</td>
+        <td data-label="Contenu">{% if r.ok %}{{ r.label }}{% else %}<small class="muted">{{ r['values']|join(' · ') }}</small>{% endif %}</td>
+        <td data-label="État">{% if r.ok %}<span class="badge badge-ok">✅ bon</span>{% else %}<span class="badge badge-danger">❌ {{ r.errors|join(', ') }}</span>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+</section>
+{% if ok %}
+<form method="post" action="{{ url_for('imports.confirm') }}" class="form-actions top-gap">{{ csrf() }}<input type="hidden" name="token" value="{{ token }}">
+  <button class="btn primary" type="submit">{{ icon('check', 18) }} Confirmer : enregistrer {{ ok }} ligne(s)</button></form>
+{% else %}<p class="muted top-gap">Aucune ligne bonne : corrigez le fichier et renvoyez-le.</p>{% endif %}
+{% endblock %}

@@ -273,9 +273,12 @@ def lot(lot_id):
         feed_since_lay = sum(r["quantity"] * r["unit_cost"] for r in cons["rows"] if r["date"] >= first_egg)
     from .health import events as health_events, lot_health_cost
 
-    health_cost = lot_health_cost(lot_id)
-    all_costs = summary["chick_cost"] + summary["eaten_cost"] + health_cost
-    money = {"costs": all_costs, "health": health_cost, "eggs_value": eggs["value"],
+    from .costs import lot_costs
+
+    detail = lot_costs(item)
+    health_cost = detail["health"]
+    all_costs = detail["total"]
+    money = {"costs": all_costs, "health": health_cost, "detail": detail, "eggs_value": eggs["value"],
              "feed_per_egg": (feed_since_lay / eggs["laid"]) if eggs["laid"] else None,
              "cost_per_egg": (all_costs / eggs["laid"]) if eggs["laid"] else None}
     health = health_events("e.lot_id = ?", (lot_id,))

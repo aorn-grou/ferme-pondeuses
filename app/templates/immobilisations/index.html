@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% from "immobilisations/_form.html" import asset_fields, asset_js %}
+{% block title %}Immobilisations{% endblock %}
+{% block content %}
+{% call page_head('Immobilisations', "Bâtiments, cages, abreuvoirs, groupe électrogène… On compte leur usure un peu chaque jour, pas leur prix d'un coup.", 'building') %}
+  {% if can('immobilisations', 2) %}<a class="btn primary" href="#nouveau">{{ icon('plus', 18) }} Nouveau bien</a>{% endif %}
+{% endcall %}
+<details class="calc-banner fold" open data-fold="asset-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>Un bien qui sert plusieurs années ne se compte pas comme une dépense d'un seul mois. Le logiciel calcule son <strong>usure</strong> :
+  <strong>(prix d'achat − valeur à la fin) ÷ (années × 365)</strong> = ce qu'il « coûte » chaque jour. Exemple : des cages à 3 650 000 Ar pour 10 ans → <strong>1 000 Ar par jour</strong>.
+  Cette usure est partagée entre les lots présents (ou mise sur un seul lot) et compte dans le <strong>coût d'un œuf</strong>.</span>
+  <small>« Payé avec » une caisse : l'argent sort de la caisse le jour de l'achat. « Déjà payé avant le logiciel » : seule l'usure compte.</small></div></details>
+
+<div class="kpis top-gap-sm">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('building', 18) }}</span></div><div class="kpi-val">{{ kpi.count }}</div><div class="kpi-lab">bien(s) en service</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('wallet', 18) }}</span></div><div class="kpi-val">{{ kpi.cost|money }}</div><div class="kpi-lab">Prix d'achat total</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('chart', 18) }}</span></div><div class="kpi-val">{{ kpi.value|money }}</div><div class="kpi-lab">Valeur aujourd'hui (après usure)</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('clock', 18) }}</span></div><div class="kpi-val">{{ kpi.monthly|money }}</div><div class="kpi-lab">Usure par mois (coût dans les œufs)</div></div>
+</div>
+
+<section class="card top-gap">
+  <h2>{{ icon('list', 20) }} Les biens</h2>
+  <div class="asset-list">
+  {% for a in items %}
+    <a class="asset-card {{ 'off' if a.status != 'actif' }}" href="{{ url_for('immobilisations.asset', asset_id=a.id) }}">
+      <div class="asset-top"><strong>{{ a.name }}</strong><span class="tag {{ 'tag-gold' if a.status == 'actif' else '' }}">{{ a.category }}</span></div>
+      <div class="asset-bar" title="Usure : {{ a.st.progress|round(0)|int }} %"><span style="width: {{ a.st.progress|round(1) }}%"></span></div>
+      <div class="asset-num"><span>Acheté {{ a.cost|money }} · {{ a.purchase_date|date_fr }}</span><span>Valeur : <strong>{{ a.st.value|money }}</strong></span></div>
+      <small class="muted">{% if a.status != 'actif' %}Sorti le {{ a.end_date|date_fr }}{% elif a.st.finished %}Complètement usé (n'ajoute plus de coût){% else %}{{ a.st.monthly|money }} / mois · usé à {{ a.st.progress|round(0)|int }} % · jusqu'au {{ a.st.end|date_fr }}{% endif %} · {{ a.lot or 'toute la ferme' }}</small>
+    </a>
+  {% else %}<p class="muted">Aucun bien enregistré.</p>{% endfor %}
+  </div>
+</section>
+
+{% if has_chart %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Usure par mois</h2></div>
+  <details class="calc-banner fold" open data-fold="asset-chart"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>Chaque barre = l'usure de tous les biens pendant le mois. Elle augmente quand on achète du matériel, elle baisse quand un bien est complètement usé ou sorti.</span></div></details>
+  <div class="chart-box" data-chart='{{ chart|tojson }}'></div>
+</section>
+{% endif %}
+
+{% if can('immobilisations', 2) %}
+<section class="card top-gap" id="nouveau">
+  <h2>{{ icon('plus', 20) }} Nouveau bien</h2>
+  <form method="post" action="{{ url_for('immobilisations.new') }}" class="stack">{{ csrf() }}
+    {{ asset_fields({'name': '', 'category': '', 'purchase_date': today, 'cost': none, 'life_years': none, 'residual': 0, 'lot_id': none, 'account_id': none, 'notes': ''}, cats, lots, accounts, today) }}
+    <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le bien</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{{ asset_js(cats) }}{% endblock %}

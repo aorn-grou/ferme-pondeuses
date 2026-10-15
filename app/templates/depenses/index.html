@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Dépenses{% endblock %}
+{% block content %}
+{% call page_head('Dépenses', "Électricité, transport, réparations, litière… Chaque dépense sort d'une caisse (ou reste « à payer ») et compte dans le coût d'un œuf.", 'receipt') %}
+  {% if can('depenses', 2) %}<a class="btn primary" href="#nouvelle">{{ icon('plus', 18) }} Nouvelle dépense</a>{% endif %}
+{% endcall %}
+
+<details class="calc-banner fold" open data-fold="dep-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>1️⃣ Écrivez la dépense : quoi, combien, payée avec quelle caisse. L'argent <strong>sort de la caisse</strong> tout de suite.
+  2️⃣ Pas encore payée ? Cochez <strong>« pas encore payé »</strong> : elle reste en rouge dans « À payer » jusqu'au clic sur <strong>Payer</strong>.
+  3️⃣ <strong>Pour quel lot ?</strong> Un lot précis → tout le coût va à ce lot. <strong>Commune</strong> (électricité, gardien…) → elle est
+  <strong>partagée entre les lots présents ce jour-là</strong>, selon leur nombre de poules. Elle compte ainsi dans le coût d'un œuf de chaque lot.</span>
+  <small>Les achats de matières premières, les poussins et la provende ne s'écrivent pas ici : ils ont déjà leur page.</small></div></details>
+
+<div class="kpis top-gap-sm">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('receipt', 18) }}</span><span class="tag tag-red">ce mois</span></div>
+    <div class="kpi-val">{{ kpi.month|money }}</div><div class="kpi-lab">Dépenses du mois{% if kpi.common %} · dont communes {{ kpi.common|money }}{% endif %}</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('clock', 18) }}</span><span class="tag tag-gold">mois dernier</span></div>
+    <div class="kpi-val">{{ kpi.prev|money }}</div><div class="kpi-lab">Pour comparer</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('chart', 18) }}</span><span class="tag tag-green">moyenne</span></div>
+    <div class="kpi-val">{{ kpi.avg|money }}</div><div class="kpi-lab">par mois (6 derniers mois finis)</div></div>
+  <a class="kpi" href="{{ url_for('depenses.index', voir='a_payer') }}"><div class="kpi-top"><span class="kpi-ic ic-red">{{ icon('alert', 18) }}</span>{% if kpi.unpaid %}<span class="tag tag-red">à payer</span>{% else %}<span class="tag tag-green">rien à payer</span>{% endif %}</div>
+    <div class="kpi-val">{{ kpi.unpaid|money }}</div><div class="kpi-lab">Dépenses pas encore payées (dettes)</div></a>
+</div>
+
+{% if has_chart %}
+<div class="grid two top-gap">
+<section class="card">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Dépenses par mois</h2></div>
+  <details class="calc-banner fold" open data-fold="dep-chart"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>Chaque barre = le total des dépenses d'un mois. Une barre beaucoup plus haute que les autres ? Regardez ce mois-là dans la liste. Le mois marqué * n'est pas encore fini.</span></div></details>
+  <div class="chart-box" data-chart='{{ chart|tojson }}'></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>{{ icon('list', 20) }} Où part l'argent ? <small class="muted">· 3 derniers mois</small></h2></div>
+  <details class="calc-banner fold" open data-fold="dep-cat"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>Les postes de dépense, du plus cher au moins cher. La barre la plus longue = là où on peut économiser le plus.</span></div></details>
+  <div class="cause-bars">
+    {% for c in by_cat %}
+    <a class="cause" href="{{ url_for('depenses.index', categorie=c.name, voir='tout') }}"><div class="cause-top"><strong>{{ c.name }}</strong><span>{{ c.value|money }} <small class="muted">· {{ c.pct|round(0)|int }} % · {{ c.count }} fois</small></span></div>
+      <div class="cause-bar"><span style="width: {{ [c.pct, 2]|max|round(0) }}%"></span></div></a>
+    {% else %}<p class="muted">Pas de dépense ces 3 derniers mois.</p>{% endfor %}
+  </div>
+</section>
+</div>
+{% endif %}
+
+{% if can('depenses', 2) %}
+<section class="card top-gap" id="nouvelle">
+  <h2>{{ icon('plus', 20) }} Nouvelle dépense</h2>
+  <form method="post" action="{{ url_for('depenses.new') }}" class="stack" data-exp-form>{{ csrf() }}
+    <div class="grid four top">
+      <div class="field"><label>Date *</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+      <div class="field"><label>Quoi ? (poste) *</label><input class="input" name="category" list="dl-cats" required maxlength="60" placeholder="ex. Électricité" data-combo>
+        <datalist id="dl-cats">{% for c in cats %}<option value="{{ c }}">{% endfor %}</datalist></div>
+      <div class="field"><label>Détail</label><input class="input" name="label" maxlength="120" placeholder="ex. facture JIRAMA septembre"></div>
+      <div class="field"><label>Montant (Ar) *</label><input class="input" name="amount" inputmode="decimal" required placeholder="ex. 85000"></div>
+    </div>
+    <div class="grid four top">
+      <div class="field"><label>Pour quel lot ?</label><select class="input" name="lot_id"><option value="">Commune (partagée entre les lots)</option>
+        {% for l in lots if l.status == 'actif' %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}</select>
+        <p class="hint">Commune = partagée selon le nombre de poules de chaque lot.</p></div>
+      <div class="field"><label>Payé avec</label><select class="input" name="account_id" data-free="compte" data-new-tip="Nouveau compte : il sera créé.">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Payé à (facultatif)</label><input class="input" name="beneficiary" maxlength="80" placeholder="ex. JIRAMA, Rakoto transport"></div>
+      <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="unpaid" value="1"> Pas encore payé (à payer plus tard)</label></div>
+    </div>
+    <div class="field"><label>Remarque</label><input class="input" name="notes" maxlength="300" placeholder="facultatif"></div>
+    <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la dépense</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} {% if show == 'a_payer' %}À payer{% else %}Liste des dépenses{% endif %}</h2>
+    <form method="get" class="inline-form wrap">
+      <select class="input sm" name="voir" onchange="this.form.submit()"><option value="">3 derniers mois</option><option value="tout" {% if show == 'tout' %}selected{% endif %}>Tout</option><option value="a_payer" {% if show == 'a_payer' %}selected{% endif %}>À payer seulement</option></select>
+      <select class="input sm" name="mois" onchange="this.form.submit()"><option value="">Tous les mois</option>{% for m in months %}<option value="{{ m }}" {% if period == m %}selected{% endif %}>{{ mlabel(m) }}</option>{% endfor %}</select>
+      <select class="input sm" name="categorie" onchange="this.form.submit()"><option value="">Tous les postes</option>{% for c in cats %}<option value="{{ c }}" {% if cat == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      <select class="input sm" name="lot" onchange="this.form.submit()"><option value="">Tous les lots</option>{% for l in lots %}<option value="{{ l.id }}" {% if lot_id == l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select>
+    </form></div>
+  <table class="table responsive" data-limit="20">
+    <thead><tr><th>Date</th><th>Quoi</th><th>Lot</th><th>Payé avec</th><th class="right">Montant</th><th>État</th><th></th></tr></thead>
+    <tbody>{% for e in items %}
+      <tr id="dep-{{ e.id }}">
+        <td data-label="Date" class="nowrap">{{ e.date|date_fr }}</td>
+        <td data-label="Quoi"><strong>{{ e.category }}</strong>{% if e.label %} · {{ e.label }}{% endif %}{% if e.beneficiary or e.notes %}<small class="muted block">{% if e.beneficiary %}à {{ e.beneficiary }}{% endif %}{% if e.notes %} · {{ e.notes }}{% endif %}</small>{% endif %}</td>
+        <td data-label="Lot">{{ e.lot or 'Commune' }}</td>
+        <td data-label="Payé avec">{{ e.account or '—' }}</td>
+        <td data-label="Montant" class="right"><strong>{{ e.amount|money }}</strong></td>
+        <td data-label="État">{% if e.status == 'a_payer' %}<span class="badge badge-danger">à payer</span>
+          {% if can('depenses', 2) %}<details class="hs-confirm"><summary class="btn primary sm">Payer</summary>
+            <form method="post" action="{{ url_for('depenses.pay', exp_id=e.id) }}" class="inline-form wrap top-gap-sm">{{ csrf() }}
+              <input class="input sm" type="date" name="date" value="{{ today }}" max="{{ today }}">
+              <select class="input sm" name="account_id">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select>
+              <button class="btn primary sm" type="submit">{{ icon('check', 14) }} Payé</button></form></details>{% endif %}
+          {% else %}<span class="badge badge-ok">payé</span>{% endif %}</td>
+        <td class="right nowrap">{% if can_correct('depenses', e) %}<a class="btn ghost sm" href="{{ url_for('depenses.edit', exp_id=e.id) }}" title="Corriger">{{ icon('edit', 14) }}</a>
+          <form method="post" action="{{ url_for('depenses.delete', exp_id=e.id) }}" class="inline" data-confirm="Supprimer cette dépense ? L'argent reviendra dans la caisse.">{{ csrf() }}<button class="btn danger-ghost sm" type="submit" title="Supprimer">{{ icon('trash', 14) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Aucune dépense ici.</td></tr>{% endfor %}</tbody>
+    {% if items %}<tfoot><tr><td colspan="4"><strong>Total ({{ items|length }})</strong></td><td class="right"><strong>{{ items|sum(attribute='amount')|money }}</strong></td><td colspan="2"></td></tr></tfoot>{% endif %}
+  </table>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endblock %}

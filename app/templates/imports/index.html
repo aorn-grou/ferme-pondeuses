@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Import Excel{% endblock %}
+{% block content %}
+{% call page_head('Import Excel', "Reprendre d'un coup vos anciens cahiers ou fichiers Excel : ramassages, ventes, dépenses, mortalité.", 'upload') %}{% endcall %}
+<details class="calc-banner fold" open data-fold="imp-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>1️⃣ <strong>Téléchargez le modèle</strong> de ce que vous voulez importer (les colonnes sont prêtes, avec un exemple en ligne 2).
+  2️⃣ <strong>Remplissez-le</strong> dans Excel : une ligne = une saisie. Enregistrez.
+  3️⃣ <strong>Envoyez-le</strong> ici : le logiciel <strong>vérifie chaque ligne</strong> et montre en vert ce qui est bon, en rouge ce qui ne va pas (avec la raison).
+  4️⃣ <strong>Confirmez</strong> : seules les lignes vertes sont enregistrées, comme si vous les aviez tapées.
+  Une erreur ? <strong>« Annuler cet import »</strong> efface tout ce qu'il a ajouté.</span>
+  <small>Les noms des lots doivent être écrits exactement comme dans le logiciel (la liste est dans le modèle). Les clients et les comptes inconnus sont créés.</small></div></details>
+{% if not xlsx %}<p class="flash flash-info top-gap-sm">Les modèles sont en CSV (Excel sait les ouvrir). Pour des modèles .xlsx, installez « openpyxl » sur le serveur.</p>{% endif %}
+
+<div class="grid two top-gap">
+{% for key, k in kinds.items() %}
+  <section class="card imp-card">
+    <h2>{{ k.emoji }} {{ k.title }}</h2>
+    <p class="muted small">{{ k.help }}</p>
+    <p class="small"><strong>Colonnes :</strong> {% for c in k.cols %}{{ c[0] }}{% if c[1] %} *{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+    <a class="btn ghost sm" href="{{ url_for('imports.template', kind=key) }}">{{ icon('download', 14) }} Télécharger le modèle</a>
+    {% if can('imports', 2) and can(k.module, 2) %}
+    <form method="post" action="{{ url_for('imports.verify') }}" enctype="multipart/form-data" class="inline-form wrap top-gap-sm">{{ csrf() }}
+      <input type="hidden" name="kind" value="{{ key }}">
+      <input class="input sm" type="file" name="file" accept=".xlsx,.xlsm,.csv" required>
+      <button class="btn primary sm" type="submit">{{ icon('upload', 14) }} Vérifier le fichier</button></form>
+    {% endif %}
+  </section>
+{% endfor %}
+</div>
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Imports déjà faits</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Date</th><th>Quoi</th><th>Fichier</th><th class="right">Lignes</th><th>Par</th><th></th></tr></thead>
+    <tbody>{% for i in history %}
+      <tr><td data-label="Date">{{ i.created_at|localdt if i.created_at else '' }}</td><td data-label="Quoi">{{ kinds[i.kind].emoji if i.kind in kinds }} {{ kinds[i.kind].title if i.kind in kinds else i.kind }}</td>
+        <td data-label="Fichier">{{ i.filename }}</td><td data-label="Lignes" class="right">{{ i.rows }}</td><td data-label="Par">{{ i.username }}</td>
+        <td class="right">{% if i.status == 'annule' %}<span class="badge badge-muted">annulé</span>{% elif can('imports', 3) %}
+          <form method="post" action="{{ url_for('imports.undo', import_id=i.id) }}" class="inline" data-confirm="Annuler cet import ? Tout ce qu'il a ajouté sera effacé.">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">↩️ Annuler cet import</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="6" class="center muted">Aucun import pour l'instant.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

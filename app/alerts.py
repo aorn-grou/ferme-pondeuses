@@ -42,6 +42,15 @@ def current_alerts():
             items = health_alerts() + items
         except Exception:  # pendant une mise à jour de la base
             pass
+    for module, path in (("depenses", "expenses"), ("caisse", "cash"), ("personnel", "staff"), ("reformes", "reforms")):
+        if can(module):
+            try:
+                import importlib
+
+                mod = importlib.import_module(f".{path}", __package__)
+                items.extend(mod.alerts())
+            except Exception:  # une alerte ratée ne doit jamais bloquer une page
+                pass
     items.sort(key=lambda a: 0 if a["level"] == "critical" else 1)
     g.alerts = items
     return items

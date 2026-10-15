@@ -77,6 +77,7 @@ SCHEMA = {
         ("kind", "TEXT NOT NULL DEFAULT 'caisse'"),
         ("sort", "INTEGER NOT NULL DEFAULT 0"),
         ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("share", "REAL NOT NULL DEFAULT 0"),  # part du bénéfice d'un propriétaire (%)
     ],
     "cash_movements": [
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
@@ -87,6 +88,8 @@ SCHEMA = {
         ("label", "TEXT DEFAULT ''"),
         ("ref_type", "TEXT DEFAULT ''"),
         ("ref_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("import_id", "INTEGER"),
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
@@ -222,6 +225,7 @@ SCHEMA = {
         ("good", "INTEGER NOT NULL DEFAULT 0"),    # bons œufs
         ("broken", "INTEGER NOT NULL DEFAULT 0"),  # cassés / fêlés
         ("notes", "TEXT DEFAULT ''"),
+        ("import_id", "INTEGER"),
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
@@ -247,6 +251,8 @@ SCHEMA = {
         ("account_id", "INTEGER"),
         ("lot_id", "INTEGER"),
         ("notes", "TEXT DEFAULT ''"),
+        ("lot_event_id", "INTEGER"),   # vente de poules de réforme : la sortie de l'effectif liée
+        ("import_id", "INTEGER"),
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
@@ -313,6 +319,7 @@ SCHEMA = {
         ("kind", "TEXT NOT NULL"),
         ("quantity", "INTEGER NOT NULL"),  # signé : négatif = poules en moins
         ("notes", "TEXT DEFAULT ''"),
+        ("import_id", "INTEGER"),
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
@@ -359,6 +366,87 @@ SCHEMA = {
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
+    # ----- Dépenses (électricité, transport, réparations…) -----
+    "expenses": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("category", "TEXT NOT NULL DEFAULT 'Divers'"),
+        ("label", "TEXT DEFAULT ''"),
+        ("amount", "REAL NOT NULL DEFAULT 0"),
+        ("lot_id", "INTEGER"),                       # vide = dépense commune, partagée entre les lots
+        ("beneficiary", "TEXT DEFAULT ''"),          # payé à qui
+        ("status", "TEXT NOT NULL DEFAULT 'paye'"),  # paye, a_payer
+        ("paid_date", "TEXT DEFAULT ''"),
+        ("account_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("import_id", "INTEGER"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    # ----- Personnel & salaires -----
+    "employees": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("job", "TEXT DEFAULT ''"),
+        ("phone", "TEXT DEFAULT ''"),
+        ("pay_type", "TEXT NOT NULL DEFAULT 'mois'"),  # mois, jour
+        ("salary", "REAL NOT NULL DEFAULT 0"),          # par mois ou par jour
+        ("start_date", "TEXT DEFAULT ''"),
+        ("end_date", "TEXT DEFAULT ''"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "staff_payments": [  # salaires, avances, primes payés
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("employee_id", "INTEGER NOT NULL"),
+        ("date", "TEXT NOT NULL"),
+        ("month", "TEXT NOT NULL"),                  # mois concerné AAAA-MM
+        ("kind", "TEXT NOT NULL DEFAULT 'salaire'"), # salaire, avance, prime
+        ("amount", "REAL NOT NULL DEFAULT 0"),
+        ("days", "REAL"),                            # jours payés (salaire à la journée)
+        ("account_id", "INTEGER"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    "staff_absences": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("employee_id", "INTEGER NOT NULL"),
+        ("date", "TEXT NOT NULL"),
+        ("days", "REAL NOT NULL DEFAULT 1"),
+        ("reason", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    # ----- Immobilisations (bâtiments, cages, matériel…) -----
+    "assets": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("name", "TEXT NOT NULL"),
+        ("category", "TEXT DEFAULT ''"),
+        ("purchase_date", "TEXT NOT NULL"),
+        ("cost", "REAL NOT NULL DEFAULT 0"),
+        ("life_years", "REAL NOT NULL DEFAULT 5"),
+        ("residual", "REAL NOT NULL DEFAULT 0"),     # valeur à la fin (souvent 0)
+        ("lot_id", "INTEGER"),                       # vide = sert à toute la ferme
+        ("account_id", "INTEGER"),                   # payé avec (vide = déjà payé avant le logiciel)
+        ("status", "TEXT NOT NULL DEFAULT 'actif'"), # actif, sorti
+        ("end_date", "TEXT DEFAULT ''"),
+        ("sale_price", "REAL NOT NULL DEFAULT 0"),
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    # ----- Imports Excel (pour pouvoir annuler un import entier) -----
+    "imports": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("kind", "TEXT NOT NULL"),
+        ("filename", "TEXT DEFAULT ''"),
+        ("rows", "INTEGER NOT NULL DEFAULT 0"),
+        ("status", "TEXT NOT NULL DEFAULT 'fait'"),  # fait, annule
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
 }
 
 # Données « de saisie » effacées par « Effacer les données de test ».
@@ -369,6 +457,7 @@ TRANSACTION_TABLES = [
     "productions", "production_lines", "feed_moves", "cash_movements",
     "lots", "lot_events", "feedings", "egg_collections", "clients", "sales", "sale_payments", "egg_moves",
     "health_programs", "health_program_items", "health_events",
+    "expenses", "staff_payments", "staff_absences", "assets", "imports",
 ]
 
 DEFAULT_ACCOUNTS = [
@@ -390,6 +479,10 @@ INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_purchase_lines ON purchase_lines(purchase_id)",
     "CREATE INDEX IF NOT EXISTS ix_formula_lines ON formula_lines(formula_id)",
     "CREATE INDEX IF NOT EXISTS ix_messages_ref ON messages(ref_type, ref_id)",
+    "CREATE INDEX IF NOT EXISTS ix_expenses_date ON expenses(date)",
+    "CREATE INDEX IF NOT EXISTS ix_staff_pay ON staff_payments(employee_id, month)",
+    "CREATE INDEX IF NOT EXISTS ix_egg_coll ON egg_collections(lot_id, date)",
+    "CREATE INDEX IF NOT EXISTS ix_lot_events ON lot_events(lot_id, date)",
 ]
 
 DEFAULT_SUPER_ADMIN = {"username": "super-adm", "password": "Ampandrana"}

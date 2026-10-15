@@ -165,12 +165,31 @@ def build(app, days=180, seed=7):
                 "material_id": [str(mat_ids[n]) for n, _ in items], "quantity": [str(k) for _, k in items],
                 "unit_price": [str(p) for p in unit_prices]})
 
-    with _ctx(app):  # argent de départ apporté par les propriétaires
-        conn = get_db()
-        conn.execute("""INSERT INTO cash_movements (date, account_id, amount, kind, label, ref_type, created_at)
-                        VALUES (?, ?, 12000000, 'apport', 'Apport de départ des propriétaires', '', datetime('now'))""",
-                     ((start - timedelta(days=1)).isoformat(), caisse))
-        conn.commit()
+    with _ctx(app):
+        associee = query("SELECT id FROM accounts WHERE name LIKE 'Rasoa%'", one=True)["id"]
+    # argent de départ apporté par les deux propriétaires (Caisse & propriétaires → Apport)
+    d0 = (start - timedelta(days=1)).isoformat()
+    br.post("/caisse/operation", {"op": "apport", "date": d0, "owner_id": str(proprio), "account_id": str(caisse),
+                                  "amount": "20000000", "notes": "Apport de départ"})
+    br.post("/caisse/operation", {"op": "apport", "date": d0, "owner_id": str(associee), "account_id": str(caisse),
+                                  "amount": "14000000", "notes": "Apport de départ"})
+    br.post("/caisse/parts", {f"share_{proprio}": "60", f"share_{associee}": "40"})
+    # immobilisations : bâtiments et cages déjà là avant le logiciel, groupe électrogène acheté pendant la période
+    for name, cat, ago, cost, years, acc in [("Bâtiments 1 et 2", "Bâtiment", 420, 18000000, 20, ""),
+                                             ("Bâtiment 3", "Bâtiment", 200, 7000000, 20, ""),
+                                             ("Cages et pondoirs", "Cages / batteries", 300, 6000000, 10, ""),
+                                             ("Abreuvoirs et mangeoires", "Abreuvoirs / mangeoires", 240, 900000, 5, ""),
+                                             ("Groupe électrogène 5 kVA", "Groupe électrogène", 150, 3500000, 5, str(caisse))]:
+        br.post("/immobilisations/nouveau", {"name": name, "category": cat, "purchase_date": (today - timedelta(days=ago)).isoformat(),
+                                             "cost": str(cost), "life_years": str(years), "residual": "", "lot_id": "",
+                                             "account_id": acc if today - timedelta(days=ago) >= start else "", "notes": ""})
+    # personnel
+    for name, job, pay_type, salary in [("Hery", "Soigneur", "mois", 250000), ("Fara", "Ramasseuse d'œufs", "mois", 180000),
+                                        ("Koto", "Gardien de nuit", "jour", 8000)]:
+        br.post("/personnel/employe/nouveau", {"name": name, "job": job, "phone": "", "pay_type": pay_type, "salary": str(salary),
+                                               "start_date": (start - timedelta(days=30)).isoformat(), "notes": ""})
+    with _ctx(app):
+        staff_ids = [r["id"] for r in query("SELECT id FROM employees ORDER BY id")]
     buy(start, {"Maïs grain": 3000, "Tourteau de soja": 1200, "Son de riz": 600, "Poudre de coquillage": 500, "Prémix ponte": 60})
 
     formula_ids = {}
@@ -341,6 +360,62 @@ def build(app, days=180, seed=7):
                 br.post(f"/sanitaire/soin/{ev['id']}/fait", {
                     "done_date": d, "product": ev["product"] or prod, "dose": "", "cost": str(rng.randint(lo, hi) // 500 * 500) if hi else "",
                     "account_id": str(caisse), "notes": ""})
+        # dépenses de la ferme
+        if day.day == 6:
+            br.post("/depenses/nouvelle", {"date": d, "category": "Électricité", "label": "Facture JIRAMA", "amount": str(rng.randint(120, 190) * 1000),
+                                           "lot_id": "", "account_id": str(caisse), "beneficiary": "JIRAMA", "notes": ""})
+            br.post("/depenses/nouvelle", {"date": d, "category": "Eau", "label": "", "amount": str(rng.randint(30, 50) * 1000),
+                                           "lot_id": "", "account_id": str(mobile), "beneficiary": "", "notes": ""})
+        if day.day in (3, 17):
+            br.post("/depenses/nouvelle", {"date": d, "category": "Transport", "label": "Livraison des œufs",
+                                           "amount": str(rng.randint(35, 80) * 1000), "lot_id": "", "account_id": str(caisse),
+                                           "beneficiary": "Taxi-brousse", "notes": ""})
+        if day.day == 12:
+            with _ctx(app):
+                some = query("SELECT id FROM lots WHERE status = 'actif' AND arrival_date <= ? ORDER BY RANDOM() LIMIT 1", (d,), one=True)
+            if some:
+                br.post("/depenses/nouvelle", {"date": d, "category": "Litière / copeaux", "label": "", "amount": str(rng.randint(20, 45) * 1000),
+                                               "lot_id": str(some["id"]), "account_id": str(caisse), "beneficiary": "Scierie", "notes": ""})
+        if day.day == 22 and rng.random() < 0.5:
+            br.post("/depenses/nouvelle", {"date": d, "category": "Réparation / entretien", "label": rng.choice(["Toiture", "Porte du bâtiment", "Pompe"]),
+                                           "amount": str(rng.randint(50, 150) * 1000), "lot_id": "", "account_id": str(caisse),
+                                           "beneficiary": "", "notes": ""})
+        if k == days - 9:  # une réparation pas encore payée (dette)
+            br.post("/depenses/nouvelle", {"date": d, "category": "Réparation / entretien", "label": "Grillage du bâtiment 2",
+                                           "amount": "85000", "lot_id": "", "account_id": str(caisse), "beneficiary": "Soudeur Naina",
+                                           "notes": "À payer à la fin du mois", "unpaid": "1"})
+        # salaires payés le dernier jour du mois (une avance le 15 pour le soigneur)
+        nxt = day + timedelta(days=1)
+        if day.day == 15:
+            br.post("/personnel/paiement", {"employee_id": str(staff_ids[0]), "kind": "avance", "month": d[:7], "date": d,
+                                            "amount": "50000", "account_id": str(caisse), "notes": ""})
+        if nxt.month != day.month:
+            from .staff import month_sheet
+
+            for eid in staff_ids:
+                with _ctx(app):
+                    s = month_sheet(query("SELECT * FROM employees WHERE id = ?", (eid,), one=True), d[:7])
+                if s["rest"] > 0.5:
+                    br.post("/personnel/paiement", {"employee_id": str(eid), "kind": "salaire", "month": d[:7], "date": d,
+                                                    "amount": str(int(round(s["rest"]))), "account_id": str(caisse), "notes": ""})
+            # le mobile money revient dans la caisse
+            with _ctx(app):
+                mm = query("SELECT COALESCE(SUM(amount), 0) AS b FROM cash_movements WHERE account_id = ?", (mobile,), one=True)["b"]
+            if mm > 200000:
+                br.post("/caisse/operation", {"op": "transfert", "date": d, "from_id": str(mobile), "account_id": str(caisse),
+                                              "amount": str(int(mm - 100000)), "notes": "Retrait mobile money"})
+        if k == days - 50:  # comptage de la caisse : il manque un peu d'argent (expliqué)
+            with _ctx(app):
+                bal = query("SELECT COALESCE(SUM(amount), 0) AS b FROM cash_movements WHERE account_id = ? AND date <= ?", (caisse, d), one=True)["b"]
+            br.post("/caisse/operation", {"op": "comptage", "date": d, "account_id": str(caisse), "counted": str(int(bal - 15000)),
+                                          "notes": "Monnaie rendue en trop"})
+        if k == days - 20:
+            br.post("/caisse/operation", {"op": "retrait", "date": d, "owner_id": str(proprio), "account_id": str(caisse),
+                                          "amount": "500000", "notes": "Besoin personnel"})
+        if k == days - 30 and "Lot A" in created:  # quelques poules faibles vendues en réforme
+            br.post("/reformes/vendre", {"lot_id": str(created["Lot A"]["id"]), "date": d, "birds": "25", "price_mode": "poule",
+                                         "price": "15000", "client_id": "__new__:Boucherie Rado", "paid": "", "account_id": str(caisse),
+                                         "notes": "Poules faibles, ne pondaient plus"})
         # fumier tous les mois
         if day.day == 15:
             br.post("/ventes/nouvelle", {"date": d, "client_id": "__new__:Coopérative maraîchère", "product": "Fumier",
@@ -401,7 +476,7 @@ def build(app, days=180, seed=7):
 # ---------------------------------------------------------------------------
 # Remise à zéro quotidienne : on recharge la copie et on avance ses dates jusqu'à aujourd'hui
 # ---------------------------------------------------------------------------
-DATE_COLS = ("date", "arrival_date", "end_date")
+DATE_COLS = ("date", "arrival_date", "end_date", "due_date", "done_date", "paid_date", "purchase_date", "start_date")
 STAMP_COLS = ("created_at", "last_login")
 
 
@@ -413,6 +488,8 @@ def shift_dates(conn, days):
         for c in cols:
             if c in DATE_COLS:
                 conn.execute(f"UPDATE {table} SET {c} = date({c}, ?) WHERE {c} != '' AND {c} IS NOT NULL", (f"{days:+d} days",))
+            elif c == "month" and table == "staff_payments":  # mois AAAA-MM : on décale le milieu du mois
+                conn.execute(f"UPDATE {table} SET month = strftime('%Y-%m', date(month || '-15', ?))", (f"{days:+d} days",))
             elif c in STAMP_COLS:
                 conn.execute(f"UPDATE {table} SET {c} = datetime({c}, ?) WHERE {c} != '' AND {c} IS NOT NULL", (f"{days:+d} days",))
     conn.commit()

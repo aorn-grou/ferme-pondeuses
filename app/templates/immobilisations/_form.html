@@ -1,0 +1,40 @@
+{% macro asset_fields(v, cats, lots, accounts, today) %}
+<div class="grid four top">
+  <div class="field span-2"><label>Nom du bien *</label><input class="input" name="name" value="{{ v.name }}" required maxlength="80" placeholder="ex. Cages bâtiment 2, Groupe électrogène 5 kVA"></div>
+  <div class="field"><label>Sorte</label><input class="input" name="category" value="{{ v.category }}" list="dl-asset-cats" data-combo data-asset-cat>
+    <datalist id="dl-asset-cats">{% for c in cats %}<option value="{{ c }}">{% endfor %}</datalist></div>
+  <div class="field"><label>Acheté le *</label><input class="input" type="date" name="purchase_date" value="{{ v.purchase_date }}" max="{{ today }}" required></div>
+</div>
+<div class="grid four top">
+  <div class="field"><label>Prix d'achat (Ar) *</label><input class="input" name="cost" inputmode="decimal" value="{{ v.cost|round(0)|int if v.cost else '' }}" required data-asset-cost></div>
+  <div class="field"><label>Va servir combien d'années ? *</label><input class="input" name="life_years" inputmode="decimal" value="{{ v.life_years|round(1) if v.life_years else '' }}" required data-asset-life placeholder="ex. 10"></div>
+  <div class="field"><label>Valeur à la fin (Ar)</label><input class="input" name="residual" inputmode="decimal" value="{{ v.residual|round(0)|int if v.residual else '' }}" placeholder="souvent 0" data-asset-res></div>
+  <div class="field"><label>Usure calculée</label><div class="stock-pill" data-asset-out>—</div></div>
+</div>
+<div class="grid three top">
+  <div class="field"><label>Sert à</label><select class="input" name="lot_id"><option value="">Toute la ferme (partagé entre les lots)</option>{% for l in lots %}<option value="{{ l.id }}" {% if v.lot_id == l.id %}selected{% endif %}>{{ l.name }} seulement</option>{% endfor %}</select></div>
+  <div class="field"><label>Payé avec</label><select class="input" name="account_id"><option value="">Déjà payé avant le logiciel (rien ne sort de la caisse)</option>{% for a in accounts %}<option value="{{ a.id }}" {% if v.account_id == a.id %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Remarque</label><input class="input" name="notes" value="{{ v.notes or '' }}" maxlength="300"></div>
+</div>
+{% endmacro %}
+{% macro asset_js(cats) %}
+<script>
+(() => {
+  const life = {{ cats|tojson }};
+  document.querySelectorAll("form").forEach((f) => {
+    const cost = f.querySelector("[data-asset-cost]"); if (!cost) return;
+    const yrs = f.querySelector("[data-asset-life]"), res = f.querySelector("[data-asset-res]"), out = f.querySelector("[data-asset-out]"), cat = f.querySelector("[data-asset-cat]");
+    const num = (el) => parseFloat(String(el.value || "").replace(/\s/g, "").replace(",", ".")) || 0;
+    const money = (v) => Math.round(v).toLocaleString("fr-FR") + " Ar";
+    const up = () => {
+      const c = num(cost), y = num(yrs), r = num(res);
+      if (!c || !y) { out.textContent = "—"; return; }
+      const d = Math.max(0, c - r) / (y * 365);
+      out.innerHTML = `${money(d)} / jour<br><small>${money(d * 30.4)} / mois · ${money(d * 365)} / an</small>`;
+    };
+    cat && cat.addEventListener("change", () => { if (!yrs.value && life[cat.value]) yrs.value = life[cat.value]; up(); });
+    f.addEventListener("input", up); up();
+  });
+})();
+</script>
+{% endmacro %}

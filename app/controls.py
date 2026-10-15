@@ -23,6 +23,7 @@ DOMAINS = {
     "provende": ("🌾", "Provende"),
     "poules": ("🐔", "Poules"),
     "oeufs": ("🥚", "Œufs"),
+    "argent": ("💰", "Argent (caisse)"),
 }
 
 
@@ -90,6 +91,23 @@ def gaps(since=None, until=None):
         from .sales import egg_move_gaps
 
         items.extend(egg_move_gaps(since, until))
+    if can("caisse"):
+        where, params = ["c.kind = 'ecart_caisse'"], []
+        if since:
+            where.append("c.date >= ?")
+            params.append(since)
+        if until:
+            where.append("c.date <= ?")
+            params.append(until)
+        for c in query(f"""SELECT c.*, a.name AS account, u.username, u.full_name FROM cash_movements c
+                           LEFT JOIN accounts a ON a.id = c.account_id LEFT JOIN users u ON u.id = c.created_by
+                           WHERE {' AND '.join(where)}""", params):
+            items.append({
+                "domain": "argent", "date": c["date"], "name": c["account"], "what": "Écart de caisse (comptage)",
+                "before": None, "after": None, "qty": c["amount"], "unit": "Ar", "value": c["amount"], "why": c["notes"] or "",
+                "by": c["full_name"] or c["username"], "table": "cash_movements", "id": c["id"],
+                "url": url_for("caisse.account", account_id=c["account_id"]), "module": "caisse",
+            })
     items.sort(key=lambda i: (i["date"], i.get("id", 0)), reverse=True)
     for item in items:
         item["explained"] = _explained(item["why"])
@@ -193,7 +211,8 @@ def _diagnostic(items):
             "total": sum(-i["value"] for i in losses)}
 
 
-TABLES = {"stock_moves": "matieres", "feed_moves": "provenderie", "lot_events": "lots", "egg_collections": "oeufs", "egg_moves": "ventes"}
+TABLES = {"stock_moves": "matieres", "feed_moves": "provenderie", "lot_events": "lots", "egg_collections": "oeufs", "egg_moves": "ventes",
+          "cash_movements": "caisse"}
 
 
 @bp.route("/expliquer", methods=["POST"])
@@ -216,8 +235,11 @@ def explain():
                "feed_moves": ("formula", row["formula_id"] if "formula_id" in row.keys() else None),
                "lot_events": ("lot", row["lot_id"] if "lot_id" in row.keys() else None),
                "egg_collections": ("lot", row["lot_id"] if "lot_id" in row.keys() else None),
-               "egg_moves": ("", None)}[table]
-        qty = row["quantity"] if "quantity" in row.keys() else (row["good"] + row["broken"])
+               "egg_moves": ("", None),
+               "cash_movements": ("account", row["account_id"] if "account_id" in row.keys() else None)}[table]
+        if table == "cash_movements" and row["kind"] != "ecart_caisse":
+            abort(403)
+        qty = row["quantity"] if "quantity" in row.keys() else (row["amount"] if "amount" in row.keys() else row["good"] + row["broken"])
         notify(ref[0], ref[1], f"📝 Explication ajoutée pour l'écart du {date_fr(row['date'])} "
                f"({fmt_qty(qty)}) : « {text} »")
         flash("Explication enregistrée. Vos associés sont prévenus.", "success")

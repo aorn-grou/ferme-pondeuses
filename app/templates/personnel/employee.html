@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}{{ emp.name }}{% endblock %}
+{% block content %}
+{% call page_head(emp.name, (emp.job or 'Employé') ~ ' · ' ~ (emp.salary|money) ~ ' par ' ~ ('jour' if emp.pay_type == 'jour' else 'mois') ~ ((' · arrivé le ' ~ (emp.start_date|date_fr)) if emp.start_date else '') ~ ((' · parti le ' ~ (emp.end_date|date_fr)) if emp.end_date else ''), 'users') %}
+  <a class="btn ghost" href="{{ url_for('personnel.index') }}">← Personnel</a>
+  {% if can('personnel', 3) %}<a class="btn ghost" href="{{ url_for('personnel.employee_edit', employee_id=emp.id) }}">{{ icon('edit', 16) }} Modifier</a>{% endif %}
+{% endcall %}
+<section class="card flush">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} Mois par mois</h2></div>
+  <table class="table responsive">
+    <thead><tr><th>Mois</th><th class="right">Dû</th><th class="right">Avances</th><th class="right">Salaire payé</th><th class="right">Primes</th><th class="right">Reste</th><th>Absences</th></tr></thead>
+    <tbody>{% for x in sheets %}<tr><td data-label="Mois"><a href="{{ url_for('personnel.index', mois=x.month) }}">{{ mlabel(x.month) }}</a></td>
+      <td data-label="Dû" class="right">{{ x.s.due|money }}</td><td data-label="Avances" class="right">{{ x.s.avance|money }}</td><td data-label="Salaire payé" class="right">{{ x.s.salaire|money }}</td>
+      <td data-label="Primes" class="right">{{ x.s.prime|money }}</td>
+      <td data-label="Reste" class="right">{% if x.s.rest > 0.5 %}<span class="badge badge-danger">{{ x.s.rest|money }}</span>{% else %}<span class="badge badge-ok">payé</span>{% endif %}</td>
+      <td data-label="Absences">{{ x.s.absent|round(1) if x.s.absent else '—' }}</td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Rien pour l'instant.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+<div class="grid two top-gap">
+<section class="card flush">
+  <div class="card-head padded"><h2>{{ icon('wallet', 20) }} Paiements</h2></div>
+  <table class="table responsive" data-limit="15"><thead><tr><th>Date</th><th>Quoi</th><th class="right">Montant</th><th></th></tr></thead>
+    <tbody>{% for p in pays %}<tr><td data-label="Date">{{ p.date|date_fr }}</td><td data-label="Quoi">{{ kinds.get(p.kind) }} · {{ mlabel(p.month) }}<small class="muted block">{{ p.account }}{% if p.days %} · {{ p.days|round(1) }} jour(s){% endif %}{% if p.notes %} · {{ p.notes }}{% endif %}</small></td>
+      <td data-label="Montant" class="right"><strong>{{ p.amount|money }}</strong></td>
+      <td class="right">{% if can_correct('personnel', p) %}<form method="post" action="{{ url_for('personnel.payment_delete', pay_id=p.id) }}" class="inline" data-confirm="Annuler ce paiement ? L'argent reviendra dans la caisse.">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 14) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="4" class="center muted">Aucun paiement.</td></tr>{% endfor %}</tbody></table>
+</section>
+<section class="card flush">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Absences</h2></div>
+  <table class="table responsive" data-limit="15"><thead><tr><th>Date</th><th>Jours</th><th>Raison</th><th></th></tr></thead>
+    <tbody>{% for a in absences %}<tr><td data-label="Date">{{ a.date|date_fr }}</td><td data-label="Jours">{{ a.days|round(1) }}</td><td data-label="Raison">{{ a.reason or '—' }}</td>
+      <td class="right">{% if can_correct('personnel', a) %}<form method="post" action="{{ url_for('personnel.absence_delete', abs_id=a.id) }}" class="inline">{{ csrf() }}<button class="btn danger-ghost sm" type="submit">{{ icon('trash', 14) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="4" class="center muted">Aucune absence.</td></tr>{% endfor %}</tbody></table>
+</section>
+</div>
+{% if can('personnel', 3) %}
+<section class="card top-gap">
+  <form method="post" action="{{ url_for('personnel.employee_leave', employee_id=emp.id) }}" class="inline-form wrap" data-confirm="{{ 'Enregistrer le départ de cet employé ?' if emp.active else 'Remettre cet employé actif ?' }}">{{ csrf() }}
+    {% if emp.active %}<label>Départ le</label><input class="input sm" type="date" name="end_date" value="{{ today }}"><button class="btn ghost" type="submit">👋 Il / elle ne travaille plus ici</button>
+    {% else %}<button class="btn ghost" type="submit">↩️ Remettre actif</button>{% endif %}</form>
+</section>
+{% endif %}
+{% endblock %}
