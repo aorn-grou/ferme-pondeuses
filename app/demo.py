@@ -671,7 +671,7 @@ from flask import Blueprint, current_app, flash, g, redirect, render_template, r
 bp = Blueprint("demo", __name__, url_prefix="/demo")
 
 # Ce qu'un visiteur ne peut pas faire dans la démo
-BLOCKED = {"users", "backups", "settings"}
+BLOCKED = {"backups", "settings"}  # les comptes s'essaient : chaque visiteur a sa propre copie
 BLOCKED_ENDPOINTS = {"auth.profile", "auth.first_setup", "auth.forgot", "auth.forgot_email", "auth.forgot_question"}
 
 
@@ -699,7 +699,7 @@ def guard():
         except OSError:
             pass
     if request.method == "POST" and (request.blueprint in BLOCKED or request.endpoint in BLOCKED_ENDPOINTS):
-        flash("Dans la démonstration, cette action est désactivée (comptes, sauvegardes, paramètres). "
+        flash("Dans la démonstration, cette action est désactivée (sauvegardes, paramètres, mot de passe). "
               "Tout le reste peut être essayé librement.", "info")
         return redirect(request.referrer or url_for("main.dashboard"))
     if request.blueprint == "backups" and request.endpoint != "backups.index":

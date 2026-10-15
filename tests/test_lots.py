@@ -247,8 +247,12 @@ class TestRapportsEtDemo(StockBase):
         # actions sensibles bloquées
         with c.session_transaction() as sess:
             tok = sess.get("_csrf")
-        res = c.post("/utilisateurs/nouveau", data={"_csrf": tok, "username": "pirate"}, follow_redirects=True)
+        res = c.post("/parametres/", data={"_csrf": tok, "company_name": "Pirate"}, follow_redirects=True)
         self.assertIn("désactivée", res.get_data(as_text=True))
+        # les comptes s'essaient dans la copie du visiteur, jamais dans la vraie base
+        c.post("/utilisateurs/nouveau", data={"_csrf": tok, "username": "essai", "full_name": "Essai", "email": "", "phone": "",
+                                              "role": "ventes", "password": "Essai2026", "use_defaults": "1"})
+        self.assertEqual(self.one("SELECT COUNT(*) FROM users WHERE username = 'essai'")[0], 0)
         # une saisie dans la démo ne touche pas la vraie base
         c.post("/ventes/nouvelle", data={"_csrf": tok, "date": date.today().isoformat(), "client_id": "", "product": "Fumier",
                                          "qty": "1", "unit": "sac", "price": "5000", "price_unit": "unite", "paid": "",
