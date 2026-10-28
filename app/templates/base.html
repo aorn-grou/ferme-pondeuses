@@ -7,7 +7,11 @@
   <meta name="theme-color" content="{{ menu_color }}">
   <title>{% block title %}{% endblock %}{% if self.title() %} · {% endif %}{{ conf.company_name }}</title>
   <link rel="icon" href="{{ logo_url if conf.logo_file else url_for('static', filename='img/androfia-icon.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/androfia-icon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/app-192.png') }}">
+  <link rel="manifest" href="{{ url_for('main.manifest') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="{{ conf.company_name }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap">
@@ -21,8 +25,9 @@
     }
   </style>
 </head>
-<body class="{% block body_class %}{% endblock %}">
 {% set shell = current_user and not (current_user.must_change_password or not current_user.setup_done) %}
+{% set mnav = module_nav() if shell else None %}
+<body class="{% block body_class %}{% endblock %}{{ ' has-modnav' if mnav }}">
 {% if shell %}
 <div class="app" data-app>
   <aside class="sidebar" id="sidebar" aria-label="Menu principal">
@@ -34,17 +39,29 @@
       </div>
       <button class="icon-btn sidebar-close" type="button" data-menu-close aria-label="Fermer le menu">{{ icon('x') }}</button>
     </div>
-    <nav class="nav">
+    {% if mnav %}
+    <nav class="nav modnav" data-modnav aria-label="Menu du module">
+      <button class="modnav-back" type="button" data-modnav-main>{{ icon('arrow-left', 18) }} <span>Menu principal</span></button>
+      <a class="modnav-head" href="{{ mnav.sections[0].url if mnav.sections else '#' }}"><span class="modnav-ic">{{ icon(mnav.icon, 22) }}</span><strong>{{ mnav.title }}</strong></a>
+      {% if mnav.sections %}<p class="nav-title">Sections</p>
+      {% for sct in mnav.sections %}<a class="nav-link {{ 'active' if sct.active }}" href="{{ sct.url }}"><span class="nav-ic">{{ icon(sct.icon, 18) }}</span><span>{{ sct.label }}</span></a>{% endfor %}{% endif %}
+      {% if mnav.actions %}<p class="nav-title">Actions</p>
+      {% for a in mnav.actions %}<a class="nav-action" href="{{ a.url }}"{% if a.open %} data-open="{{ a.open }}"{% if a.op %} data-op-open="{{ a.op }}"{% endif %}{% endif %}><span class="nav-ic">{{ icon(a.icon, 18) }}</span><span>{{ a.label }}</span></a>{% endfor %}{% endif %}
+      <a class="nav-link nav-help" href="{{ url_for('main.guide') }}#{{ mnav.help }}"><span class="nav-ic">{{ icon('help', 18) }}</span><span>Comment ça marche ?</span></a>
+    </nav>
+    {% endif %}
+    <nav class="nav mainnav" {% if mnav %}hidden data-mainnav{% endif %}>
+      {% if mnav %}<button class="modnav-back" type="button" data-modnav-module>{{ icon('arrow-left', 18) }} <span>Revenir à « {{ mnav.title }} »</span></button>{% endif %}
       {# le lien actif est celui dont l'adresse correspond le mieux à la page ouverte #}
       {% set act = namespace(href='') %}
-      {% for group, items in menu_groups %}{% for item in items %}{% set h = module_url(item.key) %}
+      {% for group, items in menu_groups %}{% for item in items %}{% set h = item.href %}
         {% if (request.path == h or (h != '/' and request.path.startswith(h))) and h|length > act.href|length %}{% set act.href = h %}{% endif %}
       {% endfor %}{% endfor %}
       {% for group, items in menu_groups %}
         <div class="nav-group">
           <p class="nav-title">{{ group }}</p>
           {% for item in items %}
-            {% set href = module_url(item.key) %}
+            {% set href = item.href %}
             <a class="nav-link {% if href == act.href or (not act.href and request.path == href) %}active{% endif %}" href="{{ href }}">
               {{ icon(item.icon) }}<span>{{ item.label }}</span>
               {% if not item.built %}<em class="soon">bientôt</em>{% endif %}
@@ -54,7 +71,8 @@
         </div>
       {% endfor %}
     </nav>
-    <div class="sidebar-foot">Version {{ app_version }}</div>
+    <div class="sidebar-foot"><button class="install-btn" type="button" data-install hidden>{{ icon('phone', 16) }} Installer l'application</button>
+      <span>Version {{ app_version }}</span></div>
   </aside>
   <div class="overlay" data-menu-close></div>
 
@@ -62,7 +80,13 @@
     <header class="topbar">
       <button class="icon-btn menu-btn" type="button" data-menu-open aria-label="Ouvrir le menu" aria-controls="sidebar">{{ icon('menu', 22) }}</button>
       <div class="topbar-title">{% block topbar_title %}{{ self.title() }}{% endblock %}</div>
+      <form class="topsearch" method="get" action="{{ url_for('recherche.index') }}" role="search" data-search>
+        <span class="topsearch-ic">{{ icon('search', 18) }}</span>
+        <input type="search" name="q" placeholder="Rechercher une page, un lot, un client, une vente…" autocomplete="off" aria-label="Rechercher" data-search-input>
+        <div class="search-pop" data-search-pop hidden></div>
+      </form>
       <div class="topbar-actions">
+        <a class="icon-btn search-btn" href="{{ url_for('recherche.index') }}" aria-label="Rechercher" title="Rechercher">{{ icon('search') }}</a>
         <a class="icon-btn help-btn" href="{{ url_for('main.guide') }}#{{ guide_anchor }}" aria-label="Guide d'utilisation" title="Aide : comment utiliser cette page">{{ icon('help', 20) }}</a>
         <button class="icon-btn" type="button" data-theme-toggle aria-label="Changer le thème" title="Thème : automatique / clair / sombre">
           <span class="theme-ico theme-auto">{{ icon('monitor') }}</span>
@@ -95,6 +119,7 @@
             </div>
             <a href="{{ url_for('auth.profile') }}">{{ icon('user', 18) }} Mon profil</a>
             <a href="{{ url_for('main.guide') }}">{{ icon('book', 18) }} Guide d'utilisation</a>
+            <a href="{{ url_for('main.install') }}">{{ icon('phone', 18) }} Installer l'application</a>
             <form method="post" action="{{ url_for('auth.logout') }}">
               {{ csrf() }}
               <button type="submit">{{ icon('logout', 18) }} Se déconnecter</button>
@@ -104,7 +129,7 @@
       </div>
     </header>
 
-    <main class="content" id="contenu">
+    <main class="content{{ ' form-page' if request.endpoint in form_endpoints }}" id="contenu">
       {% if is_demo %}<div class="demo-banner">🎬 <span><strong>Version de démonstration</strong> — les données sont des exemples. Essayez tout librement : tout est effacé quand vous vous déconnectez.</span>
         <a class="btn gold sm" href="{{ url_for('demo.index') }}">Changer de rôle</a></div>{% endif %}
       {% include "_flashes.html" %}
@@ -130,7 +155,8 @@
   </button>
 </div>
 {% endif %}
-<script>window.CSRF_TOKEN = "{{ csrf_token() }}"; window.THEME_URL = {{ (url_for('main.set_theme') if current_user else '')|tojson }}; window.UNREAD_URL = {{ (url_for('discussion.counter') if shell else '')|tojson }};</script>
+<script>window.SW_URL = "{{ url_for('main.service_worker') }}"; window.SEARCH_URL = {{ (url_for('recherche.quick') if shell else '')|tojson }};
+window.CSRF_TOKEN = "{{ csrf_token() }}"; window.THEME_URL = {{ (url_for('main.set_theme') if current_user else '')|tojson }}; window.UNREAD_URL = {{ (url_for('discussion.counter') if shell else '')|tojson }};</script>
 <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
 {% block scripts %}{% endblock %}
 </body>

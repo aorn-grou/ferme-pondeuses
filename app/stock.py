@@ -110,6 +110,17 @@ def materials_overview(include_inactive=False):
     return result
 
 
+def formula_order(alias="f"):
+    """Ordre des provendes selon l'âge des poules (Démarrage → Croissance → Pré-ponte → Ponte),
+    et non par ordre alphabétique. La phase choisie compte d'abord ; sinon on la devine d'après le nom."""
+    a = f"{alias}." if alias else ""
+    return (f"CASE WHEN {a}phase = 'Démarrage' OR (COALESCE({a}phase, '') = '' AND ({a}name LIKE '%marrage%' OR {a}name LIKE '%poussin%')) THEN 1 "
+            f"WHEN {a}phase = 'Croissance' OR (COALESCE({a}phase, '') = '' AND {a}name LIKE '%croissance%') THEN 2 "
+            f"WHEN {a}phase = 'Pré-ponte' OR (COALESCE({a}phase, '') = '' AND ({a}name LIKE '%pré%ponte%' OR {a}name LIKE '%pre%ponte%')) THEN 3 "
+            f"WHEN {a}phase = 'Ponte' OR (COALESCE({a}phase, '') = '' AND {a}name LIKE '%ponte%' AND {a}name NOT LIKE '%2%') THEN 4 "
+            f"WHEN {a}phase = 'Ponte 2' OR (COALESCE({a}phase, '') = '' AND {a}name LIKE '%ponte%') THEN 5 ELSE 6 END, {a}name")
+
+
 def formulas_overview(include_inactive=False):
     since = _days_window(30)
     rows = query(
@@ -119,7 +130,7 @@ def formulas_overview(include_inactive=False):
                              AND s.quantity < 0 AND s.kind = 'distribution' AND s.date >= ?), 0) AS used_30,
                    (SELECT COUNT(*) FROM formula_lines l WHERE l.formula_id = f.id) AS nb_lines
             FROM formulas f {'' if include_inactive else 'WHERE f.active = 1'}
-            ORDER BY f.name""",
+            ORDER BY {formula_order()}""",
         (since,),
     )
     result = []
@@ -145,7 +156,7 @@ def formula_lines(formula_id, conn=None):
     sql = """SELECT l.*, m.name, m.unit, m.avg_cost,
                     COALESCE((SELECT SUM(quantity) FROM stock_moves s WHERE s.material_id = m.id), 0) AS stock
              FROM formula_lines l JOIN materials m ON m.id = l.material_id
-             WHERE l.formula_id = ? ORDER BY l.quantity DESC, m.name"""
+             WHERE l.formula_id = ? ORDER BY l.id"""
     return conn.execute(sql, (formula_id,)).fetchall() if conn else query(sql, (formula_id,))
 
 

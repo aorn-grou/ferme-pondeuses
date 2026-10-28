@@ -226,7 +226,9 @@ def _health_programs():
 
 
 def _formulas():
-    return query("SELECT * FROM formulas WHERE active = 1 ORDER BY name")
+    from .stock import formula_order
+
+    return query(f"SELECT * FROM formulas WHERE active = 1 ORDER BY {formula_order('')}")
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +292,12 @@ def lot(lot_id):
     money["sales"] = lot_revenue(item)
     money["real"] = money["sales"]["total"] - money["costs"]
     egg_chart = lot_chart(item)
-    return render_template("lots/lot.html", item=item, s=summary, cons=cons, events=events, feedings=feedings,
+    from datetime import date as _Date, timedelta as _td
+
+    week_ago = (_Date.fromisoformat(today()) - _td(days=6)).isoformat()
+    deaths = {"today": -sum(e["quantity"] for e in events if e["kind"] in ("mort", "perte") and e["date"] == today()),
+              "week": -sum(e["quantity"] for e in events if e["kind"] in ("mort", "perte") and e["date"] >= week_ago)}
+    return render_template("lots/lot.html", item=item, s=summary, cons=cons, events=events, feedings=feedings, deaths=deaths,
                            eggs=eggs, money=money, egg_chart=egg_chart, health=health, health_window=health_window,
                            kinds=EVENT_KINDS, chart=json.dumps(chart) if chart else None,
                            formulas=_formulas(), today=today(), programs=program_rows(item["program_id"]))
@@ -502,7 +509,8 @@ def event_new(lot_id):
     qty = parse_num(request.form.get("quantity"))
     date = request.form.get("date") or today()
     notes = request.form.get("notes", "").strip()[:150]
-    back = redirect(url_for("lots.lot", lot_id=lot_id) + "#effectif")
+    anchor = "morts" if request.form.get("anchor") == "morts" else "effectif"
+    back = redirect(url_for("lots.lot", lot_id=lot_id) + "#" + anchor)
     if kind not in EVENT_KINDS or qty is None or qty < 0 or (kind != "comptage" and qty <= 0) or not valid_date(date):
         flash("Indiquez un nombre valide et une date.", "error")
         return back

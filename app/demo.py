@@ -247,9 +247,13 @@ def build(app, days=180, seed=7):
     from .lots import lot_week, suggestion
     from .sales import egg_stock
     from .stock import feed_stock
+    from . import manure as manure_batches_mod
 
     client_debt_sales = []
     last_buy = start
+    rng2 = random.Random(seed + 101)  # prix des œufs et fumier (n'influence pas le reste de l'exemple)
+    egg_price = 14500
+    manure_last = {}
     for k in range(days):
         day = start + timedelta(days=k)
         d = day.isoformat()
@@ -322,6 +326,28 @@ def build(app, days=180, seed=7):
                 rows["notes"].append(note)
         if rows["lot_id"]:
             br.post("/oeufs/", rows)
+        # prix du plateau : il change de temps en temps (marché, saison)
+        if k == 0 or rng2.random() < 0.06:
+            step = rng2.choice([-1000, -500, -500, 500, 500, 1000]) if k else 0
+            step = -abs(step) if egg_price >= 16000 else (abs(step) if egg_price <= 14000 else step)
+            egg_price = max(13000, min(17000, egg_price + step))
+            br.post("/prix-oeufs/changer", {"date": d, "tray_price": str(egg_price), "unit": "plateau",
+                                            "notes": "" if k == 0 else rng2.choice(["", "Marché", "Fêtes", "Beaucoup d'œufs au marché",
+                                                                                    "Saison des pluies"])})
+        # fumier : enlevé tous les ~3 semaines par lot, vendu quand il est sec (14 jours)
+        for l in lots:
+            if (day - manure_last.get(l["id"], Date.fromisoformat(l["arrival_date"]))).days >= rng2.randint(20, 26):
+                br.post("/fumier/enlever", {"date": d, "lot_id": str(l["id"]), "quantity": str(max(4, l["initial_count"] // 20 + rng2.randint(-3, 3))),
+                                            "unit": "sac", "dry_days": "14", "notes": ""})
+                manure_last[l["id"]] = day
+        if rng2.random() < 0.25 and day < today - timedelta(days=2):
+            with _ctx(app):
+                ready = [b for b in manure_batches_mod.batches(include_empty=False) if b["ready_date"] <= d and b["left"] > 0]
+            for b in ready[:1]:
+                q = max(1, int(b["left"] * rng2.uniform(0.5, 1)))
+                br.post("/fumier/vendre", {"batch_id": str(b["id"]), "date": d, "quantity": str(q), "price": str(rng2.choice([2500, 3000, 3000, 3500])),
+                                           "price_mode": "unite", "client_id": "__new__:" + rng2.choice(["Maraîcher Ivato", "Jardin Tsiazotafo", "Coopérative riz"]),
+                                           "paid": "", "account_id": str(caisse)})
         # ventes (presque tous les jours, par plateaux)
         with _ctx(app):
             stock = egg_stock(d)
@@ -334,7 +360,8 @@ def build(app, days=180, seed=7):
                 r = rng.random()
                 br.post("/ventes/nouvelle", {
                     "date": d, "client_id": "__new__:" + rng.choice(CLIENTS) if rng.random() < 0.8 else "", "product": "Œufs",
-                    "trays": str(t), "eggs": "", "price": str(rng.choice([14000, 14500, 15000, 15000, 15500])), "price_unit": "plateau",
+                    "trays": str(t), "eggs": "", "price": str(egg_price + (rng.choice([14000, 14500, 15000, 15000, 15500]) - 15000) // 2),
+                    "price_unit": "plateau",
                     "paid": "0" if r < 0.12 else "", "account_id": str(caisse if rng.random() < 0.7 else mobile), "lot_id": "",
                     "notes": ""})
                 if r < 0.12:
@@ -531,6 +558,11 @@ def reset(app):
     built = conn.execute("SELECT value FROM settings WHERE key = 'demo_built'").fetchone()
     built_day = Date.fromisoformat(built[0]) if built else Date.today()
     shift_dates(conn, (Date.today() - built_day).days)
+    conn.close()
+    from .db import connect, migrate
+
+    conn = connect(tmp)  # une démo construite avec une ancienne version reçoit les nouvelles tables
+    migrate(conn)
     conn.execute("PRAGMA journal_mode = DELETE")
     conn.close()
     for suffix in ("", "-wal", "-shm"):

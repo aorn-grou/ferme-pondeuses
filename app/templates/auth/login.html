@@ -15,4 +15,5 @@
 </form>
 <p class="center"><a href="{{ url_for('auth.forgot') }}">Mot de passe oublié ?</a></p>
 <a class="demo-link" href="{{ url_for('demo.index') }}">🐔 <span><strong>Découvrir le logiciel</strong><small>Essayez la démonstration avec des données d'exemple, sans mot de passe.</small></span></a>
+<div class="auth-install"><button class="install-btn" type="button" data-install hidden>{{ icon('phone', 16) }} Installer l'application sur cet appareil</button></div>
 {% endblock %}

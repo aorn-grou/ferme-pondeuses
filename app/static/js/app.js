@@ -782,3 +782,226 @@ document.querySelectorAll("table[data-limit]").forEach((table) => {
   const wrap = document.createElement("div"); wrap.className = "show-more-wrap"; wrap.appendChild(btn);
   table.after(wrap);
 });
+
+/* ======================================================================
+   Simplicité : menu par module, formulaires au milieu de l'écran,
+   recherche partout, application installable.
+   ====================================================================== */
+(function () {
+  "use strict";
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  /* ---------- Menu du module ⇄ menu principal ---------- */
+  const modnav = $("[data-modnav]"), mainnav = $("[data-mainnav]");
+  if (modnav && mainnav) {
+    $$("[data-modnav-main]").forEach((b) => b.addEventListener("click", () => { modnav.hidden = true; mainnav.hidden = false; }));
+    $$("[data-modnav-module]").forEach((b) => b.addEventListener("click", () => { mainnav.hidden = true; modnav.hidden = false; }));
+  }
+
+  /* ---------- Formulaire au milieu de l'écran ---------- */
+  let open = null, backdrop = null, placeholder = null;
+  function close() {
+    if (!open) return;
+    open.classList.remove("as-modal");
+    const btn = $(".modal-x", open);
+    if (btn) btn.remove();
+    if (placeholder) { placeholder.replaceWith(open); placeholder = null; }
+    if (backdrop) backdrop.remove();
+    document.body.classList.remove("modal-on");
+    open = null;
+  }
+  function openCard(card, op) {
+    if (!card) return false;
+    close();
+    // la carte est déplacée à la fin de la page (au-dessus de tout), puis remise à sa place en fermant
+    placeholder = document.createComment("modal");
+    card.replaceWith(placeholder);
+    document.body.appendChild(card);
+    backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.addEventListener("click", close);
+    document.body.appendChild(backdrop);
+    card.classList.add("as-modal");
+    const x = document.createElement("button");
+    x.type = "button"; x.className = "modal-x"; x.setAttribute("aria-label", "Fermer"); x.innerHTML = "✕";
+    x.addEventListener("click", close);
+    card.prepend(x);
+    document.body.classList.add("modal-on");
+    open = card;
+    if (op) { const chip = $(`[data-op="${op}"]`, card); if (chip) chip.click(); }
+    const field = $("input:not([type=hidden]):not([type=date]), select, textarea", card);
+    if (field && window.matchMedia("(min-width: 700px)").matches) setTimeout(() => field.focus(), 60);
+    const app = $("[data-app]");
+    if (app) app.classList.remove("menu-open");
+    return true;
+  }
+  const isFormCard = (el) => el && el.matches("section, .card") && $("form", el);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+
+  // boutons « #nouvelle », « #vendre »… de la page
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("a[href^='#'], a[data-open]");
+    if (!a) return;
+    const id = a.dataset.open || a.getAttribute("href").slice(1);
+    if (!id) return;
+    if (a.dataset.open) {
+      // action du menu : la carte est-elle sur cette page ?
+      const card = document.getElementById(id);
+      if (isFormCard(card)) { e.preventDefault(); openCard(card, a.dataset.opOpen); }
+      return;
+    }
+    const card = document.getElementById(id);
+    if (isFormCard(card)) { e.preventDefault(); openCard(card); }
+  });
+  // ouverture demandée par l'adresse (?ouvrir=…), en venant d'une autre page
+  document.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get("ouvrir");
+    if (!id) return;
+    const card = document.getElementById(id);
+    if (isFormCard(card)) openCard(card, params.get("op"));
+    params.delete("ouvrir"); params.delete("op");
+    const qs = params.toString();
+    history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+  });
+  // petites fenêtres « Payer », « Corriger »… : au milieu quand on clique
+  $$("details.hs-confirm > summary").forEach((s) => s.addEventListener("click", () => {
+    const d = s.parentElement;
+    setTimeout(() => {
+      if (d.open && !d.classList.contains("in-modal")) {
+        let body = d.querySelector(":scope > .hs-body");
+        if (!body) {
+          body = document.createElement("div");
+          body.className = "hs-body";
+          Array.from(d.children).filter((c) => c.tagName !== "SUMMARY").forEach((c) => body.appendChild(c));
+          d.appendChild(body);
+        }
+        if (!body.querySelector(".modal-x")) {
+          const x = document.createElement("button");
+          x.type = "button"; x.className = "modal-x"; x.setAttribute("aria-label", "Fermer"); x.innerHTML = "✕";
+          x.addEventListener("click", () => { d.open = false; });
+          body.prepend(x);
+        }
+        const title = s.textContent.trim();
+        if (title && !body.querySelector(".hs-title")) {
+          const h = document.createElement("p"); h.className = "hs-title"; h.textContent = title; body.prepend(h);
+        }
+        d.classList.add("in-modal");
+        const bd = document.createElement("div");
+        bd.className = "modal-backdrop light";
+        bd.addEventListener("click", () => { d.open = false; });
+        d.appendChild(bd);
+      }
+    }, 0);
+  }));
+  $$("details.hs-confirm").forEach((d) => d.addEventListener("toggle", () => {
+    if (!d.open && d.classList.contains("in-modal")) {
+      d.classList.remove("in-modal");
+      const bd = $(":scope > .modal-backdrop", d);
+      if (bd) bd.remove();
+    }
+  }));
+
+  /* ---------- Recherche partout ---------- */
+  const sf = $("[data-search]");
+  if (sf && window.SEARCH_URL) {
+    const input = $("[data-search-input]", sf), pop = $("[data-search-pop]", sf);
+    let timer, last = "", ctrl;
+    const esc = (t) => String(t || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const show = (items, q) => {
+      if (!items.length) { pop.innerHTML = `<p class="search-empty">Rien trouvé pour « ${esc(q)} ».</p>`; pop.hidden = false; return; }
+      let html = "", group = "";
+      items.forEach((r) => {
+        if (r.group !== group) { group = r.group; html += `<p class="search-group">${esc(group)}</p>`; }
+        html += `<a class="search-row" href="${esc(r.url)}"><strong>${esc(r.label)}</strong><small>${esc(r.detail)}</small></a>`;
+      });
+      html += `<a class="search-all" href="${sf.action}?q=${encodeURIComponent(q)}">Voir tous les résultats →</a>`;
+      pop.innerHTML = html; pop.hidden = false;
+    };
+    input.addEventListener("input", () => {
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 2 && !/^\d+$/.test(q)) { pop.hidden = true; return; }
+      timer = setTimeout(() => {
+        if (q === last) return;
+        last = q;
+        if (ctrl) ctrl.abort();
+        ctrl = new AbortController();
+        fetch(window.SEARCH_URL + "?q=" + encodeURIComponent(q), { signal: ctrl.signal, headers: { Accept: "application/json" } })
+          .then((r) => r.json()).then((items) => show(items, q)).catch(() => {});
+      }, 220);
+    });
+    input.addEventListener("keydown", (e) => {
+      const rows = $$("a", pop);
+      if (pop.hidden || !rows.length) return;
+      const i = rows.indexOf(document.activeElement);
+      if (e.key === "ArrowDown") { e.preventDefault(); rows[0].focus(); }
+      if (e.key === "Escape") pop.hidden = true;
+      if (i < 0 && e.key === "Enter" && rows.length && pop.querySelector(".search-row")) { /* Entrée = page de résultats */ }
+    });
+    pop.addEventListener("keydown", (e) => {
+      const rows = $$("a", pop), i = rows.indexOf(document.activeElement);
+      if (e.key === "ArrowDown" && i < rows.length - 1) { e.preventDefault(); rows[i + 1].focus(); }
+      if (e.key === "ArrowUp") { e.preventDefault(); (i > 0 ? rows[i - 1] : input).focus(); }
+      if (e.key === "Escape") { pop.hidden = true; input.focus(); }
+    });
+    document.addEventListener("click", (e) => { if (!sf.contains(e.target)) pop.hidden = true; });
+    input.addEventListener("focus", () => { if (pop.innerHTML && input.value.trim().length >= 2) pop.hidden = false; });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "/" && !e.target.closest("input, textarea, select, [contenteditable]")) { e.preventDefault(); input.focus(); }
+    });
+  }
+
+  /* ---------- Application installable ---------- */
+  if ("serviceWorker" in navigator && window.SW_URL && location.protocol !== "file:") {
+    window.addEventListener("load", () => navigator.serviceWorker.register(window.SW_URL, { scope: "/" }).catch(() => {}));
+  }
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (standalone) $$("[data-installed]").forEach((el) => { el.hidden = false; });
+  let deferred = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferred = e;
+    $$("[data-install]").forEach((b) => { b.hidden = false; });
+  });
+  $$("[data-install]").forEach((b) => b.addEventListener("click", () => {
+    if (!deferred) { location.href = "/installer"; return; }
+    deferred.prompt();
+    deferred.userChoice.finally(() => { deferred = null; $$("[data-install]").forEach((x) => { x.hidden = true; }); });
+  }));
+  window.addEventListener("appinstalled", () => $$("[data-install]").forEach((b) => { b.hidden = true; }));
+})();
+
+/* ---------- Morts : saisie rapide sur la page d'un lot ---------- */
+(function () {
+  const f = document.querySelector("[data-qd]");
+  if (!f) return;
+  const birds = parseInt(f.dataset.birds, 10) || 0;
+  const qty = f.querySelector("[data-qd-qty]"), prev = f.querySelector("[data-qd-preview]"), lab = f.querySelector("[data-qd-label]");
+  const kind = () => (f.querySelector("[name=kind]:checked") || {}).value || "mort";
+  const labels = { mort: "Combien de poules mortes ?", perte: "Combien de poules disparues ?", ajout: "Combien de poules ajoutées ?",
+    comptage: "Combien de poules avez-vous comptées ?" };
+  const fmt = (n) => n.toLocaleString("fr-FR");
+  const up = () => {
+    const k = kind(), n = parseInt(String(qty.value).replace(/\s/g, ""), 10) || 0;
+    lab.textContent = labels[k];
+    let after = k === "ajout" ? birds + n : k === "comptage" ? n : birds - n;
+    const diff = after - birds;
+    prev.innerHTML = n || k === "comptage" ? `Effectif : <strong>${fmt(birds)}</strong> → <strong class="${diff < 0 ? "text-danger" : "text-ok"}">${fmt(after)}</strong> poules` +
+      (k === "comptage" && n ? ` <small class="muted">(écart ${diff > 0 ? "+" : ""}${fmt(diff)})</small>` : "") : `Effectif : <strong>${fmt(birds)}</strong> poules`;
+    if (after < 0) prev.innerHTML += ' <span class="text-danger">— impossible, pas assez de poules</span>';
+  };
+  f.addEventListener("change", (e) => {
+    if (e.target.name === "kind") { qty.value = e.target.value === "comptage" ? birds : 1; }
+    up();
+  });
+  qty.addEventListener("input", up);
+  f.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
+    const n = (parseInt(qty.value, 10) || 0) + parseInt(b.dataset.step, 10);
+    qty.value = Math.max(kind() === "comptage" ? 0 : 1, n);
+    up();
+  }));
+  f.querySelectorAll("[data-cause]").forEach((b) => b.addEventListener("click", () => { f.querySelector("[data-qd-notes]").value = b.dataset.cause; }));
+  up();
+})();

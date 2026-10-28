@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Fumier{% endblock %}
+{% block content %}
+{% call page_head('Fumier', "Le fumier enlevé de chaque lot sèche 2 semaines, puis se vend : l'argent entre dans la caisse.", 'sprout') %}
+  {% if can('fumier', 2) %}<a class="btn ghost" href="#enlever" data-modal>{{ icon('plus', 18) }} Enlever du fumier</a>
+  <a class="btn primary" href="#vendre" data-modal>{{ icon('cart', 18) }} Vendre du fumier</a>{% endif %}
+{% endcall %}
+
+<details class="calc-banner fold" open data-fold="fum-how"><summary>📖 Comment ça marche <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+  <span>1️⃣ <strong>Enlever</strong> : le jour où vous sortez le fumier d'un bâtiment, notez le lot et la quantité (sacs, charrettes…).
+  2️⃣ <strong>Il sèche</strong> : il est prêt à vendre <strong>14 jours</strong> après. Une alerte 🔔 vous prévient.
+  3️⃣ <strong>Vendre</strong> : l'argent entre dans la caisse et compte dans les ventes du lot (son bénéfice).</span></div></details>
+
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('clock', 18) }}</span><span class="tag tag-gold">sèche</span></div>
+    <div class="kpi-val">{% for u, q in kpi.drying.items() %}{{ q|num }} {{ u }}{% if not loop.last %} · {% endif %}{% else %}0{% endfor %}</div>
+    <div class="kpi-lab">{% if kpi.next %}Prochain prêt le {{ kpi.next.ready_date|date_fr }}{% else %}En train de sécher{% endif %}</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('check', 18) }}</span><span class="tag tag-green">prêt</span></div>
+    <div class="kpi-val">{% for u, q in kpi.ready.items() %}{{ q|num }} {{ u }}{% if not loop.last %} · {% endif %}{% else %}0{% endfor %}</div><div class="kpi-lab">Prêt à vendre</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('wallet', 18) }}</span><span class="tag tag-green">ce mois</span></div>
+    <div class="kpi-val">{{ kpi.month_money|money }}</div><div class="kpi-lab">Fumier vendu ce mois</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('chart', 18) }}</span><span class="tag tag-gold">total</span></div>
+    <div class="kpi-val">{{ kpi.total_money|money }}</div><div class="kpi-lab">Tout le fumier vendu</div></div>
+</div>
+
+{% if can('fumier', 2) %}
+<div class="grid two top-gap">
+<section class="card" id="enlever">
+  <h2>{{ icon('plus', 20) }} Enlever du fumier</h2>
+  <form method="post" action="{{ url_for('fumier.remove') }}" class="stack">{{ csrf() }}
+    <div class="grid two top">
+      <div class="field"><label>Enlevé le *</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+      <div class="field"><label>De quel lot ?</label><select class="input" name="lot_id"><option value="">Plusieurs lots / toute la ferme</option>{% for l in lots %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Quantité *</label><input class="input big-input" name="quantity" inputmode="decimal" required placeholder="ex. 20"></div>
+      <div class="field"><label>Unité</label><input class="input" name="unit" value="sac" list="dl-fum-units" data-combo>
+        <datalist id="dl-fum-units">{% for u in units %}<option value="{{ u }}">{% endfor %}</datalist></div>
+      <div class="field"><label>Prêt à vendre après (jours)</label><input class="input" name="dry_days" inputmode="numeric" value="14"></div>
+      <div class="field"><label>Remarque</label><input class="input" name="notes" maxlength="150" placeholder="facultatif"></div>
+    </div>
+    <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer</button></div>
+  </form>
+</section>
+
+<section class="card" id="vendre">
+  <h2>{{ icon('cart', 20) }} Vendre du fumier</h2>
+  {% if sellable %}
+  <form method="post" action="{{ url_for('fumier.sell') }}" class="stack" data-fum-sell>{{ csrf() }}
+    <div class="grid two top">
+      <div class="field span-2"><label>Quel tas ? *</label><select class="input" name="batch_id" required data-batch>
+        {% for b in sellable %}<option value="{{ b.id }}" data-left="{{ b.left|num }}" data-unit="{{ b.unit }}">{{ b.date|date_fr }} · {{ b.lot or 'plusieurs lots' }} · reste {{ b.left|num }} {{ b.unit }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Vendu le *</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+      <div class="field"><label>Quantité vendue * <small class="muted" data-unit-lab></small></label><input class="input big-input" name="quantity" inputmode="decimal" required data-q></div>
+      <div class="field"><label>Prix par <span data-unit-lab2>sac</span> (Ar) *</label><input class="input" name="price" inputmode="decimal" required placeholder="{{ (last_price.unit_price|round(0)|int) if last_price else 'ex. 5000' }}" data-p></div>
+      <div class="totals"><div class="grand"><span>Total</span><strong data-total>0 Ar</strong></div></div>
+      <div class="field"><label>Client</label><select class="input" name="client_id" data-free="client" data-placeholder="Écrivez le nom du client…" data-new-tip="Nouveau client : il sera créé.">
+        <option value="">— Client de passage —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Payé maintenant (Ar)</label><input class="input" name="paid" inputmode="decimal" placeholder="= total"><p class="hint">Vide = tout payé · 0 = à crédit.</p></div>
+      <div class="field span-2"><label>L'argent va dans</label><select class="input" name="account_id" data-free="compte">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="form-actions"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer la vente</button></div>
+  </form>
+  {% else %}
+  <p class="muted">Aucun fumier prêt à vendre pour l'instant.{% if kpi.next %} Le prochain sera sec le <strong>{{ kpi.next.ready_date|date_fr }}</strong>.{% endif %}</p>
+  {% endif %}
+</section>
+</div>
+{% endif %}
+
+<section class="card flush top-gap" id="tas">
+  <div class="card-head padded"><h2>{{ icon('layers', 20) }} Les tas de fumier</h2></div>
+  <table class="table responsive" data-limit="12">
+    <thead><tr><th>Enlevé le</th><th>Lot</th><th class="right">Quantité</th><th>Séchage</th><th class="right">Reste</th><th class="right">Vendu</th><th></th></tr></thead>
+    <tbody>{% for b in items %}
+      <tr id="tas-{{ b.id }}"><td data-label="Enlevé le" class="nowrap">{{ b.date|date_fr }}</td><td data-label="Lot">{{ b.lot or 'Plusieurs lots' }}</td>
+        <td data-label="Quantité" class="right"><strong>{{ b.quantity|num }} {{ b.unit }}</strong></td>
+        <td data-label="Séchage">{% if b.state == 'seche' %}<span class="pill pill-gold">🟠 sèche · prêt le {{ b.ready_date|date_fr }} ({{ b.days_left }} j)</span>
+          <div class="mini-bar"><span style="width: {{ b.progress }}%"></span></div>
+          {% elif b.state == 'pret' %}<span class="pill pill-green">🟢 prêt à vendre</span>{% else %}<span class="pill">✅ tout vendu</span>{% endif %}</td>
+        <td data-label="Reste" class="right">{{ b.left|num }} {{ b.unit }}</td>
+        <td data-label="Vendu" class="right">{{ b.money|money if b.money else '—' }}</td>
+        <td class="right">{% if not b.sold and can('fumier', 3) %}<form method="post" action="{{ url_for('fumier.delete', batch_id=b.id) }}" class="inline" data-confirm="Supprimer cet enlèvement de fumier ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit" title="Supprimer">{{ icon('trash', 14) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Aucun fumier noté pour l'instant.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+
+{% if chart %}
+<section class="card top-gap">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Argent du fumier par mois</h2></div>
+  <div class="chart-box" data-chart='{{ chart|tojson }}'></div>
+  <table class="table responsive top-gap-sm">
+    <thead><tr><th>Mois</th><th class="right">Enlevé</th><th class="right">Vendu</th><th class="right">Argent</th></tr></thead>
+    <tbody>{% for m in months %}<tr><td data-label="Mois">{{ m.label }}</td><td data-label="Enlevé" class="right">{{ m['in']|num }}</td><td data-label="Vendu" class="right">{{ m.out|num }}</td><td data-label="Argent" class="right"><strong>{{ m.money|money }}</strong></td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="card flush top-gap" id="ventes">
+  <div class="card-head padded"><h2>{{ icon('cart', 20) }} Ventes de fumier</h2></div>
+  <table class="table responsive" data-limit="10">
+    <thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Lot</th><th class="right">Quantité</th><th class="right">Total</th><th class="right">Payé</th></tr></thead>
+    <tbody>{% for s in sales %}
+      <tr class="clickable" data-href="{{ url_for('ventes.sale', sale_id=s.id) }}"><td data-label="Date" class="nowrap">{{ s.date|date_fr }}</td>
+        <td data-label="N°"><a href="{{ url_for('ventes.sale', sale_id=s.id) }}">n°{{ s.id }}</a></td><td data-label="Client">{{ s.client or 'De passage' }}</td>
+        <td data-label="Lot">{{ s.lot or '—' }}</td><td data-label="Quantité" class="right">{{ s.quantity|num }} {{ s.unit }}</td>
+        <td data-label="Total" class="right"><strong>{{ s.total|money }}</strong></td><td data-label="Payé" class="right">{{ s.paid|money }}</td></tr>
+    {% else %}<tr><td colspan="7" class="center muted">Aucune vente de fumier.</td></tr>{% endfor %}</tbody>
+  </table>
+  <p class="hint padded">Une vente faite par erreur ? Ouvrez-la et cliquez « Annuler la vente » : le fumier revient dans son tas et l'argent ressort de la caisse.</p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>
+<script>
+(() => {
+  const f = document.querySelector("[data-fum-sell]");
+  if (!f) return;
+  const num = (el) => parseFloat(String(el.value || "").replace(/\s/g, "").replace(",", ".")) || 0;
+  const up = () => {
+    const o = f.querySelector("[data-batch]").selectedOptions[0];
+    const unit = o ? o.dataset.unit : "sac";
+    f.querySelector("[data-unit-lab]").textContent = o ? `(reste ${o.dataset.left} ${unit})` : "";
+    f.querySelector("[data-unit-lab2]").textContent = unit;
+    f.querySelector("[data-total]").textContent = Math.round(num(f.querySelector("[data-q]")) * num(f.querySelector("[data-p]"))).toLocaleString("fr-FR") + " Ar";
+  };
+  f.addEventListener("input", up); f.addEventListener("change", up); up();
+})();
+</script>{% endblock %}

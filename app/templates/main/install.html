@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Installer l'application{% endblock %}
+{% block content %}
+{% call page_head("Installer l'application", "Une icône sur votre écran : un seul clic pour ouvrir le logiciel, sans écrire l'adresse.", 'phone') %}{% endcall %}
+<section class="card install-card">
+  <img src="{{ url_for('static', filename='img/app-192.png') }}" alt="" width="88" height="88">
+  <div>
+    <h2>{{ conf.company_name }}</h2>
+    <p class="muted">Après l'installation, l'icône apparaît sur votre écran, comme une application.</p>
+    <button class="btn primary big" type="button" data-install hidden>{{ icon('download', 20) }} Installer maintenant</button>
+    <p class="text-ok" data-installed hidden>✅ L'application est déjà installée sur cet appareil.</p>
+  </div>
+</section>
+<div class="grid three top-gap">
+  <section class="card"><h2>🤖 Téléphone Android</h2><ol class="steps">
+    <li>Ouvrez le logiciel dans <strong>Chrome</strong>.</li>
+    <li>Touchez <strong>⋮</strong> (en haut à droite).</li>
+    <li>Touchez <strong>Installer l'application</strong> (ou « Ajouter à l'écran d'accueil »).</li>
+    <li>Confirmez : l'icône apparaît sur l'écran.</li></ol></section>
+  <section class="card"><h2>🍎 iPhone / iPad</h2><ol class="steps">
+    <li>Ouvrez le logiciel dans <strong>Safari</strong>.</li>
+    <li>Touchez le bouton <strong>Partager</strong> (carré avec une flèche ↑).</li>
+    <li>Touchez <strong>Sur l'écran d'accueil</strong>.</li>
+    <li>Touchez <strong>Ajouter</strong>.</li></ol></section>
+  <section class="card"><h2>💻 Ordinateur (PC)</h2><ol class="steps">
+    <li>Ouvrez le logiciel dans <strong>Chrome</strong> ou <strong>Edge</strong>.</li>
+    <li>Cliquez sur l'icône <strong>⊕ Installer</strong> au bout de la barre d'adresse (ou ⋮ → Installer).</li>
+    <li>Cliquez <strong>Installer</strong> : l'icône va sur le bureau et dans le menu Démarrer.</li></ol></section>
+</div>
+<p class="hint top-gap">Le logiciel a toujours besoin d'internet pour enregistrer. Sans connexion, l'application affiche un message clair au lieu d'une page d'erreur.</p>
+{% endblock %}

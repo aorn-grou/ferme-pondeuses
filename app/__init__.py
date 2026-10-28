@@ -7,14 +7,14 @@ from flask import Flask, flash, g, redirect, render_template, request, session, 
 
 from . import db
 from .security import (
-    LEVEL_LABELS, MENU_GROUPS, MODULE_ENDPOINTS, MODULE_INFO, MODULES, can, can_correct, check_csrf, csrf_token,
+    LEVEL_LABELS, MENU_EXTRA, MENU_GROUPS, MODULE_ENDPOINTS, MODULE_INFO, MODULES, can, can_correct, check_csrf, csrf_token,
     is_admin, is_super_admin, role_label,
 )
 from .utils import (
     all_settings, date_fr, fmt_money, fmt_number, fmt_qty, local_datetime, readable_text_on, valid_hex,
 )
 
-VERSION = "0.17.2"
+VERSION = "0.18.0"
 
 
 def _secret_key(instance_dir):
@@ -54,8 +54,8 @@ def create_app(test_config=None):
     db.init_app(app)
 
     from . import (
-        assets, auth, backups, cash, controls, demo, discussion, eggs, expenses, health, imports, lots, main, matieres, provenderie,
-        reforms, reports, sales, settings, staff, users,
+        assets, auth, backups, cash, controls, demo, discussion, eggs, expenses, health, imports, lots, main, manure, matieres,
+        prices, provenderie, reforms, reports, sales, search, settings, staff, users,
     )
 
     app.register_blueprint(discussion.bp)
@@ -74,6 +74,9 @@ def create_app(test_config=None):
     app.register_blueprint(reforms.bp)
     app.register_blueprint(imports.bp)
     app.register_blueprint(reports.bp)
+    app.register_blueprint(prices.bp)
+    app.register_blueprint(manure.bp)
+    app.register_blueprint(search.bp)
     app.register_blueprint(demo.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
@@ -142,14 +145,22 @@ def create_app(test_config=None):
         theme = (user["theme"] if user else None) or conf.get("default_theme") or "auto"
         if theme == "auto" and conf.get("default_theme") in ("light", "dark") and not user:
             theme = conf.get("default_theme")
-        menu_groups = []
-        for group in MENU_GROUPS:
-            items = [MODULE_INFO[m[0]] for m in MODULES if m[3] == group and user and can(m[0])]
-            if items:
-                menu_groups.append((group, items))
         def module_url(key):
             endpoint = MODULE_ENDPOINTS.get(key)
             return url_for(endpoint) if endpoint else url_for("main.module", key=key)
+
+        menu_groups = []
+        for group in MENU_GROUPS:
+            items = []
+            for m in MODULES:
+                if m[3] != group or not user or not can(m[0]):
+                    continue
+                items.append(dict(MODULE_INFO[m[0]], href=module_url(m[0])))
+                for key, label, ic, endpoint, perm in MENU_EXTRA.get(m[0], []):
+                    if can(perm):
+                        items.append({"key": key, "label": label, "icon": ic, "built": True, "href": url_for(endpoint)})
+            if items:
+                menu_groups.append((group, items))
 
         from .alerts import current_alerts
         from .discussion import comments_for, unread_count
@@ -159,13 +170,17 @@ def create_app(test_config=None):
         else:
             logo_url = url_for("static", filename="img/androfia-logo.png", v=VERSION)
 
+        from .nav import FORM_ENDPOINTS, module_nav
+
         return {
+            "module_nav": module_nav,
+            "form_endpoints": FORM_ENDPOINTS,
             "logo_url": logo_url,
             "is_demo": bool(g.get("demo")),
             "guide_anchor": {"matieres": "matieres", "provenderie": "provenderie", "lots": "lots", "oeufs": "oeufs",
                              "ventes": "ventes", "controles": "ecarts", "rapports": "rapports", "discussion": "discussion", "sanitaire": "sanitaire",
                              "depenses": "depenses", "caisse": "caisse", "personnel": "personnel", "immobilisations": "immobilisations",
-                             "reformes": "reformes", "imports": "import",
+                             "reformes": "reformes", "imports": "import", "fumier": "fumier", "prix": "ventes",
                              "users": "admin", "settings": "admin", "backups": "admin"}.get(request.blueprint or "", "tableau")
             if request.endpoint != "lots.feeding_day" else "alimentation",
             "module_url": module_url,

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head %}
+{% block title %}Recherche{% endblock %}
+{% block content %}
+{% call page_head('Recherche', "Cherchez n'importe quoi : un lot, un client, une vente (ex. « 12 »), une dépense, une page…", 'search') %}{% endcall %}
+<form method="get" class="search-big">
+  <span class="search-ic">{{ icon('search', 22) }}</span>
+  <input class="input" type="search" name="q" value="{{ q }}" placeholder="Écrivez un mot : lot A, Rakoto, maïs, électricité, prix…" autofocus>
+  <button class="btn primary" type="submit">Chercher</button>
+</form>
+{% if q %}
+  <p class="muted top-gap-sm">{{ total }} résultat{{ 's' if total > 1 }} pour « <strong>{{ q }}</strong> ». Cliquez sur un résultat pour l'ouvrir et le modifier.</p>
+  {% for group, items in groups.items() %}
+  <section class="card flush top-gap">
+    <div class="card-head padded"><h2>{{ group }} <small class="muted">· {{ items|length }}</small></h2></div>
+    <div class="search-list">
+      {% for r in items[:30] %}
+      <a class="search-item" href="{{ r.url }}"><span class="search-item-ic">{{ icon(r.icon, 18) }}</span>
+        <span><strong>{{ r.label }}</strong><small>{{ r.detail }}</small></span>{{ icon('chevron', 16) }}</a>
+      {% endfor %}
+      {% if items|length > 30 %}<p class="muted padded">… et {{ items|length - 30 }} autres : précisez la recherche.</p>{% endif %}
+    </div>
+  </section>
+  {% else %}
+  <div class="empty-state card top-gap"><p>{{ icon('search', 28) }}</p><p><strong>Rien trouvé.</strong></p>
+    <p class="muted">Essayez un autre mot, ou une partie du nom (ex. « mai » pour « Maïs grain »).</p></div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

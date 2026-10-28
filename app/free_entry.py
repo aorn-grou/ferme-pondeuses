@@ -13,7 +13,7 @@ from .security import EDIT, can
 from .utils import log_activity
 
 PREFIX = "__new__:"
-BLUEPRINTS = {"matieres", "provenderie", "lots", "ventes", "sanitaire", "depenses", "reformes"}
+BLUEPRINTS = {"matieres", "provenderie", "lots", "ventes", "sanitaire", "depenses", "reformes", "fumier"}
 # Fabriquer une provende demande sa composition : pas de création automatique ici
 NO_FORMULA_CREATION = {"provenderie.production_new", "provenderie.production_edit"}
 

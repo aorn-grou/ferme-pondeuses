@@ -42,7 +42,8 @@ def current_alerts():
             items = health_alerts() + items
         except Exception:  # pendant une mise à jour de la base
             pass
-    for module, path in (("depenses", "expenses"), ("caisse", "cash"), ("personnel", "staff"), ("reformes", "reforms")):
+    for module, path in (("depenses", "expenses"), ("caisse", "cash"), ("personnel", "staff"), ("reformes", "reforms"),
+                         ("fumier", "manure")):
         if can(module):
             try:
                 import importlib

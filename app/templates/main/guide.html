@@ -24,6 +24,7 @@
     <li><a href="#ventes">Ventes, clients et stock d'œufs</a></li>
     <li><a href="#sanitaire">Suivi sanitaire (vaccins, traitements)</a></li>
     <li><a href="#reformes">Poules de réforme</a></li>
+    <li><a href="#fumier">Fumier</a></li>
     <li><a href="#depenses">Dépenses</a></li>
     <li><a href="#caisse">Caisse & propriétaires</a></li>
     <li><a href="#personnel">Personnel & salaires</a></li>
@@ -48,7 +49,10 @@
   <ul>
     <li><strong>Le menu à gauche</strong> (sur téléphone : le bouton ☰ en haut) mène à chaque partie du logiciel. Chaque personne ne voit que les parties auxquelles elle a droit.</li>
     <li><strong>En haut à droite</strong> : {{ icon('help', 16) }} ce guide (il s'ouvre directement à la bonne partie), 🖥️ le thème clair/sombre, 💬 la Discussion entre associés, 🔔 les alertes, et votre nom (profil, déconnexion).</li>
-    <li><strong>Les onglets</strong> en haut de chaque page (ex. Stock · Achats · Inventaire) montrent les différentes vues d'une même partie.</li>
+    <li><strong>Le menu du module</strong> : quand vous entrez dans une partie (ex. Lots de poules), le menu de gauche ne montre plus que ses <strong>Sections</strong> (ses pages) et ses <strong>Actions</strong> (boutons verts : Nouveau lot, Donner la provende…). Le bouton <strong>← Menu principal</strong> en haut ramène à toutes les parties.</li>
+    <li><strong>Les formulaires s'ouvrent au milieu de l'écran</strong> : un clic sur une action (ex. Nouvelle dépense) ouvre le formulaire au centre. Fermez avec ✕, la touche Échap ou en cliquant à côté.</li>
+    <li><strong>La barre de recherche</strong> en haut cherche partout : un lot, un client, une vente (« 12 » = vente n°12), une dépense, une matière, une page (« fumier », « prix »)… Cliquez un résultat pour l'ouvrir et le modifier. Sur téléphone : la loupe 🔍.</li>
+    <li><strong>L'application sur l'écran</strong> : menu de votre nom → <em>Installer l'application</em>. Une icône apparaît sur le téléphone, la tablette ou le PC : un clic et le logiciel s'ouvre, sans écrire l'adresse.</li>
   </ul>
   <h3>Les 4 règles d'or du logiciel</h3>
   <ol>
@@ -64,7 +68,7 @@
   <h2>2. Une journée type à la ferme</h2>
   <ol class="g-steps">
     <li><strong>Le matin : donner la provende.</strong> Menu <em>Alimentation</em> → le logiciel propose pour chaque lot la bonne provende et les kg selon l'âge. Vérifiez, puis <em>Enregistrer la distribution</em>. Le stock de provende baisse tout seul.</li>
-    <li><strong>Pendant la journée : les morts ou problèmes.</strong> Sur la page du lot → <em>Effectif</em> : Mortalité, Disparition, Réforme… avec une explication.</li>
+    <li><strong>Pendant la journée : les morts ou problèmes.</strong> Sur la page du lot → cadre <strong>🪦 Morts et changements de poules</strong> (tout en haut) : choisissez Morts, Disparues, Ajout ou Comptage, le nombre (boutons − et +), la cause, puis <em>Enregistrer</em>. L'effectif se met à jour partout.</li>
     <li><strong>Le soir : le ramassage.</strong> Menu <em>Œufs</em> → plateaux + œufs + cassés pour chaque lot → <em>Enregistrer le ramassage</em>. Le taux de ponte se calcule tout seul.</li>
     <li><strong>À chaque vente :</strong> menu <em>Ventes & clients</em> → <em>Nouvelle vente</em>. Le stock d'œufs baisse et l'argent entre dans la caisse.</li>
     <li><strong>À chaque achat :</strong> <em>Achats & matières premières</em> → <em>Nouvel achat</em>.</li>
@@ -135,7 +139,7 @@
     <li><strong>🧮 Comment c'est calculé</strong> : la provende qui reste à manger jusqu'à la réforme (poules × grammes × jours), avant et pendant la ponte.</li>
     <li><strong>Donner la provende</strong> pour ce lot seul, et l'historique de ce qui a été donné.</li>
     <li><strong>Ponte de ce lot</strong> : taux de ponte, meilleur et plus mauvais jour, coût d'un œuf, bénéfice.</li>
-    <li><strong>Effectif : morts, réformes, ajouts</strong> : <em>Mortalité</em>, <em>Réforme / vente de poules</em>, <em>Disparition / vol</em>, <em>Ajout</em>, et <em>Correction après comptage</em> (écrivez le nombre de poules comptées, le logiciel calcule l'écart).</li>
+    <li><strong>🪦 Morts et changements de poules</strong> (cadre en haut de la page du lot) : la saisie rapide des morts du jour, avec l'effectif « avant → après » et les 5 derniers changements. L'historique complet est plus bas dans <strong>Effectif : morts, réformes, ajouts</strong> : <em>Mortalité</em>, <em>Réforme / vente de poules</em>, <em>Disparition / vol</em>, <em>Ajout</em>, et <em>Correction après comptage</em> (écrivez le nombre de poules comptées, le logiciel calcule l'écart).</li>
     <li><strong>Modifier</strong> (corriger les réglages) et <strong>Terminer le lot</strong> quand toutes les poules sont parties.</li>
   </ul>
 </section>
@@ -175,6 +179,10 @@
     <li><strong>Œufs de quel lot</strong> (facultatif) : sert au bénéfice de chaque lot. Laissé vide, la vente est partagée entre les lots selon leurs œufs.</li>
   </ul>
   <p>On ne peut pas vendre plus d'œufs qu'il n'y en a en stock ce jour-là : saisissez d'abord le ramassage.</p>
+  <h3>Prix des œufs du jour</h3>
+  <p>Le prix du plateau change souvent. Menu <em>Ventes</em> → <strong>Prix des œufs</strong> → <em>Changer le prix du jour</em> : écrivez le nouveau prix le jour où il change. Il reste valable les jours suivants, et chaque <strong>nouvelle vente le propose tout seul</strong> (vous pouvez toujours le changer). Tous les anciens prix sont gardés.</p>
+  <p>La page montre, <strong>par jour, semaine, mois ou année</strong> : le prix fixé (moyen, plus bas, plus haut), le prix réellement payé par les clients, le <strong>coût de revient d'un plateau</strong> (provende + charges ÷ œufs ramassés), la marge par plateau et le <strong>bénéfice</strong> (ventes d'œufs − provende − charges). Deux courbes : le prix comparé au coût, et le bénéfice.</p>
+  {% call ex() %}<p>Prix fixé 15 000 Ar le plateau, coût de revient 11 200 Ar : chaque plateau vendu rapporte <strong>3 800 Ar</strong>. Si le prix tombe à 11 000 Ar, la courbe verte passe sous la rouge : on vend à perte.</p>{% endcall %}
   <h3>Encaisser un crédit</h3>
   <p>Ouvrez la vente → <em>Encaisser un paiement</em> : montant, date, compte. Le reste à recevoir diminue. L'onglet <strong>Clients & crédits</strong> montre qui doit combien.</p>
   <h3>Stock d'œufs</h3>
@@ -220,6 +228,18 @@
   <p>Choisissez le lot, le nombre de poules, le prix (<strong>par poule</strong>, <strong>par kg</strong> avec le poids total, ou <strong>le total</strong>), le client et le paiement (vide = tout payé, 0 = à crédit). En un clic : les poules <strong>sortent du lot</strong>, une <strong>vente</strong> est créée (elle apparaît aussi dans Ventes, avec son crédit), l'argent <strong>entre dans la caisse</strong> et compte dans les <strong>ventes du lot</strong>. Cochez « Terminer le lot » pour fermer le lot quand il n'a plus de poules.</p>
   {% call ex() %}<p>400 poules vendues au kg : 720 kg × 7 000 Ar = <strong>5 040 000 Ar</strong>, soit 12 600 Ar la poule. Payé 0 → crédit suivi dans Clients & crédits.</p>{% endcall %}
   {% call tip() %}Erreur ? Ouvrez la vente (Ventes) → <em>Annuler la vente</em> : les poules reviennent dans le lot et l'argent sort de la caisse.{% endcall %}
+</section>
+
+<section class="card g-sec" id="fumier">
+  <h2>11 bis. Fumier</h2>
+  <p>Le fumier (crottes de poules) se vend : c'est de l'argent en plus pour la ferme.</p>
+  <ol>
+    <li><strong>Enlever du fumier</strong> : le jour où vous le sortez d'un bâtiment, notez la date, le lot et la quantité (sacs, charrettes…).</li>
+    <li><strong>Il sèche</strong> : il est prêt à vendre <strong>14 jours</strong> après (vous pouvez changer le nombre de jours). Une alerte 🔔 « Fumier prêt à vendre » vous prévient.</li>
+    <li><strong>Vendre du fumier</strong> : choisissez le tas, la quantité, le prix par sac et la caisse. L'argent <strong>entre dans la caisse</strong>, la vente compte dans les <strong>ventes du lot</strong> (son bénéfice) et apparaît aussi dans <em>Ventes</em>.</li>
+  </ol>
+  <p>La page montre ce qui sèche, ce qui est prêt, l'argent du fumier par mois et chaque vente. Une vente faite par erreur s'annule depuis la vente (le fumier revient dans son tas, l'argent ressort de la caisse).</p>
+  {% call ex() %}<p>Le 1<sup>er</sup> octobre, 20 sacs enlevés du Lot A → prêts le <strong>15 octobre</strong>. Le 16, 15 sacs vendus à 3 000 Ar = <strong>45 000 Ar</strong> dans la caisse. Il reste 5 sacs dans ce tas.</p>{% endcall %}
 </section>
 
 <section class="card g-sec" id="depenses">

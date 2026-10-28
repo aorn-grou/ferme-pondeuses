@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_head, csrf with context %}
+{% block title %}Prix des œufs{% endblock %}
+{% block content %}
+{% call page_head("Prix des œufs", "Le prix du plateau change souvent : écrivez-le le jour où il change. Il est gardé, et les ventes le proposent tout seul.", 'egg') %}
+  {% if can('ventes', 2) %}<a class="btn primary" href="#prix-du-jour" data-modal>{{ icon('edit', 18) }} Changer le prix du jour</a>{% endif %}
+{% endcall %}
+
+<div class="price-hero">
+  <div>
+    <div class="hero-sub">{{ icon('egg', 16) }} Prix d'aujourd'hui</div>
+    {% if now %}
+    <div class="hero-line"><span class="hero-num">{{ now.tray_price|money }}</span><span>le plateau de {{ tray }} œufs · {{ (now.tray_price / tray)|money }} l'œuf</span></div>
+    <div class="hero-sub">Depuis le {{ now.date|date_fr }}{% if prev %} ·
+      {% set diff = now.tray_price - prev.tray_price %}
+      {% if diff %}<strong class="{{ 'up' if diff > 0 else 'down' }}">{{ '▲ +' if diff > 0 else '▼ ' }}{{ diff|money }}</strong> par rapport à avant ({{ prev.tray_price|money }}){% else %}même prix qu'avant{% endif %}{% endif %}</div>
+    {% else %}
+    <div class="hero-line"><span class="hero-num">—</span><span>aucun prix écrit pour l'instant</span></div>
+    <div class="hero-sub">Écrivez le prix du jour : les ventes le proposeront tout seul.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if can('ventes', 2) %}
+<section class="card top-gap" id="prix-du-jour">
+  <h2>{{ icon('edit', 20) }} Changer le prix du jour</h2>
+  <form method="post" action="{{ url_for('prix.set_price') }}" class="grid four top">{{ csrf() }}
+    <div class="field"><label>À partir du</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+    <div class="field"><label>Nouveau prix (Ar) *</label><input class="input big-input" name="tray_price" inputmode="decimal" required placeholder="ex. 15000" value="{{ now.tray_price|int if now else '' }}" autofocus></div>
+    <div class="field"><label>Le prix est</label><select class="input" name="unit"><option value="plateau">par plateau ({{ tray }} œufs)</option><option value="oeuf">par œuf</option></select></div>
+    <div class="field"><label>Pourquoi ? <small class="muted">(facultatif)</small></label><input class="input" name="notes" maxlength="150" placeholder="ex. fêtes, saison des pluies…" list="dl-why" data-combo>
+      <datalist id="dl-why">{% for x in ['Fêtes', 'Beaucoup d\'œufs au marché', 'Peu d\'œufs au marché', 'Saison des pluies', 'Prix d\'un gros client'] %}<option value="{{ x }}">{% endfor %}</datalist></div>
+    <div class="form-actions span-all"><button class="btn primary" type="submit">{{ icon('check', 18) }} Enregistrer le prix</button></div>
+  </form>
+  <p class="hint">Le prix reste valable les jours suivants, jusqu'au prochain changement. Les ventes déjà faites ne changent pas.</p>
+</section>
+{% endif %}
+
+<nav class="tabs top-gap" aria-label="Période">
+  {% for k, v in views.items() %}<a class="tab {{ 'active' if view == k }}" href="{{ url_for('prix.index', vue=k) }}">{{ icon('clock', 16) }} Par {{ v|lower }}</a>{% endfor %}
+</nav>
+
+{% if has_data %}
+<div class="kpis">
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('egg', 18) }}</span><span class="tag tag-gold">moyenne</span></div>
+    <div class="kpi-val">{{ summary.avg|money if summary.avg else '—' }}</div><div class="kpi-lab">Prix moyen du plateau sur la période</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-teal">{{ icon('chart', 18) }}</span><span class="tag tag-green">variation</span></div>
+    <div class="kpi-val">{% if summary.min %}{{ summary.min|money }} → {{ summary.max|money }}{% else %}—{% endif %}</div><div class="kpi-lab">Le plus bas → le plus haut</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic ic-green">{{ icon('cart', 18) }}</span><span class="tag tag-green">ventes d'œufs</span></div>
+    <div class="kpi-val">{{ summary.revenue|money }}</div><div class="kpi-lab">Argent des œufs vendus sur la période</div></div>
+  <div class="kpi"><div class="kpi-top"><span class="kpi-ic {{ 'ic-green' if summary.profit >= 0 else 'ic-red' }}">{{ icon('wallet', 18) }}</span><span class="tag {{ 'tag-green' if summary.profit >= 0 else 'tag-red' }}">bénéfice</span></div>
+    <div class="kpi-val {{ 'text-ok' if summary.profit >= 0 else 'text-danger' }}">{{ '+' if summary.profit > 0 }}{{ summary.profit|money }}</div><div class="kpi-lab">Ventes − provende − charges</div></div>
+</div>
+
+<div class="grid two top-gap">
+<section class="card">
+  <div class="card-head"><h2>{{ icon('chart', 20) }} Le prix du plateau</h2></div>
+  <details class="calc-banner fold" open data-fold="prix-lire"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>🟡 <strong>Prix fixé</strong> : le prix que vous avez écrit. 🟢 <strong>Prix vendu</strong> : ce que les clients ont vraiment payé en moyenne.
+    🔴 <strong>Coût de revient</strong> (pointillés) : ce que coûte un plateau à produire (provende + charges ÷ œufs ramassés).
+    Tant que le vert est <strong>au-dessus</strong> du rouge, chaque plateau rapporte.</span></div></details>
+  <div class="chart-box" data-chart-type="multi" data-chart='{{ price_chart|tojson }}'></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>{{ icon('wallet', 20) }} Le bénéfice</h2></div>
+  <details class="calc-banner fold" open data-fold="prix-benef"><summary>📖 Comment lire <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
+    <span>Bénéfice = argent des œufs vendus − provende donnée − charges (dépenses, salaires, usure, soins) de la période.
+    Au-dessus de 0 : on gagne. En dessous : on perd. L'achat des poussins n'est pas compté ici (voir Rapports → rentabilité des lots).</span></div></details>
+  <div class="chart-box" data-chart-type="line" data-chart='{{ profit_chart|tojson }}'></div>
+</section>
+</div>
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('list', 20) }} Détail par {{ views[view]|lower }}</h2></div>
+  <table class="table responsive" data-limit="15">
+    <thead><tr><th>{{ views[view] }}</th><th class="right">Prix fixé</th><th class="right">Prix vendu</th><th class="right">Coût de revient</th><th class="right">Marge / plateau</th><th class="right">Œufs vendus</th><th class="right">Bénéfice</th></tr></thead>
+    <tbody>{% for r in rows|reverse %}
+      <tr><td data-label="{{ views[view] }}" class="nowrap"><strong>{{ r.label }}</strong></td>
+        <td data-label="Prix fixé" class="right">{% if r.avg %}{{ r.avg|money }}{% if r.min != r.max %}<small class="muted block">{{ r.min|money }} → {{ r.max|money }}</small>{% endif %}{% else %}—{% endif %}</td>
+        <td data-label="Prix vendu" class="right">{{ r.sold_tray|money if r.sold_tray else '—' }}</td>
+        <td data-label="Coût de revient" class="right">{{ r.cost_tray|money if r.cost_tray else '—' }}</td>
+        <td data-label="Marge / plateau" class="right">{% if r.margin_tray is not none %}<strong class="{{ 'text-ok' if r.margin_tray >= 0 else 'text-danger' }}">{{ '+' if r.margin_tray > 0 }}{{ r.margin_tray|money }}</strong>{% else %}—{% endif %}</td>
+        <td data-label="Œufs vendus" class="right">{{ r.sold|num }}</td>
+        <td data-label="Bénéfice" class="right"><strong class="{{ 'text-ok' if r.profit >= 0 else 'text-danger' }}">{{ '+' if r.profit > 0 }}{{ r.profit|money }}</strong></td></tr>
+    {% endfor %}</tbody>
+  </table>
+</section>
+{% else %}
+<div class="empty-state card top-gap"><p>{{ icon('chart', 28) }}</p><p><strong>Pas encore de chiffres sur cette période.</strong></p>
+  <p class="muted">Écrivez le prix du jour, saisissez le ramassage et les ventes : les courbes se dessinent toutes seules.</p></div>
+{% endif %}
+
+<section class="card flush top-gap">
+  <div class="card-head padded"><h2>{{ icon('clock', 20) }} Tous les changements de prix</h2></div>
+  <table class="table responsive" data-limit="10">
+    <thead><tr><th>À partir du</th><th class="right">Plateau</th><th class="right">Œuf</th><th>Pourquoi</th><th>Par</th><th></th></tr></thead>
+    <tbody>{% for h in history %}
+      <tr><td data-label="À partir du" class="nowrap">{{ h.date|date_fr }}</td><td data-label="Plateau" class="right"><strong>{{ h.tray_price|money }}</strong></td>
+        <td data-label="Œuf" class="right">{{ (h.tray_price / tray)|money }}</td><td data-label="Pourquoi">{{ h.notes or '—' }}</td><td data-label="Par">{{ h.username or '—' }}</td>
+        <td class="right">{% if can('ventes', 3) %}<form method="post" action="{{ url_for('prix.delete', price_id=h.id) }}" class="inline" data-confirm="Supprimer ce prix ?">{{ csrf() }}<button class="btn danger-ghost sm" type="submit" title="Supprimer">{{ icon('trash', 14) }}</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="6" class="center muted">Aucun prix écrit pour l'instant.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ app_version }}"></script>{% endblock %}

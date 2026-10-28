@@ -202,7 +202,10 @@ def index():
     chart = {"labels": [_label(k) for k in keys], "bars": [round(per[k]["t"]) if k in per else 0 for k in keys],
              "line": [None] * len(keys), "unit": "Ar", "barLabel": "Ventes", "barColor": "#2e7d32",
              "tips": [f"{fmt_eggs(per[k]['q'])} vendus" if k in per and per[k]["q"] else "" for k in keys]} if per else None
-    return render_template("ventes/index.html", rows=rows, kpi=kpi, period=period, chart=chart, fmt_eggs=fmt_eggs)
+    from .prices import price_row
+
+    return render_template("ventes/index.html", rows=rows, kpi=kpi, period=period, chart=chart, fmt_eggs=fmt_eggs,
+                           day_price=price_row())
 
 
 def _form_values():
@@ -232,8 +235,10 @@ def _form_values():
 @bp.route("/nouvelle", methods=["GET", "POST"])
 @require("ventes", EDIT)
 def sale_new():
+    from .prices import price_on
+
     last = query("SELECT * FROM sales WHERE is_eggs = 1 AND unit_price > 0 ORDER BY id DESC LIMIT 1", one=True)
-    default_price = (last["unit_price"] * TRAY if last else None) or \
+    default_price = price_on() or (last["unit_price"] * TRAY if last else None) or \
         ((query("SELECT egg_price FROM lots WHERE egg_price > 0 ORDER BY id DESC LIMIT 1", one=True) or {"egg_price": 0})["egg_price"] * TRAY)
     values = {"date": today(), "client_id": None, "product": "Œufs", "trays": "", "eggs": "", "qty": "", "unit": "",
               "price": int(default_price) if default_price else "", "price_unit": "plateau", "paid": None,
@@ -286,7 +291,8 @@ def sale_new():
             return redirect(url_for("ventes.sale", sale_id=sale_id))
     return render_template("ventes/sale_form.html", values=values, clients=query("SELECT * FROM clients ORDER BY name"),
                            accounts=accounts(), lots=query("SELECT * FROM lots WHERE status = 'actif' ORDER BY name"),
-                           stock=egg_stock(), tray=TRAY,
+                           stock=egg_stock(), tray=TRAY, day_prices=[[r["date"], r["tray_price"]] for r in
+                                                                  query("SELECT date, tray_price FROM egg_prices ORDER BY date, id")],
                            products=[r["product"] for r in query("SELECT DISTINCT product FROM sales ORDER BY product")])
 
 

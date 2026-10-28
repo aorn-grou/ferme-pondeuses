@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, page_head %}
-{% block title %}Provenderie{% endblock %}
+{% block title %}Stock provende finie{% endblock %}
 {% block content %}
-{% call page_head('Provenderie', "Fabrication de la provende à partir des matières premières, selon vos formules.", 'factory') %}
+{% call page_head('Stock provende finie', "La provende fabriquée, prête à donner aux poules. Quand vous fabriquez, les matières premières sont retirées de leur stock automatiquement.", 'wheat') %}
   {% if can('provenderie', 2) %}
   <a class="btn ghost" href="{{ url_for('provenderie.movement') }}">{{ icon('list', 18) }} Perte / inventaire</a>
   <a class="btn primary" href="{{ url_for('provenderie.production_new') }}">{{ icon('factory', 18) }} Fabriquer</a>
   {% endif %}
 {% endcall %}
 {% with active='stock' %}{% include "provenderie/_tabs.html" %}{% endwith %}
+{% if can('matieres') %}<a class="stock-switch" href="{{ url_for('matieres.index') }}">{{ icon('box', 20) }} <span><strong>Voir le stock de matières premières</strong><small>Maïs, soja, son… ce qui sert à fabriquer la provende</small></span>{{ icon('chevron', 16) }}</a>{% endif %}
 
 {% if not formulas %}
 <div class="steps card">

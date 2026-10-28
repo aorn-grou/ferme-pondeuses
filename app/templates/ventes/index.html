@@ -7,6 +7,12 @@
 {% endcall %}
 {% with active='ventes' %}{% include "ventes/_tabs.html" %}{% endwith %}
 
+<a class="price-strip" href="{{ url_for('prix.index') }}">
+  <span class="price-strip-ic">{{ icon('egg', 22) }}</span>
+  <span><small>Prix du jour</small><strong>{{ (day_price.tray_price|money ~ ' le plateau') if day_price else 'pas encore écrit' }}</strong></span>
+  <span class="price-strip-go">{{ 'Changer / voir la variation' if can('ventes', 2) else 'Voir la variation' }} {{ icon('chevron', 16) }}</span>
+</a>
+
 <div class="kpis">
   <a class="kpi" href="{{ url_for('ventes.stock') }}"><div class="kpi-top"><span class="kpi-ic ic-gold">{{ icon('egg', 18) }}</span><span class="tag tag-gold">en stock</span></div>
     <div class="kpi-val">{{ kpi.stock|num }} œufs</div><div class="kpi-lab">{{ (kpi.stock // 30)|num }} plateau(x) + {{ kpi.stock % 30 }} · Stock d'œufs</div></a>

@@ -252,6 +252,7 @@ SCHEMA = {
         ("lot_id", "INTEGER"),
         ("notes", "TEXT DEFAULT ''"),
         ("lot_event_id", "INTEGER"),   # vente de poules de réforme : la sortie de l'effectif liée
+        ("manure_id", "INTEGER"),      # vente de fumier : le tas (enlèvement) d'où il vient
         ("import_id", "INTEGER"),
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
@@ -437,6 +438,27 @@ SCHEMA = {
         ("created_by", "INTEGER"),
         ("created_at", "TEXT DEFAULT ''"),
     ],
+    # ----- Prix des œufs du jour (le prix change souvent : on garde chaque changement) -----
+    "egg_prices": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),
+        ("tray_price", "REAL NOT NULL DEFAULT 0"),   # prix d'un plateau de 30 œufs
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
+    # ----- Fumier : chaque enlèvement (tas) d'un lot, qui sèche puis se vend -----
+    "manure_batches": [
+        ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
+        ("date", "TEXT NOT NULL"),                   # jour où on l'a enlevé du bâtiment
+        ("lot_id", "INTEGER"),
+        ("quantity", "REAL NOT NULL DEFAULT 0"),
+        ("unit", "TEXT NOT NULL DEFAULT 'sac'"),
+        ("dry_days", "INTEGER NOT NULL DEFAULT 14"),  # prêt à vendre après … jours
+        ("notes", "TEXT DEFAULT ''"),
+        ("created_by", "INTEGER"),
+        ("created_at", "TEXT DEFAULT ''"),
+    ],
     # ----- Imports Excel (pour pouvoir annuler un import entier) -----
     "imports": [
         ("id", "INTEGER PRIMARY KEY AUTOINCREMENT"),
@@ -457,7 +479,7 @@ TRANSACTION_TABLES = [
     "productions", "production_lines", "feed_moves", "cash_movements",
     "lots", "lot_events", "feedings", "egg_collections", "clients", "sales", "sale_payments", "egg_moves",
     "health_programs", "health_program_items", "health_events",
-    "expenses", "staff_payments", "staff_absences", "assets", "imports",
+    "expenses", "staff_payments", "staff_absences", "assets", "imports", "egg_prices", "manure_batches",
 ]
 
 DEFAULT_ACCOUNTS = [
@@ -483,6 +505,9 @@ INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_staff_pay ON staff_payments(employee_id, month)",
     "CREATE INDEX IF NOT EXISTS ix_egg_coll ON egg_collections(lot_id, date)",
     "CREATE INDEX IF NOT EXISTS ix_lot_events ON lot_events(lot_id, date)",
+    "CREATE INDEX IF NOT EXISTS ix_egg_prices ON egg_prices(date)",
+    "CREATE INDEX IF NOT EXISTS ix_manure ON manure_batches(date)",
+    "CREATE INDEX IF NOT EXISTS ix_sales_manure ON sales(manure_id)",
 ]
 
 DEFAULT_SUPER_ADMIN = {"username": "super-adm", "password": "Ampandrana"}

@@ -23,6 +23,45 @@
   </div>
 </div>
 
+{% if can('lots', 2) and item.status == 'actif' %}
+<section class="card top-gap" id="morts">
+  <div class="card-head"><h2>🪦 Morts et changements de poules</h2><a class="small" href="#effectif">Tout l'historique ↓</a></div>
+  <div class="quick-deaths">
+    <form method="post" action="{{ url_for('lots.event_new', lot_id=item.id) }}" class="qd-form" data-qd data-birds="{{ s.birds }}">
+      {{ csrf() }}<input type="hidden" name="anchor" value="morts">
+      <div class="qd-kinds">
+        {% for k, lab in [('mort', '🪦 Morts'), ('perte', '❓ Disparues / volées'), ('ajout', '➕ Ajout'), ('comptage', '📋 Comptage')] %}
+        <label><input type="radio" name="kind" value="{{ k }}" {{ 'checked' if loop.first }}><span>{{ lab }}</span></label>{% endfor %}
+      </div>
+      <div class="field"><label data-qd-label>Combien de poules mortes ?</label>
+        <div class="stepper"><button type="button" data-step="-1" aria-label="Moins">−</button>
+          <input class="input" name="quantity" inputmode="numeric" required value="1" data-qd-qty>
+          <button type="button" data-step="1" aria-label="Plus">+</button></div></div>
+      <div class="grid two top">
+        <div class="field"><label>Date</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
+        <div class="field"><label>Pourquoi ?</label><input class="input" name="notes" maxlength="150" placeholder="facultatif" data-qd-notes list="causes-lot" data-combo></div>
+      </div>
+      <div class="qd-quick">{% for c in ['Maladie', 'Chaleur', 'Écrasement', 'Prédateur (chien, rat…)', 'Inconnue'] %}<button type="button" data-cause="{{ c }}">{{ c }}</button>{% endfor %}</div>
+      <div class="qd-preview" data-qd-preview>Effectif : <strong>{{ s.birds|num }}</strong> poules</div>
+      <button class="btn primary big" type="submit">{{ icon('check', 18) }} Enregistrer</button>
+    </form>
+    <div>
+      <div class="stats compact">
+        <div class="stat"><span class="stat-label">Effectif aujourd'hui</span><strong class="stat-value small">{{ s.birds|num }}</strong><small class="muted">sur {{ item.initial_count|num }} au départ</small></div>
+        <div class="stat"><span class="stat-label">Morts aujourd'hui</span><strong class="stat-value small {{ 'text-danger' if deaths.today }}">{{ deaths.today|num }}</strong><small class="muted">7 derniers jours : {{ deaths.week|num }}</small></div>
+      </div>
+      <p class="hint top-gap-sm"><strong>Derniers changements</strong> (le plus récent en haut)</p>
+      <ul class="qd-hist">
+        {% for e in events[:5] %}<li><span>{{ e.date|date_fr }} · {{ kinds.get(e.kind, (e.kind,))[0] }}{% if e.notes %} <small class="muted">· {{ e.notes }}</small>{% endif %}</span>
+          <b class="{{ 'text-danger' if e.quantity < 0 else 'text-ok' }}">{{ '+' if e.quantity > 0 }}{{ e.quantity }}</b></li>
+        {% else %}<li class="muted">Aucun mort ni changement noté. 👍</li>{% endfor %}
+      </ul>
+      <p class="hint">L'effectif se met à jour partout tout seul : provende du jour, taux de ponte, coût d'un œuf, rapports.</p>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 {% if s.forecast and s.forecast.days %}{% set parts = s.forecast.by_formula.items()|list %}{% set f0 = parts[0][1] %}
 <details class="calc-banner top-gap fold" open data-fold="lot-calc"><summary>🧮 Comment c'est calculé <small>(cliquez pour fermer / ouvrir)</small></summary><div class="fold-body">
   {% if parts|length == 1 %}

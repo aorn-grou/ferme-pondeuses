@@ -7,7 +7,7 @@ from .db import execute, now_utc, query, transaction
 from .security import EDIT, MANAGE, VIEW, can_correct, require
 from .stock import (
     moves_with_balance,
-    EPS, feed_stock, formula_cost_per_kg, formula_lines, formulas_overview, material_stock, parse_num,
+    EPS, feed_stock, formula_cost_per_kg, formula_lines, formula_order, formulas_overview, material_stock, parse_num,
     production_needs, recompute_formula, recompute_material, today, valid_date,
 )
 from .units import convert, js_table, to_kg
@@ -35,7 +35,7 @@ def _formula(formula_id):
 
 
 def _active_formulas():
-    return query("SELECT * FROM formulas WHERE active = 1 ORDER BY name")
+    return query(f"SELECT * FROM formulas WHERE active = 1 ORDER BY {formula_order('')}")
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ def index():
 @require("provenderie", VIEW)
 def formulas():
     rows = []
-    for f in query("SELECT * FROM formulas ORDER BY active DESC, name"):
+    for f in query(f"SELECT * FROM formulas ORDER BY active DESC, {formula_order('')}"):
         item = dict(f)
         item["cost_per_kg"], item["total_qty"] = formula_cost_per_kg(f)
         item["nb_lines"] = len(formula_lines(f["id"]))
@@ -511,7 +511,7 @@ def productions():
                      LEFT JOIN users u ON u.id = p.created_by {clause} ORDER BY p.date DESC, p.id DESC LIMIT 300""", params)
     totals = {"qty": sum(r["quantity"] for r in rows), "cost": sum(r["cost_total"] for r in rows)}
     return render_template("provenderie/productions.html", rows=rows, totals=totals, start=start, end=end,
-                           formula_id=formula_id, formulas=query("SELECT * FROM formulas ORDER BY name"))
+                           formula_id=formula_id, formulas=query(f"SELECT * FROM formulas ORDER BY {formula_order('')}"))
 
 
 @bp.route("/fabrications/<int:production_id>")
@@ -704,7 +704,7 @@ def feed_history_all():
     moves = moves_with_balance("feed", item_id=f["formule"], move_kind=f["type"] or None,
                                since=f["du"] if valid_date(f["du"]) else None,
                                until=f["au"] if valid_date(f["au"]) else None)
-    formulas = query("SELECT id, name FROM formulas ORDER BY name")
+    formulas = query(f"SELECT id, name FROM formulas ORDER BY {formula_order('')}")
     lf = _lot_feed_today()
     return render_template("provenderie/history.html", moves=moves, filters=f, formulas=formulas, kinds=FEED_KINDS,
                            overview=formulas_overview(), grams=lf[0], lot_birds=lf[1])

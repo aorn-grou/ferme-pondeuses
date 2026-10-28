@@ -35,7 +35,7 @@
         <datalist id="dl-units">{% for u in ['poule', 'sac', 'kg', 'unité', 'charrette'] %}<option value="{{ u }}">{% endfor %}</datalist></div>
     </div>
     <div class="grid four top">
-      <div class="field"><label for="price">Prix (Ar)</label><input class="input" id="price" name="price" inputmode="decimal" value="{{ values.price }}" placeholder="ex. 15000" data-price></div>
+      <div class="field"><label for="price">Prix (Ar) <a class="small" href="{{ url_for('prix.index') }}">· prix du jour</a></label><input class="input" id="price" name="price" inputmode="decimal" value="{{ values.price }}" placeholder="ex. 15000" data-price></div>
       <div class="field"><label for="price_unit">Le prix est</label>
         <select class="input" id="price_unit" name="price_unit" data-price-unit>
           <option value="plateau" {% if values.price_unit == 'plateau' %}selected{% endif %} data-egg>par plateau ({{ tray }} œufs)</option>
@@ -105,6 +105,16 @@
     d.textContent = total ? (due > 0.5 ? money(due) + " (crédit)" : "rien, tout est payé ✅") : "—";
     d.className = "stock-pill" + (due > 0.5 ? " due" : "");
   };
+  // prix du jour : quand on change la date, le prix proposé suit (tant qu'on ne l'a pas tapé soi-même)
+  const PRICES = {{ day_prices|tojson }}, priceEl = f.querySelector("[data-price]"), dateEl = f.querySelector("[name=date]");
+  let typed = false;
+  priceEl.addEventListener("input", () => { typed = true; });
+  dateEl.addEventListener("change", () => {
+    if (typed || !isEgg() || !PRICES.length) return;
+    let p = null;
+    PRICES.forEach(([d, v]) => { if (d <= dateEl.value) p = v; });
+    if (p) { priceEl.value = Math.round(p); pu.value = "plateau"; }
+  });
   f.addEventListener("input", up); f.addEventListener("change", up); up();
 })();
 </script>

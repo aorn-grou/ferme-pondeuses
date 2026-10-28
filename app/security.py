@@ -22,7 +22,8 @@ MODULES = [
     ("sanitaire", "Suivi sanitaire", "shield", "Élevage", "Vaccinations et soins avec alertes 7 jours avant, confirmation, mortalité.", True),
     ("oeufs", "Œufs", "egg", "Élevage", "Ramassage par lot et par jour, taux de ponte, hausses et baisses.", True),
     ("reformes", "Poules de réforme", "tag", "Ventes", "Poules non rentables à vendre.", True),
-    ("ventes", "Ventes & clients", "cart", "Ventes", "Ventes d'œufs, stock d'œufs, clients, crédits.", True),
+    ("ventes", "Ventes & clients", "cart", "Ventes", "Ventes d'œufs, prix du jour, stock d'œufs, clients, crédits.", True),
+    ("fumier", "Fumier", "sprout", "Ventes", "Fumier enlevé par lot, séchage 2 semaines, vente et argent dans la caisse.", True),
     ("depenses", "Dépenses", "receipt", "Finances", "Dépenses par catégorie, rattachées aux lots.", True),
     ("caisse", "Caisse & propriétaires", "wallet", "Finances", "Caisses, apports et retraits des propriétaires, clôture.", True),
     ("personnel", "Personnel & salaires", "users", "Finances", "Employés, présences, avances et salaires.", True),
@@ -38,8 +39,8 @@ MODULE_KEYS = [m[0] for m in MODULES]
 # Page d'accueil de chaque module développé (les autres affichent « bientôt »)
 MODULE_ENDPOINTS = {
     "dashboard": "main.dashboard",
-    "matieres": "matieres.index",
-    "provenderie": "provenderie.index",
+    "matieres": "matieres.purchases",
+    "provenderie": "provenderie.productions",
     "utilisateurs": "users.index",
     "parametres": "settings.index",
     "sauvegardes": "backups.index",
@@ -58,9 +59,15 @@ MODULE_ENDPOINTS = {
     "immobilisations": "immobilisations.index",
     "reformes": "reformes.index",
     "imports": "imports.index",
+    "fumier": "fumier.index",
 }
 MODULE_INFO = {m[0]: {"key": m[0], "label": m[1], "icon": m[2], "group": m[3], "desc": m[4], "built": m[5]} for m in MODULES}
 MENU_GROUPS = ["Pilotage", "Production", "Élevage", "Ventes", "Finances", "Administration"]
+# Boutons en plus dans le menu principal (raccourcis vers une page d'un module) : placés juste après le module
+MENU_EXTRA = {
+    "matieres": [("stock_mp", "Stock matières premières", "box", "matieres.index", "matieres")],
+    "provenderie": [("stock_pf", "Stock provende finie", "wheat", "provenderie.index", "provenderie")],
+}
 
 # Modules réservés à l'administration (non attribuables aux autres rôles)
 ADMIN_ONLY = {"utilisateurs", "parametres", "sauvegardes", "journal"}
@@ -83,8 +90,8 @@ ROLE_DEFAULTS = {
     "achats": {"dashboard": VIEW, "matieres": MANAGE, "provenderie": VIEW, "depenses": EDIT},
     "provenderie": {"dashboard": VIEW, "matieres": VIEW, "provenderie": MANAGE},
     "elevage": {"dashboard": VIEW, "controles": VIEW, "lots": EDIT, "alimentation": MANAGE, "sanitaire": MANAGE,
-                "oeufs": MANAGE, "reformes": EDIT, "provenderie": VIEW},
-    "ventes": {"dashboard": VIEW, "oeufs": VIEW, "reformes": EDIT, "ventes": MANAGE},
+                "oeufs": MANAGE, "reformes": EDIT, "provenderie": VIEW, "fumier": EDIT},
+    "ventes": {"dashboard": VIEW, "oeufs": VIEW, "reformes": EDIT, "ventes": MANAGE, "fumier": EDIT},
     "caissier": {"dashboard": VIEW, "depenses": MANAGE, "caisse": MANAGE, "personnel": EDIT, "rapports": VIEW},
     "lecteur": {k: VIEW for k in ASSIGNABLE},
 }

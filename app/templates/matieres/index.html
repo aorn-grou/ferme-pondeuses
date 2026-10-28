@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, page_head %}
-{% block title %}Matières premières{% endblock %}
+{% block title %}Stock matières premières{% endblock %}
 {% block content %}
-{% call page_head('Achats & matières premières', "Stock calculé automatiquement à partir des achats, fabrications, pertes et inventaires.", 'box') %}
+{% call page_head('Stock matières premières', "Maïs, soja, son… Le stock se met à jour tout seul : + les achats, − chaque fabrication de provende, − les pertes, et l'inventaire.", 'box') %}
   {% if can('matieres', 2) %}
   <a class="btn ghost" href="{{ url_for('matieres.material_new') }}">{{ icon('plus', 18) }} Nouvelle matière</a>
   <a class="btn primary" href="{{ url_for('matieres.purchase_new') }}">{{ icon('cart', 18) }} Nouvel achat</a>
   {% endif %}
 {% endcall %}
 {% with active='stock' %}{% include "matieres/_tabs.html" %}{% endwith %}
+{% if can('provenderie') %}<a class="stock-switch" href="{{ url_for('provenderie.index') }}">{{ icon('wheat', 20) }} <span><strong>Voir le stock de provende finie</strong><small>La provende fabriquée, prête à donner aux poules</small></span>{{ icon('chevron', 16) }}</a>{% endif %}
 
 <div class="stats">
   <div class="stat"><span class="stat-icon">{{ icon('box') }}</span><span class="stat-label">Valeur du stock</span><strong class="stat-value small">{{ summary.value|money }}</strong><small class="muted">{{ summary.count }} matière(s)</small></div>
