@@ -28,10 +28,12 @@ def _material(name, unit):
         if not row["active"]:
             execute("UPDATE materials SET active = 1 WHERE id = ?", (row["id"],))
         return row["id"]
-    new_id = execute("INSERT INTO materials (name, unit, created_at) VALUES (?, ?, ?)",
-                     (name, _clean(unit, 15) or "kg", now_utc()))
-    log_activity("Matière ajoutée (saisie libre)", f"{name} ({unit or 'kg'})")
-    flash(f"Nouvelle matière « {name} » créée. Vous pourrez compléter sa fiche (catégorie, seuil d'alerte).", "info")
+    from .units import base_unit
+
+    unit = _clean(base_unit(unit), 15) or "kg"  # « sac de 50 kg » : le stock est compté en kg
+    new_id = execute("INSERT INTO materials (name, unit, created_at) VALUES (?, ?, ?)", (name, unit, now_utc()))
+    log_activity("Matière ajoutée (saisie libre)", f"{name} ({unit})")
+    flash(f"Nouvelle matière « {name} » ajoutée (stock compté en {unit}). Vous pourrez compléter sa fiche (catégorie, seuil d'alerte).", "info")
     return new_id
 
 

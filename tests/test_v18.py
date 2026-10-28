@@ -182,3 +182,39 @@ class TestRechercheEtMenu(TestPermissionsAndReset):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnitesLibres(FinBase):
+    def test_free_units_in_purchase_and_formula(self):
+        mais = self.material("Maïs", qty="100", cost="1000")
+        # achat de 3 sacs de 50 kg à 60 000 Ar le sac (matière comptée en kg)
+        res = self.post("/matieres/achats/nouveau", {
+            "date": self.today(), "supplier_name": "", "material_id": [str(mais)], "quantity": ["3"],
+            "line_unit": ["sac de 50 kg"], "unit_price": ["60 000"], "pay_mode": "tout", "account_id": str(self.account())})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:500])
+        self.assertAlmostEqual(self.stock(mais), 250)
+        line = self.one("SELECT * FROM purchase_lines")
+        self.assertAlmostEqual(line["quantity"], 150)
+        self.assertAlmostEqual(line["unit_price"], 1200)
+        self.assertAlmostEqual(line["total"], 180000)
+        # « sac » sans poids : message clair, rien n'est enregistré
+        res = self.post("/matieres/achats/nouveau", {
+            "date": self.today(), "material_id": [str(mais)], "quantity": ["2"], "line_unit": ["sac"], "unit_price": ["60000"],
+            "pay_mode": "tout", "account_id": str(self.account())}, follow_redirects=True)
+        self.assertIn("sac de 50 kg", res.get_data(as_text=True))
+        self.assertEqual(self.one("SELECT COUNT(*) FROM purchases")[0], 1)
+        # nouvelle matière écrite librement avec « sac de 25 kg » : stock en kg
+        self.post("/matieres/achats/nouveau", {
+            "date": self.today(), "material_id": ["__new__:Soja|sac de 25 kg"], "quantity": ["4"], "line_unit": ["sac de 25 kg"],
+            "unit_price": ["50000"], "pay_mode": "tout", "account_id": str(self.account())})
+        soja = self.one("SELECT * FROM materials WHERE name = 'Soja'")
+        self.assertEqual(soja["unit"], "kg")
+        self.assertAlmostEqual(self.stock(soja["id"]), 100)
+        # formule : matière nouvelle écrite avec son unité, quantités en sacs et en g
+        res = self.post("/provenderie/formules/nouvelle", {
+            "name": "Ponte", "material_id": [str(mais), "__new__:Coquillage|kg", str(soja["id"])],
+            "quantity": ["1", "5", "500"], "qty_unit": ["sac de 50 kg", "kg", "g"]})
+        self.assertEqual(res.status_code, 302, res.get_data(as_text=True)[:800])
+        f = self.one("SELECT * FROM formulas WHERE name = 'Ponte'")
+        self.assertAlmostEqual(f["base_qty"], 55.5)
+        self.assertAlmostEqual(self.one("SELECT quantity FROM formula_lines WHERE material_id = ?", (mais,))[0], 50)

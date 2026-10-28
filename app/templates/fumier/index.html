@@ -53,7 +53,7 @@
       <div class="field"><label>Quantité vendue * <small class="muted" data-unit-lab></small></label><input class="input big-input" name="quantity" inputmode="decimal" required data-q></div>
       <div class="field"><label>Prix par <span data-unit-lab2>sac</span> (Ar) *</label><input class="input" name="price" inputmode="decimal" required placeholder="{{ (last_price.unit_price|round(0)|int) if last_price else 'ex. 5000' }}" data-p></div>
       <div class="totals"><div class="grand"><span>Total</span><strong data-total>0 Ar</strong></div></div>
-      <div class="field"><label>Client</label><select class="input" name="client_id" data-free="client" data-placeholder="Écrivez le nom du client…" data-new-tip="Nouveau client : il sera créé.">
+      <div class="field"><label>Client</label><select class="input" name="client_id" data-free="client" data-placeholder="Écrivez le nom du client…" data-new-tip="✓ Nouveau client : il sera ajouté tout seul.">
         <option value="">— Client de passage —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
       <div class="field"><label>Payé maintenant (Ar)</label><input class="input" name="paid" inputmode="decimal" placeholder="= total"><p class="hint">Vide = tout payé · 0 = à crédit.</p></div>
       <div class="field span-2"><label>L'argent va dans</label><select class="input" name="account_id" data-free="compte">{% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>

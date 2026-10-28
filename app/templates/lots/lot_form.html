@@ -67,9 +67,9 @@
       <div class="field"><label for="paid">Payé maintenant (Ar)</label><input class="input" id="paid" name="paid" inputmode="decimal" value="{{ values.paid if values.paid is not none else '' }}" placeholder="= coût total">
         <p class="hint">Laissez vide si tout est payé. Écrivez 0 si rien n'est payé.</p></div>
       <div class="field"><label for="account_id">L'argent vient de</label>
-        <select class="input" id="account_id" name="account_id" data-free="compte" data-new-tip="Nouveau compte : il sera créé.">
+        <select class="input" id="account_id" name="account_id" data-free="compte" data-new-tip="✓ Nouveau compte : il sera ajouté tout seul.">
           <option value="">— Choisir —</option>
-          {% for a in accounts %}<option value="{{ a.id }}" {% if values.account_id|string == a.id|string %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
+          {% for a in accounts %}<option value="{{ a.id }}" {% if values.account_id|string == a.id|string or (not values.account_id and loop.first) %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select></div>
     </div>
     {% else %}
     <p class="hint">Ici vous corrigez les prix pour les calculs du lot. L'argent déjà sorti pour les poussins ne change pas : pour corriger une caisse, faites un comptage dans Caisse &amp; propriétaires.</p>

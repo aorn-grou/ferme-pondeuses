@@ -16,8 +16,35 @@ FACTORS = {
 }
 
 
+import re
+
+_PACK = re.compile(r"(\d+(?:[.,]\d+)?)\s*(mg|g|gr|kg|kgs|kilos?|t|tonnes?|ml|cl|l|litres?)\b")
+
+
 def _key(unit):
     return " ".join((unit or "").strip().lower().split()).rstrip(".")
+
+
+def pack(unit):
+    """Unité avec son contenu : « sac de 50 kg », « bidon 5 L », « sachet 500 g » → (famille, facteur), sinon None."""
+    k = _key(unit)
+    if k in FACTORS:
+        return FACTORS[k]
+    m = _PACK.search(k)
+    if not m:
+        return None
+    base = FACTORS.get(m.group(2))
+    if not base:
+        return None
+    return base[0], float(m.group(1).replace(",", ".")) * base[1]
+
+
+def base_unit(unit):
+    """L'unité de stock conseillée : « sac de 50 kg » → kg, « bidon 5 L » → L ; sinon l'unité telle quelle."""
+    info = pack(unit)
+    if info and _key(unit) not in FACTORS:
+        return "kg" if info[0] == "poids" else "L"
+    return " ".join((unit or "").split())
 
 
 def same_unit(a, b):
@@ -30,7 +57,7 @@ def convert(qty, from_unit, to_unit):
         return None
     if same_unit(from_unit, to_unit) or not _key(from_unit):
         return qty
-    a, b = FACTORS.get(_key(from_unit)), FACTORS.get(_key(to_unit))
+    a, b = pack(from_unit), pack(to_unit)
     if a and b and a[0] == b[0]:
         return qty * a[1] / b[1]
     return None
@@ -38,7 +65,7 @@ def convert(qty, from_unit, to_unit):
 
 def to_kg(qty, unit):
     """Poids approximatif en kg (1 L compté comme 1 kg) ; None si impossible."""
-    info = FACTORS.get(_key(unit))
+    info = pack(unit)
     if info is None:
         return None
     return qty * info[1]

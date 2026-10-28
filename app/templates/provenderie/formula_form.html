@@ -5,7 +5,7 @@
 {% call page_head(('Modifier « ' ~ formula.name ~ ' »') if formula else 'Nouvelle formule de provende', "Indiquez les ingrédients d'un mélange (par exemple pour 100 kg).", 'list') %}
   <a class="btn ghost" href="{{ url_for('provenderie.formula', formula_id=formula.id) if formula else url_for('provenderie.formulas') }}">← Retour</a>
 {% endcall %}
-{% if not materials %}<div class="alert alert-warning static">{{ icon('alert', 18) }}<span>Aucune matière première. <a href="{{ url_for('matieres.material_new', next=request.path) }}">Créez d'abord vos matières</a>.</span></div>{% endif %}
+{% if not materials %}<p class="hint">💡 Écrivez directement le nom de chaque matière (maïs, soja…) et son unité : elles sont ajoutées toutes seules.</p>{% endif %}
 <form method="post" class="stack" data-autosave="formule-{{ formula.id if formula else 'nouvelle' }}" data-formula-form>
   {{ csrf() }}
   <section class="card">
@@ -22,26 +22,26 @@
       {% for line in lines %}
       <div class="line-row two-cols" data-line>
         <div class="field"><label class="line-label">Matière</label>
-          <select class="input" name="material_id" data-unit-select data-free="matiere" data-placeholder="Écrivez la matière…" data-new-tip="Nouvelle matière : elle sera créée. Indiquez son unité à droite.">
+          <select class="input" name="material_id" data-unit-select data-free="matiere" data-placeholder="Écrivez la matière…" data-new-tip="✓ Nouvelle matière : elle sera ajoutée toute seule.">
             <option value="">— Choisir —</option>
             {% for m in materials %}<option value="{{ m.id }}" data-unit="{{ m.unit }}" data-cost="{{ m.avg_cost }}" data-label="{{ m.name }}" {% if line.material_id == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
           </select></div>
-        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><input class="input-addon unit-addon qty-unit" name="qty_unit" value="{{ line.unit or '' }}" maxlength="15" placeholder="kg" list="liste-unites-formule" aria-label="Unité" data-qty-unit {% if not line.unit %}data-auto="1"{% endif %} title="Écrivez l'unité : g, kg, L…"></div></div>
+        <div class="field"><label class="line-label">Quantité</label><div class="input-group"><input class="input" name="quantity" inputmode="decimal" value="{{ line.quantity }}" data-qty><input class="input-addon unit-addon qty-unit" name="qty_unit" value="{{ line.unit or 'kg' }}" maxlength="30" placeholder="kg" list="liste-unites-formule" aria-label="Unité" data-qty-unit {% if not line.unit %}data-auto="1"{% endif %} title="Écrivez l'unité : g, kg, L…"></div></div>
         <div class="line-total"><span class="line-label">Part</span><strong data-share>—</strong></div>
         <button type="button" class="icon-btn line-remove" data-remove-line aria-label="Retirer">{{ icon('trash', 18) }}</button>
       </div>
       {% endfor %}
     </div>
     <button type="button" class="btn ghost" data-add-line>{{ icon('plus', 18) }} Ajouter un ingrédient</button>
-    <datalist id="liste-unites-formule">{% for u in ['kg', 'g', 'tonne', 'L', 'mL', 'sac', 'sachet', 'dose', 'flacon', 'unité'] %}<option value="{{ u }}">{% endfor %}</datalist>
+    <datalist id="liste-unites-formule">{% for u in ['kg', 'g', 'sac de 50 kg', 'sac de 25 kg', 'tonne', 'L', 'mL', 'bidon de 5 L', 'sachet', 'dose', 'flacon', 'unité'] %}<option value="{{ u }}">{% endfor %}</datalist>
     <script type="application/json" id="units-table">{{ units_table|tojson }}</script>
-    <p class="hint">✏️ <strong>L'unité se change librement</strong> : cliquez dans la case jaune à droite de la quantité et écrivez g, kg, L, sac… Le logiciel convertit tout seul pour le stock.</p>
+    <p class="hint">✏️ <strong>L'unité se change librement</strong> : cliquez dans la case à droite de la quantité et écrivez g, kg, L, « sac de 50 kg »… Le logiciel convertit tout seul pour le stock.</p>
     <div class="grid two top-gap">
       <div class="field"><label for="base_qty">Poids total visé du mélange (kg de provende)</label><input class="input" id="base_qty" name="base_qty" inputmode="decimal" value="{{ values.base_qty|qty if values.base_qty else '' }}" data-base-qty>
         <p class="hint">Rempli automatiquement avec le total des ingrédients. Si vous écrivez vous-même un poids (ex. 150), il reste fixe et le logiciel vous dit ce qui manque.</p></div>
       <div class="totals">
         <div><span>Total des ingrédients</span><strong data-sum>0</strong></div>
-        <p class="hint text-danger" data-sum-note hidden></p>
+        <p class="hint unit-help" data-sum-note hidden></p>
         <div class="target-gap" data-target-gap hidden>
           <p data-target-text></p>
           <button type="button" class="btn gold sm" data-scale>⚖️ Ajuster toutes les quantités pour faire <span data-target-kg></span> kg</button>

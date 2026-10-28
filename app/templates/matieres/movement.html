@@ -17,7 +17,7 @@
   <div class="field">
     <label for="material_id">Matière</label>
     <div class="input-group">
-    <select class="input" id="material_id" name="material_id" required data-free="matiere" data-placeholder="Écrivez la matière…" data-new-tip="Nouvelle matière : elle sera créée avec l'unité indiquée.">
+    <select class="input" id="material_id" name="material_id" required data-free="matiere" data-placeholder="Écrivez la matière…" data-new-tip="✓ Nouvelle matière : elle sera ajoutée avec l'unité écrite.">
       <option value="">— Choisir —</option>
       {% for m in materials %}<option value="{{ m.id }}" data-unit="{{ m.unit }}" data-label="{{ m.name }}" {% if form.material_id == m.id|string %}selected{% endif %}>{{ m.name }} ({{ m.unit }})</option>{% endfor %}
     </select>

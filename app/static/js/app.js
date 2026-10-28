@@ -163,7 +163,8 @@
         const opt = unitSelect.selectedOptions[0];
         const unit = opt && opt.dataset.unit ? opt.dataset.unit : "—";
         $$("[data-unit-label]", row).forEach((el) => { el.textContent = unit; });
-        if (opt && opt.dataset.unit) $$("[data-unit-input]", row).forEach((el) => { el.value = opt.dataset.unit; el.readOnly = true; });
+        // unité proposée = celle du stock, mais elle reste libre (sac de 50 kg, g, tonne…)
+        if (opt && opt.dataset.unit) $$("[data-unit-input]", row).forEach((el) => { if (!el.dataset.typed) el.value = opt.dataset.unit; el.readOnly = false; });
         const price = $("[data-price]", row);
         if (price && opt && opt.dataset.avg && num(opt.dataset.avg) > 0) price.placeholder = "prix moyen : " + qty(num(opt.dataset.avg));
       };
@@ -238,12 +239,19 @@
     const base = $("[data-base-qty]", form);
     const table = JSON.parse(($("#units-table", form) || {}).textContent || "{}");
     const key = (u) => (u || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/\.$/, "");
+    // « sac de 50 kg », « bidon 5 L », « sachet 500 g » : l'unité contient son poids
+    const info = (u) => {
+      const k = key(u);
+      if (table[k]) return table[k];
+      const m = k.match(/(\d+(?:[.,]\d+)?)\s*(mg|g|gr|kg|kgs|kilos?|t|tonnes?|ml|cl|l|litres?)\b/);
+      return m && table[m[2]] ? [table[m[2]][0], parseFloat(m[1].replace(",", ".")) * table[m[2]][1]] : null;
+    };
     const convert = (q, from, to) => {
       if (!from || key(from) === key(to)) return q;
-      const a = table[key(from)], b = table[key(to)];
+      const a = info(from), b = info(to);
       return a && b && a[0] === b[0] ? q * a[1] / b[1] : null;
     };
-    const toKg = (q, u) => { const a = table[key(u)]; return a ? q * a[1] : null; };
+    const toKg = (q, u) => { const a = info(u); return a ? q * a[1] : null; };
     let baseTouched = base.value !== "";
     let lastAuto = null;
     // dès qu'on écrit soi-même le poids visé (ex. 150), il reste fixe
@@ -271,7 +279,8 @@
         let warn = $("[data-unit-warn]", row);
         if (i.bad) {
           if (!warn) { warn = document.createElement("small"); warn.className = "hint text-danger"; warn.setAttribute("data-unit-warn", ""); $("[data-qty]", row).closest(".field").appendChild(warn); }
-          warn.textContent = `Le stock est en « ${i.matUnit} » : impossible de convertir des « ${i.unit} ».`;
+          warn.className = "hint unit-help";
+          warn.textContent = `💡 « ${i.matUnit} » est l'unité du stock. Pour « ${i.unit} », écrivez son poids, par ex. « ${i.unit} de 50 kg », ou écrivez en ${i.matUnit}.`;
         } else if (warn) warn.remove();
       });
       if (!baseTouched || base.value === lastAuto) { base.value = sum > 0 ? qty(sum) : ""; lastAuto = base.value; baseTouched = false; }
@@ -295,7 +304,7 @@
       const notKg = infos.filter((i) => i.q > 0 && toKg(1, i.unit) === null).map((i) => i.unit);
       if (note) {
         note.hidden = !notKg.length;
-        note.textContent = notKg.length ? `Les quantités en « ${[...new Set(notKg)].join(", ")} » ne sont pas comptées dans ce total en kg : indiquez vous-même le poids du mélange dans « Ce mélange donne ».` : "";
+        note.textContent = notKg.length ? `💡 Pour compter « ${[...new Set(notKg)].join(", ")} » dans ce total, écrivez son poids (ex. « sac de 50 kg »), ou écrivez vous-même le poids du mélange à gauche.` : "";
       }
       $("[data-cost-kg]", form).textContent = b > 0 ? money(cost / b) : "0 Ar";
     };
@@ -585,7 +594,7 @@
 
   function unitInputOf(select) {
     const row = select.closest("[data-line]") || select.closest("form");
-    return row ? row.querySelector("[data-unit-input]") : null;
+    return row ? row.querySelector("[data-unit-input], [data-qty-unit]") : null;
   }
 
   function apply(select, input) {
@@ -601,7 +610,8 @@
     if (match) {
       select.value = match.value;
       input.classList.remove("is-new");
-      if (unitInput) { unitInput.value = match.dataset.unit || unitInput.value; unitInput.readOnly = true; }
+      // l'unité reste libre : on propose celle du stock tant qu'on n'a rien écrit soi-même
+      if (unitInput && !unitInput.dataset.typed && match.dataset.unit) unitInput.value = match.dataset.unit;
     } else if (text) {
       const unit = unitInput ? (unitInput.value.trim() || "kg") : "";
       const opt = document.createElement("option");
@@ -610,11 +620,10 @@
       select.appendChild(opt);
       select.value = opt.value;
       input.classList.add("is-new");
-      if (unitInput) { unitInput.readOnly = false; if (!unitInput.value || unitInput.dataset.auto) unitInput.value = unit; }
+      if (unitInput && !unitInput.value) unitInput.value = unit;
     } else {
       select.value = "";
       input.classList.remove("is-new");
-      if (unitInput) unitInput.readOnly = false;
     }
     const tip = input.parentElement.querySelector("[data-free-tip]");
     if (tip) tip.hidden = !input.classList.contains("is-new");
@@ -644,7 +653,8 @@
     tip.className = "hint new-tip";
     tip.setAttribute("data-free-tip", "");
     tip.hidden = true;
-    tip.textContent = select.dataset.newTip || "Nouveau : sera créé automatiquement.";
+    tip.textContent = select.dataset.newTip || "✓ Nouveau : il sera ajouté tout seul.";
+    if (!tip.textContent.startsWith("✓")) tip.classList.add("warn");
     input.after(tip);
     // au clic : toutes les suggestions (on garde l'ancienne valeur si rien n'est tapé)
     let saved = "", typed = false;
@@ -663,7 +673,7 @@
   scan();
   // unité modifiée pour une matière nouvelle : on met à jour la valeur envoyée
   document.addEventListener("input", (e) => {
-    const unit = e.target.closest("[data-unit-input]");
+    const unit = e.target.closest("[data-unit-input], [data-qty-unit]");
     if (!unit) return;
     unit.dataset.auto = "";
     const row = unit.closest("[data-line]") || unit.closest("form");
@@ -687,8 +697,8 @@
   n.addEventListener("input", sync); kg.addEventListener("input", sync);
 })();
 
-/* Cases d'unité (formules, achats) : au clic elles se vident pour montrer TOUTES les unités
-   proposées ; on peut aussi écrire n'importe quelle unité. Rien tapé = on garde l'ancienne. */
+/* Cases d'unité (formules, achats) : au clic l'unité est sélectionnée, on écrit par-dessus
+   n'importe quelle unité (g, kg, « sac de 50 kg »…). Rien écrit = on garde l'ancienne. */
 (function () {
   const sel = "[data-qty-unit], [data-unit-input]";
   // dès qu'on écrit soi-même une unité, le logiciel ne la remplace plus (phase de capture : avant tout calcul)
@@ -696,22 +706,26 @@
     const input = e.target.closest && e.target.closest(sel);
     if (input) { input.dataset.auto = ""; input.dataset.typed = "1"; }
   }, true);
+  // au clic, l'unité est sélectionnée : on écrit directement par-dessus (kg → sac de 50 kg)
+  let justFocused = null;
   document.addEventListener("focusin", (e) => {
-    const input = e.target.closest(sel);
+    const input = e.target.closest && e.target.closest(sel);
     if (!input || input.readOnly) return;
     input.dataset.saved = input.value;
-    input.dataset.typed = "";
-    if (input.value) { input.placeholder = input.value; input.value = ""; }
+    try { input.select(); } catch (err) { /* rien */ }
+    justFocused = input;
   });
-  document.addEventListener("input", (e) => {
-    const input = e.target.closest(sel);
-    if (input) input.dataset.typed = "1";
+  // un clic de souris enlève la sélection : on la remet une seule fois
+  document.addEventListener("mouseup", (e) => {
+    const input = e.target.closest && e.target.closest(sel);
+    if (input && input === justFocused) { e.preventDefault(); try { input.select(); } catch (err) { /* rien */ } }
+    justFocused = null;
   });
+  document.addEventListener("keydown", () => { justFocused = null; }, true);
   document.addEventListener("focusout", (e) => {
-    const input = e.target.closest(sel);
+    const input = e.target.closest && e.target.closest(sel);
     if (!input || input.readOnly) return;
-    if (!input.dataset.typed && !input.value) input.value = input.dataset.saved || "";
-    input.placeholder = input.matches("[data-qty-unit]") ? "kg" : "unité";
+    if (!input.value.trim()) input.value = input.dataset.saved || "kg";
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
 })();

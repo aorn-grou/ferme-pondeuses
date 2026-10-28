@@ -35,7 +35,7 @@
       <div class="field"><label>Lot *</label><select class="input" name="lot_id" required>{% for l in lots %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}</select></div>
       <div class="field"><label>Date *</label><input class="input" type="date" name="date" value="{{ today }}" max="{{ today }}" required></div>
       <div class="field"><label>Nombre de poules *</label><input class="input" name="birds" inputmode="numeric" required data-n></div>
-      <div class="field"><label>Client</label><select class="input" name="client_id" data-free="client" data-placeholder="Écrivez le nom du client…" data-new-tip="Nouveau client : il sera créé.">
+      <div class="field"><label>Client</label><select class="input" name="client_id" data-free="client" data-placeholder="Écrivez le nom du client…" data-new-tip="✓ Nouveau client : il sera ajouté tout seul.">
         <option value="">— Client de passage —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
     </div>
     <div class="grid four top">

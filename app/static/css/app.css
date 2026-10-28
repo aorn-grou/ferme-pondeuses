@@ -1253,3 +1253,12 @@ ol.steps { margin: .3rem 0 0; padding-left: 1.2rem; } ol.steps li { margin: .45r
 .nav-link .nav-ic, .nav-action .nav-ic { flex: 0 0 32px; width: 32px; }
 .modnav .nav-link > span:last-child, .nav-action > span:last-child { flex: 1; min-width: 0; }
 @media (max-width: 480px) { .topbar-actions [data-theme-toggle], .topbar-actions .help-btn { display: none; } }
+/* saisie libre : le message « nouveau » est rassurant (vert), et les lignes restent alignées */
+.new-tip { color: var(--ok); font-weight: 600; }
+.unit-help { display: block; color: var(--info); margin-top: .3rem; }
+.line-head, .line-row { align-items: start; }
+.line-head { align-items: end; }
+.line-row .line-total, .line-row .line-remove, .line-row > .line-share { align-self: start; margin-top: .55rem; }
+.free-input.is-new { border-color: color-mix(in srgb, var(--ok) 60%, var(--border)); background: color-mix(in srgb, var(--ok-bg) 60%, var(--surface)); }
+.input-addon.unit-addon { min-width: 74px; }
+.new-tip.warn { color: var(--warn); }

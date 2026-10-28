@@ -698,20 +698,31 @@ def _purchase_form_from_request(materials):
     form = {k: request.form.get(k, "").strip() for k in keys}
     lines, parsed, errors = [], [], []
     material_map = {str(m["id"]): m for m in materials}
+    from .units import convert, same_unit
+
+    units = request.form.getlist("line_unit")
     for index, (mid, q, p) in enumerate(zip(request.form.getlist("material_id"), request.form.getlist("quantity"),
                                             request.form.getlist("unit_price")), start=1):
-        lines.append({"material_id": mid, "quantity": q, "unit_price": p})
+        unit = " ".join((units[index - 1] if index - 1 < len(units) else "").split())[:30]
+        lines.append({"material_id": mid, "quantity": q, "unit_price": p, "unit": unit})
         if not mid and not q and not p:
             continue
         qty, price = parse_num(q), parse_num(p, 0)
         if mid not in material_map:
-            errors.append(f"Ligne {index} : choisissez une matière.")
+            errors.append(f"Ligne {index} : choisissez ou écrivez une matière.")
         elif qty is None or qty <= 0:
             errors.append(f"Ligne {index} : la quantité doit être supérieure à 0.")
         elif price is None or price < 0:
             errors.append(f"Ligne {index} : prix invalide.")
         else:
-            parsed.append((material_map[mid], qty, price))
+            m = material_map[mid]
+            stock_qty = convert(qty, unit, m["unit"]) if unit and not same_unit(unit, m["unit"]) else qty
+            if stock_qty is None or stock_qty <= 0:
+                errors.append(f"Ligne {index} : « {m['name']} » est compté en « {m['unit']} » dans le stock. "
+                              f"Pour « {unit} », écrivez son poids (ex. « {unit} de 50 kg ») ou la quantité en {m['unit']}.")
+            else:
+                # le prix écrit est celui de l'unité écrite (ex. un sac) : on le ramène à l'unité du stock
+                parsed.append((m, stock_qty, price * qty / stock_qty))
     if not parsed and not errors:
         errors.append("Ajoutez au moins une matière achetée.")
     if not valid_date(form["date"]):
